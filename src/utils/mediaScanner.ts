@@ -943,10 +943,11 @@ export class MediaScanner {
   private async processVideoFileWithoutAI(file: DriveFileItem, folderName: string, folderId?: string, mediaHint?: MediaScanHint): Promise<DriveFileItem | null> {
     try {
       const fileName = file.name.replace(/\.[^/.]+$/, '')
-      const seasonEpisode = this.tmdbService.parseSeasonEpisode(fileName)
-      const cleanedFileName = this.tmdbService.cleanFileName(fileName)
-      const cleanedFolderName = this.tmdbService.cleanFileName(folderName)
-      const lookupName = cleanedFileName.replace(/\s/g, '').length > 0 ? cleanedFileName : cleanedFolderName
+      const normalized = this.tmdbService.normalizeFileName(file.name, file.path || `${folderName}/${file.name}`)
+      const seasonEpisode = normalized.seasonNumber === undefined || normalized.episodeNumber === undefined
+        ? null
+        : { season: normalized.seasonNumber, episode: normalized.episodeNumber }
+      const lookupName = normalized.searchTitle || ''
 
       if (lookupName.replace(/\s/g, '').length === 0) return file
 
@@ -960,7 +961,7 @@ export class MediaScanner {
         const tmdbId = (mediaHint?.mediaType === 'tv' || mediaHint?.mediaType === 'anime') && mediaHint.tmdbId
           ? String(mediaHint.tmdbId)
           : this.parseTmdbId(fileName)
-        const year = this.tmdbService.parseYear(fileName)
+        const year = normalized.releaseYear === undefined ? undefined : String(normalized.releaseYear)
         const shouldUseYear = Boolean(year && !lookupName.includes(year))
         const fileHash = file.fileHash || file.contentHash
 
@@ -982,7 +983,7 @@ export class MediaScanner {
       // 电影处理：Agent 已确认 TMDB ID 时，直接按 ID 获取元数据；只有旧任务没有 ID 时才按标题搜索。
       const movie = mediaHint?.mediaType === 'movie' && mediaHint.tmdbId
         ? await this.tmdbService.getMovieByTmdbId(mediaHint.tmdbId)
-        : await this.tmdbService.searchMovie(lookupName, mediaHint?.year ? String(mediaHint.year) : this.tmdbService.parseYear(fileName), undefined, file.fileHash || file.contentHash, file.name)
+        : await this.tmdbService.searchMovie(lookupName, mediaHint?.year ? String(mediaHint.year) : normalized.releaseYear === undefined ? undefined : String(normalized.releaseYear), undefined, file.fileHash || file.contentHash, file.name)
       if (movie) {
         const collection = movie.belongs_to_collection
         const mediaItem: MediaLibraryItem = {
@@ -1118,13 +1119,12 @@ export class MediaScanner {
   // 处理单个视频文件 - 参考Swift版本的元数据匹配逻辑
   private async processVideoFile(file: DriveFileItem, folderName: string, folderId?: string): Promise<void> {
     try {
-      const fileName = file.name.replace(/\.[^/.]+$/, "") // 去除文件扩展名
-      const seasonEpisode = this.tmdbService.parseSeasonEpisode(fileName)
-      const cleanedFileName = this.tmdbService.cleanFileName(fileName)
-      const cleanedFolderName = this.tmdbService.cleanFileName(folderName)
-      const lookupName = cleanedFileName.replace(/\s/g, "").length > 0
-        ? cleanedFileName
-        : cleanedFolderName
+      const fileName = file.name.replace(/\.[^/.]+$/, '') // 去除文件扩展名
+      const normalized = this.tmdbService.normalizeFileName(file.name, file.path || `${folderName}/${file.name}`)
+      const seasonEpisode = normalized.seasonNumber === undefined || normalized.episodeNumber === undefined
+        ? null
+        : { season: normalized.seasonNumber, episode: normalized.episodeNumber }
+      const lookupName = normalized.searchTitle || ''
 
       if (lookupName.replace(/\s/g, "").length === 0) {
         const unmatchedItem: MediaLibraryItem = {
@@ -1158,7 +1158,7 @@ export class MediaScanner {
 
         // 2. 尝试通过TMDB API获取电视剧信息（对齐 Swift 的 parseAndFetchTVMetadata）
         const tmdbId = this.parseTmdbId(fileName)
-        const year = this.tmdbService.parseYear(fileName)
+        const year = normalized.releaseYear === undefined ? undefined : String(normalized.releaseYear)
         const shouldUseYear = Boolean(year && !lookupName.includes(year))
         const fileHash = file.fileHash || file.contentHash
 
@@ -1259,7 +1259,7 @@ export class MediaScanner {
         }
       } else {
         // 电影处理逻辑（无季集信息的视频文件）
-        const mediaInfo = await this.tmdbService.matchMedia(lookupName, file.path)
+        const mediaInfo = await this.tmdbService.matchMedia(file.name, file.path, normalized)
 
         if (mediaInfo && (mediaInfo.type === 'movie' || !mediaInfo.type)) {
           const collectionId = mediaInfo.collectionId
