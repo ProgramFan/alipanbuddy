@@ -5,6 +5,10 @@
 <h1 align="center">BoxPlayer</h1>
 
 <p align="center">
+  中文 · <a href="./README.en.md">English</a>
+</p>
+
+<p align="center">
   <strong>多网盘文件管理、媒体库、媒体服务器、AI Agent、音乐播放器和电子书阅读器，放在同一个跨平台桌面 App 里。</strong>
 </p>
 
