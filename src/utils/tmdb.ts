@@ -85,6 +85,28 @@ export class TmdbService {
     return this.searchMovie('', undefined, String(tmdbId))
   }
 
+  async searchMedia(query: string, isTVFirst = false): Promise<{ movies: TmdbSearchResult[]; tv: TmdbSearchResult[] }> {
+    const params = new URLSearchParams({ query, isTVFirst: String(isTVFirst), language: 'zh-CN' })
+    const response = await fetchWithRetry(`${TMDB_BASE_URL}/search?${params}`)
+    const data = await response.json()
+    return {
+      movies: Array.isArray(data?.movies) ? data.movies.map((item: TmdbSearchResult) => ({ ...item, media_type: 'movie' as const })) : [],
+      tv: Array.isArray(data?.tv) ? data.tv.map((item: TmdbSearchResult) => ({ ...item, media_type: 'tv' as const })) : []
+    }
+  }
+
+  async getTvByTmdbId(tmdbId: number | string, season = 1): Promise<MediaLibraryTvSeriesItem | null> {
+    try {
+      const params = new URLSearchParams({ id: String(tmdbId), season: String(season), language: 'zh-CN' })
+      const response = await fetchWithRetry(`${TMDB_BASE_URL}/tv/id?${params}`)
+      const data: TvSeriesItemResponse = await response.json()
+      return data.data || null
+    } catch (error) {
+      console.error('Error loading TV metadata:', error)
+      return null
+    }
+  }
+
   async searchTV(
     queryName: string,
     season: number,
