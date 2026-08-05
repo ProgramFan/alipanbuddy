@@ -30,6 +30,7 @@ export default defineConfig({
       'src/dropbox/__tests__/**/*.test.ts',
       'src/onedrive/__tests__/**/*.test.ts',
       'src/box/__tests__/**/*.test.ts',
+      'src/google/__tests__/**/*.test.ts',
       'clouddrive-cli/__tests__/**/*.test.ts',
     ],
   },

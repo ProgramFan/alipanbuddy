@@ -1,6 +1,8 @@
 import type { IAliGetFileModel } from '../aliapi/alimodels'
 import getFileIcon from '../aliapi/fileicon'
 import UserDAL from '../user/userdal'
+import type { ITokenInfo } from '../user/userstore'
+import { getProviderTokenForUser } from '../drive/account'
 import { humanDateTimeDateStr, humanSize } from '../utils/format'
 import message from '../utils/message'
 import { HanToPin } from '../utils/utils'
@@ -9,8 +11,7 @@ import { GUANGYA_API_URL, guangyaApiHeaders } from './auth'
 export type GuangyaFileItem = Record<string, any>
 
 const getToken = async (user_id: string) => {
-  let token = UserDAL.GetUserToken(user_id)
-  if (!token?.access_token) token = await UserDAL.GetUserTokenFromDB(user_id) as any
+  let token = await getProviderTokenForUser(user_id, 'guangya')
   const expireTime = new Date(token?.expire_time || 0).getTime()
   if (token?.refresh_token && (!token.access_token || (expireTime && expireTime <= Date.now()))) {
     const refreshed = await UserDAL.EnsureUserTokenReady(user_id)
@@ -27,7 +28,7 @@ export const guangyaApiParentId = (parentId: string | number | undefined) => {
 export const guangyaRequest = async (user_id: string, endpoint: string, body: any = {}, method: 'GET' | 'POST' = 'POST', allowedCodes: number[] = []): Promise<any> => {
   let token = await getToken(user_id)
   if (!token?.access_token) throw new Error('未登录光鸭云盘')
-  const request = async (accessToken: typeof token) => {
+  const request = async (accessToken: ITokenInfo) => {
     const resp = await fetch(`${GUANGYA_API_URL}${endpoint}`, {
       method,
       headers: guangyaApiHeaders(accessToken),

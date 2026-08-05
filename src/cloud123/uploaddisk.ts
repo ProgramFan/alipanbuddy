@@ -4,8 +4,8 @@ import type { ClientRequest } from 'http'
 import path from 'path'
 import { FileHandle } from 'fs/promises'
 import { OpenFileHandle } from '../utils/filehelper'
-import UserDAL from '../user/userdal'
 import { IUploadingUI } from '../utils/dbupload'
+import { getCloud123Token } from './auth'
 import { cloud123CreateFile, cloud123UploadComplete, normalizeServer } from './upload'
 import AliUploadDisk from '../aliapi/uploaddisk'
 import { Sleep } from '../utils/format'
@@ -148,7 +148,7 @@ const readSlice = async (fileHandle: FileHandle, start: number, size: number): P
 
 export default class Cloud123UploadDisk {
   static async UploadOneFile(fileui: IUploadingUI): Promise<string> {
-    const token = await UserDAL.GetUserTokenFromDB(fileui.user_id)
+    const token = await getCloud123Token(fileui.user_id)
     if (!token?.access_token) return '找不到上传token，请重试'
 
     const filePath = path.join(fileui.localFilePath, fileui.File.partPath)

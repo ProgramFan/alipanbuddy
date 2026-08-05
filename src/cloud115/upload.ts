@@ -1,8 +1,8 @@
 import crypto from 'crypto'
 import path from 'path'
 import { FileHandle } from 'fs/promises'
-import UserDAL from '../user/userdal'
 import message from '../utils/message'
+import { getDrive115Token } from './auth'
 
 const API_BASE = 'https://proapi.115.com'
 
@@ -93,7 +93,7 @@ export const build115Target = (parentId: string | number) => {
 }
 
 export const apiDrive115GetUploadToken = async (user_id: string): Promise<Drive115UploadTokenItem[] | null> => {
-  const token = UserDAL.GetUserToken(user_id)
+  const token = await getDrive115Token(user_id)
   if (!token?.access_token) {
     message.error('未登录 115 网盘')
     return null
@@ -122,7 +122,7 @@ export const apiDrive115UploadInit = async (
   signKey: string = '',
   signVal: string = ''
 ): Promise<Drive115UploadInitResp | null> => {
-  const token = UserDAL.GetUserToken(user_id)
+  const token = await getDrive115Token(user_id)
   if (!token?.access_token) {
     message.error('未登录 115 网盘')
     return null
@@ -160,7 +160,7 @@ export const apiDrive115UploadResume = async (
   fileSha1: string,
   pickCode: string
 ): Promise<Drive115UploadInitResp | null> => {
-  const token = UserDAL.GetUserToken(user_id)
+  const token = await getDrive115Token(user_id)
   if (!token?.access_token) {
     message.error('未登录 115 网盘')
     return null
@@ -185,4 +185,3 @@ export const apiDrive115UploadResume = async (
   const data = (await resp.json()) as Drive115UploadInitResp
   return data
 }
-
