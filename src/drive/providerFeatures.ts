@@ -1,9 +1,10 @@
 import { getProviderCapabilities } from '../services/agent/providerCapabilities'
 import type { DriveOperation } from '../services/agent/providerCapabilityTypes'
+import UserDAL from '../user/userdal'
 import { resolveDriveProvider } from '../utils/driveProvider'
 
 function providerPlatform(userId: string, driveId: string): string {
-  const route = resolveDriveProvider(userId, driveId)
+  const route = resolveDriveProvider(userId, driveId, UserDAL.GetUserToken(userId)?.tokenfrom)
   if (!route.isValid) return 'unknown'
   return route.provider === 'webdav' || route.provider === 'alist' ? 'webdav' : route.provider
 }

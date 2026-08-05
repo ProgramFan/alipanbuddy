@@ -3,6 +3,7 @@ import path from 'path'
 import type { FileHandle } from 'fs/promises'
 import { apiBoxFileList, getBoxToken, toBoxId } from './dirfilelist'
 import type { IUploadingUI } from '../utils/dbupload'
+import { Sleep } from '../utils/format'
 
 const BOX_UPLOAD_HOST = 'https://upload.box.com/api/2.0'
 export const BOX_DIRECT_UPLOAD_LIMIT = 50 * 1024 * 1024
@@ -20,7 +21,7 @@ type BoxUploadSession = {
   }
 }
 
-type BoxResponse = { status: number; data: any; error: string }
+type BoxResponse = { status: number; data: any; error: string; retryAfterMs: number }
 
 export const toBoxConflictBehavior = (mode: string) => {
   if (mode === 'overwrite') return 'overwrite'
@@ -58,9 +59,17 @@ export const buildBoxContentRange = (offset: number, size: number, total: number
 
 export const buildBoxCommitBody = (parts: BoxUploadPart[]) => ({ parts })
 
+export const getBoxRetryAfterMs = (value: string | null, now = Date.now()) => {
+  if (!value) return 1000
+  const seconds = Number(value)
+  if (Number.isFinite(seconds) && seconds >= 0) return Math.max(1000, seconds * 1000)
+  const date = Date.parse(value)
+  return Number.isFinite(date) ? Math.max(1000, date - now) : 1000
+}
+
 const boxUploadRequest = async (user_id: string, url: string, init: RequestInit, fallback: string): Promise<BoxResponse> => {
   const token = await getBoxToken(user_id)
-  if (!token?.access_token) return { status: 401, data: undefined, error: '未登录 Box' }
+  if (!token?.access_token) return { status: 401, data: undefined, error: '未登录 Box', retryAfterMs: 0 }
   try {
     const response = await fetch(url, {
       ...init,
@@ -73,9 +82,9 @@ const boxUploadRequest = async (user_id: string, url: string, init: RequestInit,
     } catch {
       data = undefined
     }
-    return { status: response.status, data, error: response.ok ? '' : (data?.message || data?.code || fallback) }
+    return { status: response.status, data, error: response.ok ? '' : (data?.message || data?.code || fallback), retryAfterMs: getBoxRetryAfterMs(response.headers.get('retry-after')) }
   } catch (error: any) {
-    return { status: 0, data: undefined, error: error?.message || fallback }
+    return { status: 0, data: undefined, error: error?.message || fallback, retryAfterMs: 0 }
   }
 }
 
@@ -156,21 +165,33 @@ const uploadBoxSessionFile = async (user_id: string, handle: FileHandle, fileui:
     await recordUploadProgress(fileui.UploadID, body.length, offset)
   }
 
-  const committed = await boxUploadRequest(user_id, commitUrl, {
+  let committed = await boxUploadRequest(user_id, commitUrl, {
     method: 'POST',
     headers: {
-      Digest: `sha=${totalHash.digest('base64')}`,
+      Digest: `sha=${totalHash.copy().digest('base64')}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify(buildBoxCommitBody(parts))
   }, '合并 Box 分片失败')
-  const file = committed.data?.entries?.[0]
-  if (!committed.error && file?.id) {
-    fileui.File.uploaded_file_id = file.id
-    fileui.File.uploaded_is_rapid = false
-    return 'success'
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const file = committed.data?.entries?.[0]
+    if (!committed.error && file?.id) {
+      fileui.File.uploaded_file_id = file.id
+      fileui.File.uploaded_is_rapid = false
+      return 'success'
+    }
+    if (committed.status !== 202) return committed.error || 'Box 合并分片未返回文件'
+    await Sleep(committed.retryAfterMs)
+    committed = await boxUploadRequest(user_id, commitUrl, {
+      method: 'POST',
+      headers: {
+        Digest: `sha=${totalHash.copy().digest('base64')}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(buildBoxCommitBody(parts))
+    }, '合并 Box 分片失败')
   }
-  return committed.error || 'Box 合并分片未返回文件'
+  return 'Box 合并分片仍在处理中，请稍后重试'
 }
 
 export const apiBoxUploadBuffer = async (

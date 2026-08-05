@@ -136,7 +136,8 @@ export const apiGuangyaFileDetail = async (user_id: string, fileId: string): Pro
   if (fileId === 'guangya_root' || fileId === '0' || fileId === '/' || fileId === '') return { fileId: 'guangya_root', name: '根目录', isDir: true }
   try {
     const data = await guangyaRequest(user_id, '/nd.bizuserres.s/v1/file/get_file_detail', { fileId })
-    return data?.data || data || null
+    const body = data?.data || data || {}
+    return body.file || body.fileInfo || body.fileDetail || body.item || body.resource || body
   } catch {
     const list = await apiGuangyaFileList(user_id, 'guangya_root')
     return list.find((item) => getGuangyaFileId(item) === String(fileId)) || null
@@ -167,7 +168,7 @@ export const mapGuangyaFileToAliModel = (item: GuangyaFileItem, drive_id = 'guan
     __v_skip: true,
     drive_id,
     file_id,
-    parent_file_id: String(item.parentId || item.parentFileId || item.parent_id || parentId || 'guangya_root'),
+    parent_file_id: String(item.parentId || item.parentFileId || item.parent_id || item.parent_file_id || parentId || 'guangya_root'),
     name,
     namesearch: HanToPin(name),
     ext,

@@ -23,7 +23,7 @@ import type { DropboxMetadata } from '../../dropbox/dirfilelist'
 import { apiDropboxListRevisions, apiDropboxRestoreRevision } from '../../dropbox/revisions'
 import { apiOneDriveFileDetail, mapOneDriveItemToAliModel } from '../../onedrive/dirfilelist'
 import { apiOneDriveListVersions, apiOneDriveRestoreVersion, OneDriveVersion } from '../../onedrive/revisions'
-import { apiGuangyaFileDetail, mapGuangyaFileToAliModel } from '../../guangya/dirfilelist'
+import { apiGuangyaFileDetail, getGuangyaFileId, mapGuangyaFileToAliModel } from '../../guangya/dirfilelist'
 import { apiQuarkFileDetail, mapQuarkFileToAliModel } from '../../quark/dirfilelist'
 import { apiBoxFileDetail, mapBoxItemToAliModel } from '../../box/dirfilelist'
 import { apiBoxDeleteVersion, apiBoxListVersions, apiBoxPromoteVersion, BoxFileVersion } from '../../box/revisions'
@@ -72,8 +72,10 @@ const handleOpen = async () => {
   let drive_id = ''
   let file_desc = ''
   let file_user_id = ''
+  let selectedFile: any
   let selectedIsDir = props.istree
   if (props.istree) {
+    selectedFile = pantreeStore.selectDir
     file_id = pantreeStore.selectDir.file_id
     drive_id = pantreeStore.selectDir.drive_id
     file_desc = pantreeStore.selectDir.description || ''
@@ -86,6 +88,7 @@ const handleOpen = async () => {
       panfileStore.mKeyboardSelect(focus, false, false)
       fileList = panfileStore.GetSelected()
     }
+    selectedFile = fileList[0]
     file_id = fileList[0].file_id
     drive_id = fileList[0].drive_id
     file_desc = fileList[0].description || ''
@@ -241,12 +244,13 @@ const handleOpen = async () => {
       const pathNames = pathList.map((item) => item.name).filter((name) => name)
       dirPath.value = '/' + pathNames.join('/')
       const detail = await apiGuangyaFileDetail(user_id, file_id)
-      if (detail) {
-        const mapped: any = mapGuangyaFileToAliModel(detail, drive_id || 'guangya', detail.parentId || detail.parentFileId || 'guangya_root')
+      const source = detail && getGuangyaFileId(detail) ? detail : selectedFile
+      if (source) {
+        const mapped: any = mapGuangyaFileToAliModel(source, drive_id || 'guangya', source.parentId || source.parentFileId || source.parent_file_id || 'guangya_root')
         mapped.type = mapped.isDir ? 'folder' : 'file'
-        mapped.created_at = detail.createAt || detail.createdAt || detail.created_at || detail.createTime || ''
-        mapped.updated_at = detail.updateAt || detail.updatedAt || detail.updated_at || detail.updateTime || mapped.created_at
-        mapped.content_hash = detail.contentHash || detail.content_hash || detail.md5 || detail.sha1 || detail.gcid || ''
+        mapped.created_at = source.createAt || source.createdAt || source.created_at || source.createTime || ''
+        mapped.updated_at = source.updateAt || source.updatedAt || source.updated_at || source.updateTime || mapped.created_at
+        mapped.content_hash = source.contentHash || source.content_hash || source.md5 || source.sha1 || source.gcid || ''
         fileInfo.value = mapped
       }
     } else if (isBox) {

@@ -13,7 +13,7 @@ describe.each(['webdav', 'alist'])('%s remote drive capabilities', platform => {
 
 it('maps both virtual account types and drive ids to the read-only manifest', () => {
   const source = readFileSync(new URL('../../drive/providerFeatures.ts', import.meta.url), 'utf8')
-  expect(source).toContain('resolveDriveProvider(userId, driveId)')
+  expect(source).toContain('resolveDriveProvider(userId, driveId, UserDAL.GetUserToken(userId)?.tokenfrom)')
   expect(source).toContain("route.provider === 'webdav'")
   expect(source).toContain("? 'webdav' : route.provider")
 })

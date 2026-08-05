@@ -47,7 +47,6 @@ function buildSiblingVideoPlaylist(file: IAliGetFileModel, userId: string, provi
 
 const TEXT_PREVIEW_EXTS = new Set(['txt', 'text', 'log', 'csv', 'tsv', 'nfo', 'srt', 'vtt', 'ass', 'ssa'])
 const PDF_PREVIEW_DRIVES = new Set(['cloud123', 'drive115', 'baidu', 'pikpak', 'dropbox', 'onedrive', 'box', 'google', 'quark', 'guangya', 'cloud139', 'cloud189'])
-const EPUB_PREVIEW_DRIVES = PDF_PREVIEW_DRIVES
 const DOCX_PREVIEW_DRIVES = PDF_PREVIEW_DRIVES
 const OFFICE_TO_PDF_DRIVES = PDF_PREVIEW_DRIVES
 const SHEET_PREVIEW_DRIVES = PDF_PREVIEW_DRIVES
@@ -79,7 +78,8 @@ export async function menuOpenFile(
     Archive(file.drive_id, file.file_id, file.name, file.parent_file_id, file.icon == 'iconweifa')
     return
   }
-  if ((file.ext || '').toLowerCase() === 'epub' && EPUB_PREVIEW_DRIVES.has(file.drive_id || '')) {
+  // EPUB uses the provider-neutral download gateway, so it is safe for Aliyun and every supported cloud drive.
+  if ((file.ext || '').toLowerCase() === 'epub') {
     await Epub(file, password)
     return
   }

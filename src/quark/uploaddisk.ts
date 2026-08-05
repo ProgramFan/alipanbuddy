@@ -208,7 +208,9 @@ export default class QuarkUploadDisk {
       const hashResult = await requestData(fileui.user_id, 'file/update/hash', { task_id: task.task_id, md5: hashes.md5, sha1: hashes.sha1 })
       if (hashResult.finish) {
         const finish = await requestData(fileui.user_id, 'file/upload/finish', { task_id: task.task_id, obj_key: task.obj_key })
-        fileui.File.uploaded_file_id = String(finish.fid || finish.file?.fid || '')
+        const fileId = String(finish.fid || finish.file?.fid || '')
+        if (!fileId) return '夸克网盘上传完成但未返回文件 ID'
+        fileui.File.uploaded_file_id = fileId
         fileui.File.uploaded_is_rapid = true
         return 'success'
       }
@@ -222,7 +224,9 @@ export default class QuarkUploadDisk {
       const response = await fetch(url, { method: 'POST', headers: { Authorization: auth.authorization, 'Content-MD5': contentMd5, 'Content-Type': 'application/xml', Referer: 'https://pan.quark.cn/', 'x-oss-callback': callback, 'x-oss-date': auth.date, 'x-oss-user-agent': OSS_USER_AGENT }, body: xml, signal: AbortSignal.timeout(COMMIT_TIMEOUT) })
       if (response.status !== 200) return `夸克网盘合并分片失败 (${response.status})`
       const finish = await requestData(fileui.user_id, 'file/upload/finish', { task_id: task.task_id, obj_key: task.obj_key })
-      fileui.File.uploaded_file_id = String(finish.fid || finish.file?.fid || '')
+      const fileId = String(finish.fid || finish.file?.fid || '')
+      if (!fileId) return '夸克网盘上传完成但未返回文件 ID'
+      fileui.File.uploaded_file_id = fileId
       fileui.File.uploaded_is_rapid = false
       return 'success'
     } catch (error: any) {

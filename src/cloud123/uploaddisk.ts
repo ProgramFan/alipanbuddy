@@ -1,5 +1,4 @@
 import crypto from 'crypto'
-import nodehttps from 'https'
 import type { ClientRequest } from 'http'
 import path from 'path'
 import { FileHandle } from 'fs/promises'
@@ -7,6 +6,7 @@ import { OpenFileHandle } from '../utils/filehelper'
 import { IUploadingUI } from '../utils/dbupload'
 import { getCloud123Token } from './auth'
 import { cloud123CreateFile, cloud123UploadComplete, normalizeServer } from './upload'
+import { getCloud123SliceRequest } from './http'
 import AliUploadDisk from '../aliapi/uploaddisk'
 import { Sleep } from '../utils/format'
 
@@ -107,7 +107,8 @@ const uploadSlice = (server: string, accessToken: string, preuploadID: string, s
     const options = {
       method: 'POST',
       hostname: url.hostname,
-      path: url.pathname,
+      port: url.port || undefined,
+      path: url.pathname + url.search,
       protocol: url.protocol,
       headers: {
         'Content-Type': `multipart/form-data; boundary=${boundary}`,
@@ -116,7 +117,7 @@ const uploadSlice = (server: string, accessToken: string, preuploadID: string, s
         Authorization: `Bearer ${accessToken}`
       }
     }
-    const req: ClientRequest = nodehttps.request(options, (res) => {
+    const req: ClientRequest = getCloud123SliceRequest(url.protocol)(options, (res) => {
       let raw = ''
       res.on('data', (chunk) => {
         raw += chunk
@@ -171,7 +172,8 @@ export default class Cloud123UploadDisk {
     )
     if (!createResp) return '创建文件失败'
     if (createResp.reuse) {
-      fileui.File.uploaded_file_id = String(createResp.fileID || '')
+      if (!createResp.fileID) return '123 云盘秒传成功但未返回文件 ID'
+      fileui.File.uploaded_file_id = String(createResp.fileID)
       fileui.File.uploaded_is_rapid = true
       return 'success'
     }

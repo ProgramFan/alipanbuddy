@@ -26,6 +26,8 @@ export default defineConfig({
       'src/pikpak/__tests__/**/*.test.ts',
       'src/quark/__tests__/**/*.test.ts',
       'src/guangya/__tests__/**/*.test.ts',
+      'src/cloud123/__tests__/**/*.test.ts',
+      'src/cloudbaidu/__tests__/**/*.test.ts',
       'src/cloud139/__tests__/**/*.test.ts',
       'src/dropbox/__tests__/**/*.test.ts',
       'src/onedrive/__tests__/**/*.test.ts',

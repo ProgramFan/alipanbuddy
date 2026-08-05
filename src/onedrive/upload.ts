@@ -104,6 +104,7 @@ const uploadSmallFile = async (accessToken: string, fileHandle: import('fs/promi
   })
   const data = await resp.json().catch(() => undefined)
   if (!resp.ok || data?.error) return data?.error?.message || '上传 OneDrive 文件失败'
+  if (!data?.id) return 'OneDrive 上传完成但未返回文件 ID'
   fileui.File.uploaded_file_id = data?.id || ''
   fileui.File.uploaded_is_rapid = false
   await recordUploadProgress(fileui.UploadID, buff.length, buff.length)
@@ -134,7 +135,7 @@ const uploadSessionFile = async (accessToken: string, fileHandle: import('fs/pro
       fileui.File.uploaded_is_rapid = false
     }
   }
-  return 'success'
+  return fileui.File.uploaded_file_id ? 'success' : 'OneDrive 上传完成但未返回文件 ID'
 }
 
 export default class OneDriveUploadDisk {

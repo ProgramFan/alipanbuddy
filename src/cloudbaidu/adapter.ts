@@ -43,7 +43,17 @@ export const getBaiduDownloadUrl = async (userId: string, driveId: string, fileI
   let url = metas[0].dlink
   const token = await getBaiduToken(userId)
   if (token?.access_token && !url.includes('access_token=')) url += (url.includes('?') ? '&' : '?') + `access_token=${encodeURIComponent(token.access_token)}`
-  return { drive_id: driveId, file_id: fileId, expire_time: GetExpiresTime(url), url, size: Number(metas[0].size || 0) }
+  return {
+    drive_id: driveId,
+    file_id: fileId,
+    expire_time: GetExpiresTime(url),
+    url,
+    size: Number(metas[0].size || 0),
+    headers: {
+      'User-Agent': 'pan.baidu.com',
+      Referer: 'https://pan.baidu.com/'
+    }
+  }
 }
 
 export const getBaiduFileInfo = async (userId: string, driveId: string, fileId: string) => {

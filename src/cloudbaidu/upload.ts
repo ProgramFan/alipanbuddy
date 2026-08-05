@@ -191,7 +191,8 @@ export const apiBaiduUploadPart = async (
         }
         try {
           const data = JSON.parse(raw)
-          resolve(data?.errno === 0)
+          // PCS upload nodes may acknowledge a successful part with its md5 only.
+          resolve(data?.errno === 0 || typeof data?.md5 === 'string')
         } catch {
           resolve(false)
         }

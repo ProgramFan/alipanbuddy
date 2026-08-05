@@ -66,10 +66,17 @@ export default class GoogleUploadDisk {
         if (!chunk.length) return '读取本地文件失败'
         const response = await fetch(sessionUrl, { method: 'PUT', headers: { Authorization: `Bearer ${token.access_token}`, 'Content-Type': 'application/octet-stream', 'Content-Length': String(chunk.length), 'Content-Range': buildGoogleContentRange(offset, chunk.length, fileui.File.size) }, body: new Uint8Array(chunk) })
         if (!(response.status === 308 || response.ok)) return `上传 Google Drive 分片失败 (${response.status})`
+        if (response.ok) {
+          if (offset + chunk.length !== fileui.File.size) return 'Google Drive 上传过早完成'
+          const data = await response.json().catch(() => undefined)
+          if (!data?.id) return 'Google Drive 上传完成但未返回文件 ID'
+          fileui.File.uploaded_file_id = data.id
+          fileui.File.uploaded_is_rapid = false
+        }
         offset += chunk.length
         await recordProgress(fileui, chunk.length, offset)
       }
-      return 'success'
+      return fileui.File.uploaded_file_id ? 'success' : 'Google Drive 上传未完成'
     } finally {
       await opened.handle.close().catch(() => {})
     }

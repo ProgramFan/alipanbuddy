@@ -21,7 +21,7 @@ describe('provider capability manifest', () => {
     const text = formatProviderCapabilities([getProviderCapabilities('guangya'), getProviderCapabilities('webdav')])
     expect(text).toContain('光鸭云')
     expect(text).toContain('WebDAV')
-    expect(text).toContain('删除不会由 Agent 直接执行')
+    expect(text).toContain('将文件或文件夹移入回收站')
   })
 
   it('derives UI and media acquisition operations from the provider manifest', () => {

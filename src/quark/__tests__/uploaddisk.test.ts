@@ -11,8 +11,8 @@ vi.hoisted(() => {
 
 vi.mock('../../user/userdal', () => ({
   default: {
-    GetUserToken: () => ({ access_token: '__uid=u1; __kps=kps1', user_id: 'quark_u1' }),
-    GetUserTokenFromDB: async () => ({ access_token: '__uid=u1; __kps=kps1', user_id: 'quark_u1' })
+    GetUserToken: () => ({ access_token: '__uid=u1; __kps=kps1', user_id: 'quark_u1', tokenfrom: 'quark' }),
+    GetUserTokenFromDB: async () => ({ access_token: '__uid=u1; __kps=kps1', user_id: 'quark_u1', tokenfrom: 'quark' })
   }
 }))
 
