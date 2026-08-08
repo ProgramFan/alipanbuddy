@@ -39,6 +39,7 @@ import {
 import type { DanmakuApiConfig, DanmakuEpisode, DanmakuSearchAnime } from '../utils/danmakuApi'
 import {
   formatSubtitleDownloadCount,
+  decodeSubtitleBuffer,
   getSubtitleDownload,
   getSubtitleExtension,
   searchSubtitles
@@ -95,7 +96,7 @@ const mpvEmbeddedStartPosition = ref(0)
 const mpvEmbeddedQualityLabel = ref('')
 const mpvEmbeddedQuality = ref('')
 const mpvEmbeddedQualities = ref<selectorItem[]>([])
-const mpvEmbeddedExternalSubtitle = ref<{ url: string; title?: string } | undefined>(undefined)
+const mpvEmbeddedSubtitleSources = ref<Array<{ url: string; title?: string; streamIndex?: number }>>([])
 const mpvPlaylistReady = ref(false)
 
 
@@ -177,7 +178,8 @@ const refreshMediaServerPlayback = async (
   sourceId = '',
   videoStreamIndex = -1,
   audioStreamIndex = -1,
-  subtitleStreamIndex = -1
+  subtitleStreamIndex = -1,
+  forceCompatiblePlayback = false
 ) => {
   mediaServerRegistry.ensureLoaded()
   const serverId = pageVideo.media_server_id || ''
@@ -199,15 +201,20 @@ const refreshMediaServerPlayback = async (
     audioStreamIndex,
     subtitleStreamIndex,
     useSettingStore().uiMediaServerVideoQuality,
-    useSettingStore().uiMediaServerCompatibilityMode,
+    forceCompatiblePlayback && useSettingStore().uiMediaServerCompatibilityMode !== 'directPlay'
+      ? 'mostCompatible'
+      : useSettingStore().uiMediaServerCompatibilityMode,
     useSettingStore().uiMediaServerCustomDeviceProfile,
-    useSettingStore().uiMediaServerBitrateTestSize
+    useSettingStore().uiMediaServerBitrateTestSize,
+    forceCompatiblePlayback
   )
   const resumeTime = art.currentTime || pageVideo.play_cursor || playback.playCursorSeconds || 0
   pendingMediaServerSeekTime = resumeTime
   pageVideo.play_cursor = resumeTime
   pageVideo.media_url = playback.url
   pageVideo.media_headers = playback.headers
+  pageVideo.media_subtitle_sources = playback.subtitleSources || []
+  pageVideo.media_server_tracks_selectable = playback.tracksSelectable === true
   pageVideo.media_server_source_id = sourceId || pageVideo.media_server_source_id || ''
   pageVideo.media_server_play_session_id = playback.playSessionId || pageVideo.media_server_play_session_id || ''
   if (videoStreamIndex >= 0) {
@@ -220,6 +227,7 @@ const refreshMediaServerPlayback = async (
     pageVideo.media_server_subtitle_label = (pageVideo.media_server_subtitle_options || []).find((item) => item.streamIndex === subtitleStreamIndex)?.label || pageVideo.media_server_subtitle_label || ''
   }
   setArtVideoUrl(art, resolveHeaderAwareVideoUrl(playback.url, playback.headers, 0, 'media_server'), getArtVideoType(playback.url))
+  await loadMediaServerWebSubtitle(art, subtitleStreamIndex)
   mediaServerReportStarted = false
   mediaServerStopReported = false
   await sendMediaServerStartReport(resumeTime)
@@ -771,6 +779,7 @@ const renderMediaServerControls = (art: Artplayer) => {
   const videoLabel = pageVideo.media_server_video_label || ''
   const audioLabel = pageVideo.media_server_audio_label || ''
   const subtitleLabel = pageVideo.media_server_subtitle_label || ''
+  const tracksSelectable = pageVideo.media_server_tracks_selectable === true
 
   if (sourceOptions.length > 1) {
     upsertMediaServerControl(art, {
@@ -822,7 +831,8 @@ const renderMediaServerControls = (art: Artplayer) => {
           pageVideo.media_server_source_id || '',
           item.streamIndex,
           findMediaServerStreamIndex(pageVideo.media_server_audio_options, pageVideo.media_server_audio_label),
-          findMediaServerStreamIndex(pageVideo.media_server_subtitle_options, pageVideo.media_server_subtitle_label)
+          findMediaServerStreamIndex(pageVideo.media_server_subtitle_options, pageVideo.media_server_subtitle_label),
+          true
         )
         return t('video.videoStream')
       }
@@ -832,7 +842,7 @@ const renderMediaServerControls = (art: Artplayer) => {
     removeMediaServerControl(art, 'quality')
   }
 
-  if (audioLabel) {
+  if (tracksSelectable && audioLabel) {
     upsertMediaServerControl(art, {
       name: 'mediaServerAudio',
       index: 19,
@@ -852,7 +862,8 @@ const renderMediaServerControls = (art: Artplayer) => {
           pageVideo.media_server_source_id || '',
           findMediaServerStreamIndex(pageVideo.media_server_video_options, pageVideo.media_server_video_label),
           item.streamIndex,
-          findMediaServerStreamIndex(pageVideo.media_server_subtitle_options, pageVideo.media_server_subtitle_label)
+          findMediaServerStreamIndex(pageVideo.media_server_subtitle_options, pageVideo.media_server_subtitle_label),
+          true
         )
         return t('video.audioTrack')
       }
@@ -861,7 +872,7 @@ const renderMediaServerControls = (art: Artplayer) => {
     removeMediaServerControl(art, 'mediaServerAudio')
   }
 
-  if (subtitleLabel) {
+  if (tracksSelectable && subtitleLabel) {
     upsertMediaServerControl(art, {
       name: 'mediaServerSubtitle',
       index: 20,
@@ -881,7 +892,8 @@ const renderMediaServerControls = (art: Artplayer) => {
           pageVideo.media_server_source_id || '',
           findMediaServerStreamIndex(pageVideo.media_server_video_options, pageVideo.media_server_video_label),
           findMediaServerStreamIndex(pageVideo.media_server_audio_options, pageVideo.media_server_audio_label),
-          item.streamIndex
+          item.streamIndex,
+          true
         )
         return t('video.subtitle')
       }
@@ -1012,6 +1024,8 @@ const switchMediaServerPlaylistItem = async (art: Artplayer, item: selectorItem)
     pageVideo.play_cursor = playback.playCursorSeconds || 0
     pageVideo.media_url = playback.url
     pageVideo.media_headers = playback.headers
+    pageVideo.media_subtitle_sources = playback.subtitleSources || []
+    pageVideo.media_server_tracks_selectable = playback.tracksSelectable === true
     pageVideo.media_server_item_id = detail.id
     pageVideo.media_server_source_id = sourceOption?.id || ''
     pageVideo.media_server_source_label = sourceOption?.title || ''
@@ -1355,14 +1369,16 @@ const getDirFileList = async (dir_id: string, hasDir: boolean, category: string 
   return filterList
 }
 
-const getSubtitleFileList = async (): Promise<selectorItem[]> => {
+const getSubtitleFileList = async (includeSubfolders = false): Promise<selectorItem[]> => {
   const subtitlePattern = /srt|vtt|ass|ssa/
   const currentDirItems = await getDirFileList(pageVideo.parent_file_id, false, '')
   const subtitleFiles = currentDirItems.filter((item) => subtitlePattern.test(item.ext || ''))
 
-  // Subtitle libraries are commonly stored in immediate child folders. Keep the video folder first so a sibling subtitle wins ties.
-  for (const dir of currentDirItems.filter((item) => item.isDir && item.file_id)) {
-    subtitleFiles.push(...await getDirFileList(dir.file_id, true, '', subtitlePattern, true))
+  if (includeSubfolders) {
+    // Subtitle libraries are commonly stored in immediate child folders. Keep the video folder first so a sibling subtitle wins ties.
+    for (const dir of currentDirItems.filter((item) => item.isDir && item.file_id)) {
+      subtitleFiles.push(...await getDirFileList(dir.file_id, true, '', subtitlePattern, true))
+    }
   }
   return dedupeSubtitleSelectors(subtitleFiles)
 }
@@ -1552,6 +1568,37 @@ const getSubtitleItemExt = (item: selectorItem) => {
   return String(item.ext || getSubtitleExtension(item.name || item.url || item.html)).toLowerCase()
 }
 
+const refreshCurrentSubtitleCue = async (art: Artplayer) => {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const textTrack = (art.subtitle as any).textTrack as TextTrack | undefined
+    if (textTrack?.activeCues != null) {
+      ;(art.subtitle as any).update()
+      return
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50))
+  }
+}
+
+const switchNativeSubtitle = async (art: Artplayer, url: string, name: string, ext: string) => {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined
+  let settled = false
+  const subtitleLoaded = new Promise<void>((resolve) => {
+    const finish = () => {
+      if (settled) return
+      settled = true
+      if (timeoutId) clearTimeout(timeoutId)
+      resolve()
+    }
+    art.once('subtitleLoad', finish)
+    timeoutId = setTimeout(finish, 1500)
+  })
+  await art.subtitle.switch(url, { name, type: ext, escape: false })
+  await subtitleLoaded
+  // ArtPlayer does not refresh the active cue when a new track loads while paused.
+  await refreshCurrentSubtitleCue(art)
+  art.subtitle.show = true
+}
+
 const switchSubtitleText = async (art: Artplayer, name: string, ext: string, data: string) => {
   if (isAssSubtitleType(ext)) {
     const instance = getJassubInstance(art)
@@ -1567,12 +1614,7 @@ const switchSubtitleText = async (art: Artplayer, name: string, ext: string, dat
   }
 
   clearJassubSubtitle(art)
-  await art.subtitle.switch(onlineSubData.dataUrl, {
-    name,
-    type: ext,
-    escape: false
-  })
-  art.subtitle.show = true
+  await switchNativeSubtitle(art, onlineSubData.dataUrl, name, ext)
   art.notice.show = t('video.switchSubtitle', { name })
 }
 
@@ -1819,6 +1861,7 @@ const openDanmakuSearchModal = (art: Artplayer) => {
 
 const loadSubtitleTextToPlayer = async (art: Artplayer, name: string, ext: string, data: string) => {
   clearMultipleSubtitleState(art)
+  const normalizedExt = getSubtitleExtension(`subtitle.${ext || getSubtitleExtension(name)}`)
   if (onlineSubData.dataUrl) URL.revokeObjectURL(onlineSubData.dataUrl)
   const subtitleTranslate = art.storage.get('subtitleTranslate')
   if (subtitleTranslate === 1) {
@@ -1829,9 +1872,9 @@ const loadSubtitleTextToPlayer = async (art: Artplayer, name: string, ext: strin
     onlineSubData.data = data
   }
   onlineSubData.name = name
-  onlineSubData.ext = ext
-  onlineSubData.dataUrl = URL.createObjectURL(new Blob([onlineSubData.data], { type: ext }))
-  await switchSubtitleText(art, name, ext, onlineSubData.data)
+  onlineSubData.ext = normalizedExt
+  onlineSubData.dataUrl = URL.createObjectURL(new Blob([onlineSubData.data], { type: normalizedExt === 'vtt' ? 'text/vtt' : 'text/plain' }))
+  await switchSubtitleText(art, name, normalizedExt, onlineSubData.data)
 }
 
 const addDownloadedSubtitleToSelector = (name: string, ext: string, data: string) => {
@@ -1852,25 +1895,38 @@ const addDownloadedSubtitleToSelector = (name: string, ext: string, data: string
 
 const loadSubtitleUrlToPlayer = async (art: Artplayer, item: selectorItem) => {
   clearMultipleSubtitleState(art)
-  if (typeof item.data === 'string') {
+  if (typeof item.data === 'string' && item.data.length > 0) {
     await loadSubtitleTextToPlayer(art, item.name || item.html, item.ext || getSubtitleExtension(item.name || item.html), item.data)
     return item.html
   }
   const ext = getSubtitleItemExt(item)
-  if (isAssSubtitleType(ext)) {
-    const response = await fetch(item.url)
-    if (!response.ok) throw new Error(`HTTP ${response.status}`)
-    await loadSubtitleTextToPlayer(art, item.name || item.html, ext, await response.text())
-    return item.html
-  }
-  clearJassubSubtitle(art)
-  onlineSubData.name = item.name || item.html
-  onlineSubData.data = ''
-  onlineSubData.dataUrl = ''
-  onlineSubData.ext = ext
-  await art.subtitle.switch(item.url, { name: item.name, type: ext, escape: false })
-  art.subtitle.show = true
+  const response = await fetch(item.url)
+  if (!response.ok) throw new Error(`HTTP ${response.status}`)
+  await loadSubtitleTextToPlayer(art, item.name || item.html, ext, decodeSubtitleBuffer(await response.arrayBuffer()))
   return item.html
+}
+
+const loadMediaServerWebSubtitle = async (art: Artplayer, preferredStreamIndex = -1) => {
+  const sources = pageVideo.media_subtitle_sources || []
+  embedSubSelector = sources.map((source) => ({
+    html: source.title || t('video.subtitle'),
+    name: source.title || t('video.subtitle'),
+    ext: getSubtitleExtension(source.url),
+    url: source.url,
+    default: source.streamIndex === preferredStreamIndex
+  }))
+  if (!embedSubSelector.length) return
+
+  const selected = embedSubSelector.find((item) => item.default)
+    || embedSubSelector.find((item) => item.name === pageVideo.media_server_subtitle_label)
+    || embedSubSelector[0]
+  embedSubSelector.forEach((item) => { item.default = item === selected })
+  try {
+    await loadSubtitleUrlToPlayer(art, selected)
+  } catch (error) {
+    console.error('媒体服务器字幕加载失败:', error)
+    art.notice.show = t('video.subtitleLoadFailed')
+  }
 }
 
 const openSubtitleSearchModal = (art: Artplayer) => {
@@ -2099,7 +2155,7 @@ const resolveRawMpvQualitySource = (data: IRawUrl, preferredQuality?: string): {
   }
 }
 
-const resolvePageVideoMpvSource = async (): Promise<{ url: string; headers?: Record<string, string>; type?: string; qualityLabel?: string; quality?: string; qualities?: selectorItem[]; error?: string }> => {
+const resolvePageVideoMpvSource = async (): Promise<{ url: string; headers?: Record<string, string>; type?: string; qualityLabel?: string; quality?: string; qualities?: selectorItem[]; subtitles?: Array<{ url: string; title?: string; streamIndex?: number }>; error?: string }> => {
   if (pageVideo.drive_id === 'local') {
     const urlModule = window.require?.('url')
     const filePath = pageVideo.file_id || (pageVideo as any).file_path || ''
@@ -2117,7 +2173,29 @@ const resolvePageVideoMpvSource = async (): Promise<{ url: string; headers?: Rec
     }
     const mediaUrl = pageVideo.media_url || ''
     if (!mediaUrl) return { url: '', error: t('video.getMediaServerUrlFailed') }
-    return { url: mediaUrl, headers: pageVideo.media_headers, type: getArtVideoType(mediaUrl), qualityLabel: pageVideo.media_server_source_label || t('video.mediaServer') }
+    const mediaHeaders = pageVideo.media_headers
+    // The native libmpv addon accepts no per-file HTTP options. Route authenticated
+    // media-server streams through the local proxy, as other authenticated drives do.
+    const useAuthenticatedMpvProxy = hasPlaybackHeaders(mediaHeaders)
+    const mpvUrl = useAuthenticatedMpvProxy
+      ? getProxyUrl({
+          user_id: pageVideo.user_id,
+          drive_id: pageVideo.drive_id,
+          file_id: pageVideo.media_server_item_id || pageVideo.file_id,
+          file_size: 0,
+          quality: 'media_server',
+          proxy_url: mediaUrl,
+          proxy_headers: JSON.stringify(mediaHeaders),
+          proxy_kind: 'mpv'
+        })
+      : mediaUrl
+    return {
+      url: mpvUrl,
+      headers: useAuthenticatedMpvProxy ? undefined : mediaHeaders,
+      type: getArtVideoType(mediaUrl),
+      qualityLabel: pageVideo.media_server_source_label || t('video.mediaServer'),
+      subtitles: pageVideo.media_subtitle_sources || []
+    }
   }
 
   const data: string | IRawUrl = await getRawUrl(pageVideo.user_id, pageVideo.drive_id, pageVideo.file_id, pageVideo.encType, pageVideo.password, false, 'video', '', 'thirdParty', pageVideo.tokenfrom)
@@ -2131,7 +2209,20 @@ const resolvePageVideoMpvSource = async (): Promise<{ url: string; headers?: Rec
     default: q.quality === defaultQuality.quality
   }))
   pageVideo.expire_time = GetExpiresTime(defaultQuality.url)
-  return { url: source.url, headers: source.headers, type: source.type, qualityLabel: source.qualityLabel, quality: defaultQuality.quality, qualities }
+  const subtitles = (data.subtitles || []).map((subtitle) => ({
+    url: subtitle.headers
+      ? getProxyUrl({
+        user_id: pageVideo.user_id,
+        drive_id: pageVideo.drive_id,
+        file_id: pageVideo.file_id,
+        proxy_kind: 'subtitle',
+        proxy_url: subtitle.url,
+        proxy_headers: JSON.stringify(subtitle.headers)
+      })
+      : subtitle.url,
+    title: t('video.embeddedSubtitle', { language: subtitle.language })
+  }))
+  return { url: source.url, headers: source.headers, type: source.type, qualityLabel: source.qualityLabel, quality: defaultQuality.quality, qualities, subtitles }
 }
 
 const resolveMpvEmbeddedExternalSubtitle = async (): Promise<{ url: string; title?: string } | undefined> => {
@@ -2180,10 +2271,13 @@ const loadMpvEmbeddedCurrentVideo = async (resumePosition = pageVideo.play_curso
     userAgent: source.headers && Object.entries(source.headers).find(([key]) => key.toLowerCase() === 'user-agent')?.[1] || ''
   })
   try {
-    mpvEmbeddedExternalSubtitle.value = await resolveMpvEmbeddedExternalSubtitle()
+    const subtitleSources = [...(source.subtitles || [])]
+    const externalSubtitle = await resolveMpvEmbeddedExternalSubtitle()
+    if (externalSubtitle && !subtitleSources.some((item) => item.url === externalSubtitle.url)) subtitleSources.push(externalSubtitle)
+    mpvEmbeddedSubtitleSources.value = subtitleSources
   } catch (error) {
     console.warn('MPV 自动加载同目录字幕失败:', error)
-    mpvEmbeddedExternalSubtitle.value = undefined
+    mpvEmbeddedSubtitleSources.value = source.subtitles || []
   }
   return true
 }
@@ -2278,6 +2372,8 @@ const switchMpvMediaServerPlaylistItem = async (item: selectorItem) => {
     pageVideo.play_cursor = playback.playCursorSeconds || 0
     pageVideo.media_url = playback.url
     pageVideo.media_headers = playback.headers
+    pageVideo.media_subtitle_sources = playback.subtitleSources || []
+    pageVideo.media_server_tracks_selectable = playback.tracksSelectable === true
     pageVideo.media_server_source_id = state?.sourceId || ''
     pageVideo.media_server_source_label = state?.sourceLabel || ''
     pageVideo.media_server_play_session_id = playback.playSessionId || ''
@@ -2333,6 +2429,7 @@ const getVideoInfo = async (art: Artplayer) => {
       return
     }
     setArtVideoUrl(art, resolveHeaderAwareVideoUrl(mediaUrl, pageVideo.media_headers, 0, 'media_server'), getArtVideoType(mediaUrl))
+    await loadMediaServerWebSubtitle(art, findMediaServerStreamIndex(pageVideo.media_server_subtitle_options, pageVideo.media_server_subtitle_label))
     renderMediaServerControls(art)
     return
   }
@@ -2715,9 +2812,12 @@ const hasSubtitleSource = (item?: selectorItem) => {
 const readSubtitleItemText = async (item: selectorItem) => {
   if (!item.file_id) return ''
   const url = await resolveCloudSubtitleUrl(item)
-  if (!url) return ''
+  if (!url) throw new Error(`Unable to resolve subtitle URL: ${item.name || item.html}`)
   const response = await fetch(url)
-  return response.ok ? response.text() : ''
+  if (!response.ok) throw new Error(`Subtitle request failed: HTTP ${response.status}`)
+  const data = decodeSubtitleBuffer(await response.arrayBuffer())
+  if (!data.trim()) throw new Error(`Subtitle response is empty: ${item.name || item.html}`)
+  return data
 }
 
 const resolveCloudSubtitleUrl = async (item: selectorItem): Promise<string> => {
@@ -2801,15 +2901,17 @@ const applyMultipleSubtitles = async (art: Artplayer, items: selectorItem[], rev
   return true
 }
 
-const loadOnlineSub = async (art: Artplayer, item: any) => {
+const loadOnlineSub = async (art: Artplayer, item: selectorItem) => {
   clearMultipleSubtitleState(art)
   const data = await readSubtitleItemText(item)
-  if (data) {
-    await loadSubtitleTextToPlayer(art, item.name, item.ext, data)
-    return item.html
-  } else {
-    art.notice.show = t('video.loadNamedSubtitleFailed', { name: item.name })
-  }
+  await loadSubtitleTextToPlayer(art, item.name || item.html, getSubtitleItemExt(item), data)
+  return item.html
+}
+
+const loadSubtitleItem = async (art: Artplayer, item: selectorItem) => {
+  return item.file_id
+    ? loadOnlineSub(art, item)
+    : loadSubtitleUrlToPlayer(art, item)
 }
 
 // 内嵌字幕
@@ -2820,10 +2922,11 @@ const clearDownloadedSubtitleSelector = () => {
   downloadedSubSelector = []
 }
 
-const getSubTitleList = async (art: Artplayer) => {
+const getSubTitleList = async (art: Artplayer, autoLoad = true) => {
   // Load subtitles from the video folder and each immediate child folder.
   let subSelector: selectorItem[]
-  const onlineSubSelector = await getSubtitleFileList()
+  const includeSubfolders = !!art.storage.get('subTitleListMode')
+  const onlineSubSelector = await getSubtitleFileList(includeSubfolders)
   // console.log('onlineSubSelector', onlineSubSelector)
   subSelector = dedupeSubtitleSelectors([...embedSubSelector, ...onlineSubSelector, ...downloadedSubSelector])
   if (subSelector.length === 0) {
@@ -2831,7 +2934,7 @@ const getSubTitleList = async (art: Artplayer) => {
   } else {
     let subtitleSize = art.storage.get('subtitleSize') + 'px'
     const hasDownloadedDefault = downloadedSubSelector.some((item) => item.default)
-    if (onlineSubSelector.length > 0 && !hasDownloadedDefault) {
+    if (autoLoad && onlineSubSelector.length > 0 && !hasDownloadedDefault) {
       const fileName = pageVideo.file_name
       // 自动加载同名字幕
       const similarity = subSelector.reduce((min, item, index) => {
@@ -2847,11 +2950,17 @@ const getSubTitleList = async (art: Artplayer) => {
         subSelector.forEach(v => v.default = false)
         subSelector[similarity.index].default = true
         art.subtitle.style('fontSize', subtitleSize)
-        await loadOnlineSub(art, subSelector[similarity.index])
+        await loadSubtitleItem(art, subSelector[similarity.index])
       }
-    } else if (embedSubSelector.length > 0 && !hasDownloadedDefault) {
+    } else if (autoLoad && embedSubSelector.length > 0 && !hasDownloadedDefault) {
       await loadSubtitleUrlToPlayer(art, embedSubSelector[0])
       art.subtitle.style('fontSize', subtitleSize)
+    }
+  }
+  if (!autoLoad && onlineSubData.name) {
+    const current = subSelector.find((item) => (item.name || item.html) === onlineSubData.name)
+    if (current) {
+      subSelector.forEach((item) => { item.default = item === current })
     }
   }
   const subDefault = subSelector.find((item) => item.default) || subSelector[0]
@@ -2936,11 +3045,15 @@ const getSubTitleList = async (art: Artplayer) => {
       html: t('video.subtitleList'),
       tooltip: art.storage.get('subTitleListMode') ? t('video.includeSubfolders') : t('video.sameFolder'),
       switch: art.storage.get('subTitleListMode'),
-      onSwitch: async (item: SettingOption) => {
-        item.tooltip = item.switch ? t('video.sameFolder') : t('video.includeSubfolders')
-        art.storage.set('subTitleListMode', !item.switch)
-        await getSubTitleList(art)
-        return !item.switch
+      onSwitch: (item: SettingOption) => {
+        const next = !item.switch
+        item.tooltip = next ? t('video.includeSubfolders') : t('video.sameFolder')
+        art.storage.set('subTitleListMode', next)
+        Promise.resolve().then(() => getSubTitleList(art, false)).catch((error) => {
+          console.error('刷新字幕列表失败:', error)
+          art.notice.show = t('video.subtitleLoadFailed')
+        })
+        return next
       }
     }, ...(multipleSubtitleCandidates.length >= 2 ? [{
       html: t('video.dualSubtitle'),
@@ -3006,19 +3119,17 @@ const getSubTitleList = async (art: Artplayer) => {
         return size
       }
     }, ...subSelector],
-    onSelect: (selector: any, element: HTMLElement, event: Event) => {
+    onSelect: async (selector: any, element: HTMLElement, event: Event) => {
       const item = selector as selectorItem
       if (art.subtitle.show) {
-        if (!item.file_id) {
+        try {
           art.notice.show = ''
-          loadSubtitleUrlToPlayer(art, item).then(() => item.html).catch((error) => {
-            console.error('加载字幕失败:', error)
-            art.notice.show = `加载${item.name || item.html}字幕失败`
-          })
-        } else {
-          loadOnlineSub(art, item).then((result) => {
-            return result
-          })
+          return await loadSubtitleItem(art, item)
+        } catch (error) {
+          console.error('加载字幕失败:', error)
+          art.notice.show = `加载${item.name || item.html}字幕失败`
+          Artplayer.utils.removeClass(element, 'art-current')
+          return false
         }
       } else {
         art.notice.show = t('video.subtitleNotEnabled')
@@ -3219,7 +3330,7 @@ onBeforeUnmount(() => {
         :current-file-id="pageVideo.drive_id === 'media_server' ? pageVideo.media_server_item_id || pageVideo.file_id : pageVideo.file_id"
         :current-quality="mpvEmbeddedQuality"
         :chapters="pageVideo.media_server_chapters || []"
-        :external-subtitle="mpvEmbeddedExternalSubtitle"
+        :subtitle-sources="mpvEmbeddedSubtitleSources"
         :headers="mpvEmbeddedHeaders"
         :playlist="[...playList]"
         :qualities="mpvEmbeddedQualities"

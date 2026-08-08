@@ -89,6 +89,24 @@ export function getSubtitleExtension(fileName: string) {
   return 'srt'
 }
 
+export function decodeSubtitleBuffer(buffer: ArrayBuffer) {
+  const bytes = new Uint8Array(buffer)
+  if (bytes[0] === 0xff && bytes[1] === 0xfe) return new TextDecoder('utf-16le').decode(buffer)
+  if (bytes[0] === 0xfe && bytes[1] === 0xff) return new TextDecoder('utf-16be').decode(buffer)
+
+  const sampleLength = Math.min(bytes.length, 256)
+  let evenNulls = 0
+  let oddNulls = 0
+  for (let index = 0; index < sampleLength; index += 1) {
+    if (bytes[index] !== 0) continue
+    if (index % 2 === 0) evenNulls += 1
+    else oddNulls += 1
+  }
+  if (oddNulls > sampleLength / 8) return new TextDecoder('utf-16le').decode(buffer)
+  if (evenNulls > sampleLength / 8) return new TextDecoder('utf-16be').decode(buffer)
+  return new TextDecoder('utf-8').decode(buffer)
+}
+
 export function formatSubtitleDownloadCount(count: number) {
   if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`
   if (count >= 1000) return `${(count / 1000).toFixed(1)}K`

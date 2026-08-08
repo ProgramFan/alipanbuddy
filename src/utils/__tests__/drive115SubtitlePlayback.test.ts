@@ -30,10 +30,40 @@ describe('115 subtitle playback', () => {
     const source = readSource('src/layout/PageVideo.vue')
 
     expect(source).toContain('const ext = getSubtitleItemExt(item)')
-    expect(source).toContain("await art.subtitle.switch(item.url, { name: item.name, type: ext, escape: false })")
+    expect(source).toContain('decodeSubtitleBuffer(await response.arrayBuffer())')
     expect(source).toContain('await loadSubtitleUrlToPlayer(art, embedSubSelector[0])')
     expect(source).toContain('ext: getSubtitleExtension(subtitle.url)')
     expect(source).not.toContain('art.subtitle.url = embedSubSelector[0].url')
+  })
+
+  it('refreshes a newly loaded subtitle track and returns the selected label', () => {
+    const source = readSource('src/layout/PageVideo.vue')
+
+    expect(source).toContain("art.once('subtitleLoad', finish)")
+    expect(source).not.toContain("art.off('subtitleLoad', finish)")
+    expect(source).toContain('if (textTrack?.activeCues != null)')
+    expect(source).toContain('await refreshCurrentSubtitleCue(art)')
+    expect(source).toContain('onSelect: async (selector: any, element: HTMLElement, event: Event) =>')
+    expect(source).toContain('return await loadSubtitleItem(art, item)')
+  })
+
+  it('dispatches embedded and cloud subtitle candidates through their matching loaders', () => {
+    const source = readSource('src/layout/PageVideo.vue')
+
+    expect(source).toContain('const loadSubtitleItem = async (art: Artplayer, item: selectorItem)')
+    expect(source).toContain('? loadOnlineSub(art, item)')
+    expect(source).toContain(': loadSubtitleUrlToPlayer(art, item)')
+    expect(source).toContain('await loadSubtitleItem(art, subSelector[similarity.index])')
+  })
+
+  it('applies the subtitle folder scope without reloading the active subtitle', () => {
+    const source = readSource('src/layout/PageVideo.vue')
+
+    expect(source).toContain('const getSubtitleFileList = async (includeSubfolders = false)')
+    expect(source).toContain('if (includeSubfolders) {')
+    expect(source).toContain('const getSubTitleList = async (art: Artplayer, autoLoad = true)')
+    expect(source).toContain('getSubTitleList(art, false)')
+    expect(source).toContain('if (!autoLoad && onlineSubData.name)')
   })
 
   it('uses the shared 115 user-agent when the subtitle proxy requests upstream data', () => {

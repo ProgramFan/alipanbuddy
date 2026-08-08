@@ -103,6 +103,8 @@ export interface IPageVideo {
   play_esposide?: number
   media_url?: string
   media_headers?: Record<string, string>
+  media_subtitle_sources?: Array<{ url: string, title?: string, streamIndex?: number }>
+  media_server_tracks_selectable?: boolean
   media_server_id?: string
   media_server_item_id?: string
   media_server_source_id?: string
