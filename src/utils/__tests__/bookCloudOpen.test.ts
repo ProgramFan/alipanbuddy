@@ -17,4 +17,10 @@ describe('cloud book open contracts', () => {
     expect(source).toContain("'User-Agent': 'pan.baidu.com'")
     expect(source).toContain("Referer: 'https://pan.baidu.com/'")
   })
+
+  it('allows text previews to consume third-party signed URLs with their headers', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/aliapi/file.ts'), 'utf8')
+
+    expect(source).toContain('AliHttp.GetString(downUrl.url, user_id, filesize, maxsize, downUrl.headers || {}, true)')
+  })
 })

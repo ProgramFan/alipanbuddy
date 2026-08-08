@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { usePanFileStore, usePanTreeStore } from '../../store'
 import { isAliyunUser as isAliyunAccountUser, isBoxUser, isDropboxUser, isGoogleUser, isGuangyaUser, isOneDriveUser, isPikPakUser } from '../../aliapi/utils'
 import { isWebDavDrive } from '../../utils/webdavClient'
-import { supportsCopy, supportsCreateShare, supportsMove, supportsRename, supportsTrashMove, supportsTrashPermanentDelete, supportsZipDownload } from '../../drive/providerFeatures'
+import { supportsCopy, supportsCreateShare, supportsDirectPermanentDelete, supportsMove, supportsRename, supportsTrashMove, supportsZipDownload } from '../../drive/providerFeatures'
 
 import {
   menuAddAlbumSelectFile,
@@ -76,7 +76,7 @@ const isCopySupported = computed(() => supportsCopy(panTreeStore.user_id || '', 
 const isMoveSupported = computed(() => supportsMove(panTreeStore.user_id || '', panTreeStore.drive_id || ''))
 const isRenameSupported = computed(() => supportsRename(panTreeStore.user_id || '', panTreeStore.drive_id || ''))
 const isTrashSupported = computed(() => supportsTrashMove(panTreeStore.user_id || '', panTreeStore.drive_id || ''))
-const isPermanentDeleteSupported = computed(() => supportsTrashPermanentDelete(panTreeStore.user_id || '', panTreeStore.drive_id || ''))
+const isPermanentDeleteSupported = computed(() => supportsDirectPermanentDelete(panTreeStore.user_id || '', panTreeStore.drive_id || ''))
 const isWebDav = computed(() => isWebDavDrive(panTreeStore.drive_id || panTreeStore.selectDir.drive_id))
 const isBoxZipDownload = computed(() => {
   if (!supportsZipDownload(panTreeStore.user_id || '', panTreeStore.drive_id || '')) return false
