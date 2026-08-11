@@ -9,7 +9,7 @@ function delay(ms: number): Promise<void> {
 }
 
 function requestInterval(scope: string): number {
-  return scope === 'external:googlebooks' ? GOOGLE_BOOKS_REQUEST_INTERVAL_MS : CLOUD_SCAN_REQUEST_INTERVAL_MS
+  return scope === 'external:internetarchive' || scope === 'external:googlebooks' ? GOOGLE_BOOKS_REQUEST_INTERVAL_MS : CLOUD_SCAN_REQUEST_INTERVAL_MS
 }
 
 async function acquireRequestSlot(scope: string): Promise<() => void> {

@@ -11,21 +11,30 @@ export interface ExternalBookMetadata {
   publishedDate?: string
   language?: string
   subjects?: string[]
-  source?: 'googlebooks'
+  source?: 'internetarchive'
 }
 
-type GoogleBooksVolume = {
-  volumeInfo?: {
-    title?: string
-    authors?: string[]
-    description?: string
-    imageLinks?: { thumbnail?: string; smallThumbnail?: string }
-    industryIdentifiers?: Array<{ identifier?: string }>
-    publisher?: string
-    publishedDate?: string
-    language?: string
-    categories?: string[]
-  }
+type InternetArchiveSearchDocument = {
+  identifier?: string
+  title?: string
+  creator?: string | string[]
+  isbn?: string | string[]
+}
+
+type InternetArchiveMetadata = {
+  title?: string
+  creator?: string | string[]
+  description?: string | string[]
+  isbn?: string | string[]
+  publisher?: string | string[]
+  year?: string | number
+  language?: string | string[]
+  subject?: string | string[]
+}
+
+type InternetArchiveRecord = {
+  metadata?: InternetArchiveMetadata
+  files?: Array<{ name?: string; format?: string }>
 }
 
 type BookMetadataCandidate = {
@@ -34,7 +43,8 @@ type BookMetadataCandidate = {
   isbn?: string[]
 }
 
-const GOOGLE_BOOKS_SEARCH_URL = 'https://www.googleapis.com/books/v1/volumes'
+const INTERNET_ARCHIVE_SEARCH_URL = 'https://archive.org/advancedsearch.php'
+const INTERNET_ARCHIVE_METADATA_URL = 'https://archive.org/metadata/'
 const EXTERNAL_BOOK_METADATA_TIMEOUT_MS = 6000
 const UNKNOWN_AUTHOR = new Set(['', '未知作者', 'unknown author'])
 export type ExternalBookMetadataLogger = (message: string, error?: unknown) => void
@@ -47,16 +57,25 @@ function firstText(value: string | string[] | undefined): string {
   return Array.isArray(value) ? String(value[0] || '') : String(value || '')
 }
 
-function buildGoogleBooksSearchUrl(book: IBookItem): string {
-  const params = new URLSearchParams({ maxResults: '5', projection: 'full' })
+function toArray(value: string | string[] | undefined): string[] {
+  return Array.isArray(value) ? value : value ? [value] : []
+}
+
+function quotedSearchTerm(value: string): string {
+  return `"${value.replace(/["\\]/g, '\\$&')}"`
+}
+
+function buildInternetArchiveSearchUrl(book: IBookItem): string {
+  const params = new URLSearchParams({ output: 'json', rows: '5', page: '1' })
   const isbn = String(book.isbn || '').replace(/[^0-9Xx]/g, '')
-  if (/^(?:97[89]\d{10}|\d{9}[\dX])$/i.test(isbn)) params.set('q', `isbn:${isbn}`)
+  if (/^(?:97[89]\d{10}|\d{9}[\dX])$/i.test(isbn)) params.set('q', `isbn:${isbn} AND mediatype:texts`)
   else {
     const title = book.title || book.file_name.replace(/\.[^.]+$/, '')
     const author = UNKNOWN_AUTHOR.has(normalized(book.author || '')) ? '' : book.author || ''
-    params.set('q', [title && `intitle:${title}`, author && `inauthor:${author}`].filter(Boolean).join('+'))
+    params.set('q', [title && `title:${quotedSearchTerm(title)}`, author && `creator:${quotedSearchTerm(author)}`, 'mediatype:texts'].filter(Boolean).join(' AND '))
   }
-  return `${GOOGLE_BOOKS_SEARCH_URL}?${params.toString()}`
+  for (const field of ['identifier', 'title', 'creator', 'isbn']) params.append('fl[]', field)
+  return `${INTERNET_ARCHIVE_SEARCH_URL}?${params.toString()}`
 }
 
 function matchScore(book: IBookItem, candidate: BookMetadataCandidate): number {
@@ -72,56 +91,57 @@ function matchScore(book: IBookItem, candidate: BookMetadataCandidate): number {
   return score
 }
 
-async function lookupGoogleBooksMetadata(book: IBookItem, request: typeof fetch): Promise<ExternalBookMetadata | null> {
-  const response = await request(buildGoogleBooksSearchUrl(book), { signal: AbortSignal.timeout(EXTERNAL_BOOK_METADATA_TIMEOUT_MS) })
+async function lookupInternetArchiveMetadata(book: IBookItem, request: typeof fetch): Promise<ExternalBookMetadata | null> {
+  const response = await request(buildInternetArchiveSearchUrl(book), { signal: AbortSignal.timeout(EXTERNAL_BOOK_METADATA_TIMEOUT_MS) })
   if (!response.ok) throw new Error(`HTTP ${response.status}`)
-  const body = await response.json() as { items?: GoogleBooksVolume[] }
-  const candidate = (body.items || [])
-    .map((item) => {
-      const info = item.volumeInfo || {}
-      return { info, score: matchScore(book, { title: info.title, authors: info.authors, isbn: info.industryIdentifiers?.map((item) => item.identifier || '') }) }
-    })
+  const body = await response.json() as { response?: { docs?: InternetArchiveSearchDocument[] } }
+  const candidate = (body.response?.docs || [])
+    .map((item) => ({ item, score: matchScore(book, { title: item.title, authors: toArray(item.creator), isbn: toArray(item.isbn) }) }))
     .sort((a, b) => b.score - a.score)[0]
-  if (!candidate || candidate.score < 75) return null
-  const info = candidate.info
-  const coverUrl = info.imageLinks?.thumbnail || info.imageLinks?.smallThumbnail || ''
+  if (!candidate?.item.identifier || candidate.score < 75) return null
+  const metadataResponse = await request(`${INTERNET_ARCHIVE_METADATA_URL}${encodeURIComponent(candidate.item.identifier)}`, { signal: AbortSignal.timeout(EXTERNAL_BOOK_METADATA_TIMEOUT_MS) })
+  if (!metadataResponse.ok) throw new Error(`HTTP ${metadataResponse.status}`)
+  const record = await metadataResponse.json() as InternetArchiveRecord
+  const info = record.metadata || {}
+  const thumbnail = record.files?.find((file) => file.name === '__ia_thumb.jpg' || file.format === 'JPEG Thumb')?.name || ''
   return {
-    title: info.title,
-    author: firstText(info.authors),
-    summary: info.description,
-    coverUrl: coverUrl.replace(/^http:/, 'https:'),
-    isbn: firstText(info.industryIdentifiers?.map((item) => item.identifier || '')),
-    publisher: info.publisher,
-    publishedDate: info.publishedDate,
-    language: info.language,
-    subjects: info.categories?.slice(0, 8),
-    source: 'googlebooks'
+    title: info.title || candidate.item.title,
+    author: firstText(info.creator) || firstText(candidate.item.creator),
+    summary: firstText(info.description),
+    coverUrl: thumbnail ? `https://archive.org/download/${encodeURIComponent(candidate.item.identifier)}/${encodeURIComponent(thumbnail)}` : '',
+    isbn: firstText(info.isbn) || firstText(candidate.item.isbn),
+    publisher: firstText(info.publisher),
+    publishedDate: info.year ? String(info.year) : '',
+    language: firstText(info.language),
+    subjects: toArray(info.subject).slice(0, 8),
+    source: 'internetarchive'
   }
 }
 
 export function canHydrateExternalBookMetadata(book: IBookItem): boolean {
-  return !book.cover_url && !book.thumbnail && !String(book.metadata_source || '').startsWith('googlebooks') && !!(book.title || book.file_name)
+  return !book.cover_url && !book.thumbnail && !String(book.metadata_source || '').startsWith('internetarchive') && !!(book.title || book.file_name)
 }
 
 export async function lookupExternalBookMetadata(book: IBookItem, request: typeof fetch = fetch, log?: ExternalBookMetadataLogger): Promise<ExternalBookMetadata | null> {
   const logPrefix = `[book-metadata] ${book.ext.toUpperCase()} ${book.file_name}`
   try {
-    log?.(`${logPrefix} 查询 Google Books：title=${book.title || '-'} author=${book.author || '-'} isbn=${book.isbn || '-'}`)
-    const meta = await runRateLimitedScanRequest('external:googlebooks', () => lookupGoogleBooksMetadata(book, request))
+    log?.(`${logPrefix} 查询 Internet Archive：title=${book.title || '-'} author=${book.author || '-'} isbn=${book.isbn || '-'}`)
+    const archiveRequest: typeof fetch = (input, init) => runRateLimitedScanRequest('external:internetarchive', () => request(input, init))
+    const meta = await lookupInternetArchiveMetadata(book, archiveRequest)
     if (!meta) {
-      log?.(`${logPrefix} Google Books 未命中`)
+      log?.(`${logPrefix} Internet Archive 未命中`)
       return null
     }
-    log?.(`${logPrefix} Google Books 命中：${meta.title || '-'}，封面=${meta.coverUrl ? '有' : '无'}`)
+    log?.(`${logPrefix} Internet Archive 命中：${meta.title || '-'}，封面=${meta.coverUrl ? '有' : '无'}`)
     return meta
   } catch (error) {
-    log?.(`${logPrefix} Google Books 请求失败`, error)
+    log?.(`${logPrefix} Internet Archive 请求失败`, error)
     return null
   }
 }
 
 export function buildExternalBookMetadataPatch(meta: ExternalBookMetadata, now = Date.now()): Partial<IBookItem> {
-  const patch: Partial<IBookItem> = { metadata_source: meta.source || 'googlebooks', metadata_updated_at: now }
+  const patch: Partial<IBookItem> = { metadata_source: meta.source || 'internetarchive', metadata_updated_at: now }
   if (meta.title) patch.title = meta.title
   if (meta.author) patch.author = meta.author
   if (meta.summary) patch.summary = meta.summary
