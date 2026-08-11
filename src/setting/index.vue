@@ -27,6 +27,8 @@ let observer: any
 const hideSetting = computed(() => appStore.appTab !== 'setting')
 const settingSearch = ref('')
 const settingSearchResults = ref<Array<{ label: string; element: HTMLElement }>>([])
+const settingSearchAnchor = ref<HTMLElement>()
+const settingSearchPopupStyle = ref<Record<string, string>>({})
 
 const matchesSettingSearch = (text: string, query: string) => {
   const source = text.toLocaleLowerCase()
@@ -54,6 +56,17 @@ const refreshSettingSearch = async () => {
     .filter((row) => matchesSettingSearch(row.innerText.replace(/\s+/g, ' '), query))
     .slice(0, 20)
     .map((element) => ({ label: element.innerText.replace(/\s+/g, ' ').trim(), element }))
+  updateSettingSearchPopupPosition()
+}
+
+const updateSettingSearchPopupPosition = () => {
+  const rect = settingSearchAnchor.value?.getBoundingClientRect()
+  if (!rect) return
+  settingSearchPopupStyle.value = {
+    left: `${Math.round(rect.left)}px`,
+    top: `${Math.round(rect.bottom + 8)}px`,
+    width: `${Math.max(300, Math.round(rect.width))}px`
+  }
 }
 
 const locateSettingSearchResult = (result: { element: HTMLElement }) => {
@@ -83,6 +96,7 @@ const sectionMeta: Record<string, { title: string }> = {
 }
 
 onMounted(() => {
+  window.addEventListener('resize', updateSettingSearchPopupPosition)
   const root = document.getElementById('SettingObserver')
   if (!root) return
 
@@ -127,6 +141,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (observer) observer.disconnect()
+  window.removeEventListener('resize', updateSettingSearchPopupPosition)
 })
 </script>
 
@@ -137,12 +152,8 @@ onUnmounted(() => {
         <span class="settings-side-kicker">{{ t('settings.preferences') }}</span>
         <strong>{{ t('settings.center') }}</strong>
       </div>
-      <div class="settings-search">
+      <div ref="settingSearchAnchor" class="settings-search">
         <a-input-search v-model="settingSearch" allow-clear :placeholder="t('settings.searchPlaceholder')" @input="refreshSettingSearch" @clear="refreshSettingSearch" />
-        <div v-if="settingSearch.trim()" class="settings-search-results">
-          <button v-for="result in settingSearchResults" :key="result.label" type="button" @click="locateSettingSearchResult(result)">{{ result.label }}</button>
-          <span v-if="!settingSearchResults.length">{{ t('settings.searchNoResults') }}</span>
-        </div>
       </div>
       <a-menu :selected-keys="[appStore.GetAppTabMenu]" :style="{ width: '100%' }" class="xbyleftmenu single-boundary-sidebar-menu"
               @update:selected-keys="appStore.toggleTabMenu('setting', $event[0])">
@@ -216,6 +227,12 @@ onUnmounted(() => {
         </a-menu-item>
       </a-menu>
     </a-layout-sider>
+    <Teleport to="body">
+      <div v-if="settingSearch.trim()" class="settings-search-results settings-search-results-popup" :style="settingSearchPopupStyle">
+        <button v-for="result in settingSearchResults" :key="result.label" type="button" @click="locateSettingSearchResult(result)">{{ result.label }}</button>
+        <span v-if="!settingSearchResults.length">{{ t('settings.searchNoResults') }}</span>
+      </div>
+    </Teleport>
     <a-layout-content id="SettingObserver" class="xbyright fullscroll settings-content" tabindex="-1" @keydown.tab.prevent="() => true">
       <div id="SettingDiv" class="settings-content-inner">
 <!--        <div class="settings-hero">-->
@@ -365,6 +382,13 @@ onUnmounted(() => {
   border-radius: 12px;
   background: rgba(248, 250, 252, 0.78);
   box-shadow: 0 10px 22px rgba(78, 97, 128, 0.1);
+}
+
+.settings-search-results-popup {
+  position: fixed;
+  z-index: 1001;
+  max-width: calc(100vw - 16px);
+  max-height: min(360px, calc(100vh - 24px));
 }
 
 .settings-search-results button,
