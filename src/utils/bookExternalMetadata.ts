@@ -11,19 +11,7 @@ export interface ExternalBookMetadata {
   publishedDate?: string
   language?: string
   subjects?: string[]
-  source?: 'openlibrary' | 'googlebooks'
-}
-
-type OpenLibraryDocument = {
-  title?: string
-  author_name?: string[]
-  cover_i?: number
-  isbn?: string[]
-  publisher?: string[]
-  first_publish_year?: number
-  language?: string[]
-  subject?: string[]
-  first_sentence?: string | string[]
+  source?: 'googlebooks'
 }
 
 type GoogleBooksVolume = {
@@ -46,7 +34,6 @@ type BookMetadataCandidate = {
   isbn?: string[]
 }
 
-const OPEN_LIBRARY_SEARCH_URL = 'https://openlibrary.org/search.json'
 const GOOGLE_BOOKS_SEARCH_URL = 'https://www.googleapis.com/books/v1/volumes'
 const EXTERNAL_BOOK_METADATA_TIMEOUT_MS = 6000
 const UNKNOWN_AUTHOR = new Set(['', '未知作者', 'unknown author'])
@@ -58,17 +45,6 @@ function normalized(value = ''): string {
 
 function firstText(value: string | string[] | undefined): string {
   return Array.isArray(value) ? String(value[0] || '') : String(value || '')
-}
-
-function buildSearchUrl(book: IBookItem): string {
-  const params = new URLSearchParams({ fields: 'title,author_name,cover_i,isbn,publisher,first_publish_year,language,subject,first_sentence', limit: '5' })
-  const isbn = String(book.isbn || '').replace(/[^0-9Xx]/g, '')
-  if (/^(?:97[89]\d{10}|\d{9}[\dX])$/i.test(isbn)) params.set('isbn', isbn)
-  else {
-    params.set('title', book.title || book.file_name.replace(/\.[^.]+$/, ''))
-    if (!UNKNOWN_AUTHOR.has(normalized(book.author || ''))) params.set('author', book.author || '')
-  }
-  return `${OPEN_LIBRARY_SEARCH_URL}?${params.toString()}`
 }
 
 function buildGoogleBooksSearchUrl(book: IBookItem): string {
@@ -94,29 +70,6 @@ function matchScore(book: IBookItem, candidate: BookMetadataCandidate): number {
   const authors = (candidate.authors || []).map((value) => normalized(value))
   if (!UNKNOWN_AUTHOR.has(author) && authors.some((value) => value === author || value.includes(author) || author.includes(value))) score += 25
   return score
-}
-
-async function lookupOpenLibraryMetadata(book: IBookItem, request: typeof fetch): Promise<ExternalBookMetadata | null> {
-  const response = await request(buildSearchUrl(book), { signal: AbortSignal.timeout(EXTERNAL_BOOK_METADATA_TIMEOUT_MS) })
-  if (!response.ok) throw new Error(`HTTP ${response.status}`)
-  const body = await response.json() as { docs?: OpenLibraryDocument[] }
-  const candidate = (body.docs || [])
-    .map((doc) => ({ doc, score: matchScore(book, { title: doc.title, authors: doc.author_name, isbn: doc.isbn }) }))
-    .sort((a, b) => b.score - a.score)[0]
-  if (!candidate || candidate.score < 75) return null
-  const doc = candidate.doc
-  return {
-    title: doc.title,
-    author: firstText(doc.author_name),
-    summary: firstText(doc.first_sentence),
-    coverUrl: doc.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg` : '',
-    isbn: firstText(doc.isbn),
-    publisher: firstText(doc.publisher),
-    publishedDate: doc.first_publish_year ? String(doc.first_publish_year) : '',
-    language: firstText(doc.language),
-    subjects: (doc.subject || []).slice(0, 8),
-    source: 'openlibrary'
-  }
 }
 
 async function lookupGoogleBooksMetadata(book: IBookItem, request: typeof fetch): Promise<ExternalBookMetadata | null> {
@@ -147,35 +100,28 @@ async function lookupGoogleBooksMetadata(book: IBookItem, request: typeof fetch)
 }
 
 export function canHydrateExternalBookMetadata(book: IBookItem): boolean {
-  return !book.cover_url && !book.thumbnail && !String(book.metadata_source || '').startsWith('openlibrary') && !!(book.title || book.file_name)
+  return !book.cover_url && !book.thumbnail && !String(book.metadata_source || '').startsWith('googlebooks') && !!(book.title || book.file_name)
 }
 
 export async function lookupExternalBookMetadata(book: IBookItem, request: typeof fetch = fetch, log?: ExternalBookMetadataLogger): Promise<ExternalBookMetadata | null> {
   const logPrefix = `[book-metadata] ${book.ext.toUpperCase()} ${book.file_name}`
-  const providers = [
-    { name: 'OpenLibrary', lookup: lookupOpenLibraryMetadata },
-    { name: 'Google Books', lookup: lookupGoogleBooksMetadata }
-  ]
-  for (const provider of providers) {
-    try {
-      log?.(`${logPrefix} 查询 ${provider.name}：title=${book.title || '-'} author=${book.author || '-'} isbn=${book.isbn || '-'}`)
-      const scope = provider.name === 'Google Books' ? 'external:googlebooks' : 'external:openlibrary'
-      const meta = await runRateLimitedScanRequest(scope, () => provider.lookup(book, request))
-      if (!meta) {
-        log?.(`${logPrefix} ${provider.name} 未命中`)
-        continue
-      }
-      log?.(`${logPrefix} ${provider.name} 命中：${meta.title || '-'}，封面=${meta.coverUrl ? '有' : '无'}`)
-      return meta
-    } catch (error) {
-      log?.(`${logPrefix} ${provider.name} 请求失败`, error)
+  try {
+    log?.(`${logPrefix} 查询 Google Books：title=${book.title || '-'} author=${book.author || '-'} isbn=${book.isbn || '-'}`)
+    const meta = await runRateLimitedScanRequest('external:googlebooks', () => lookupGoogleBooksMetadata(book, request))
+    if (!meta) {
+      log?.(`${logPrefix} Google Books 未命中`)
+      return null
     }
+    log?.(`${logPrefix} Google Books 命中：${meta.title || '-'}，封面=${meta.coverUrl ? '有' : '无'}`)
+    return meta
+  } catch (error) {
+    log?.(`${logPrefix} Google Books 请求失败`, error)
+    return null
   }
-  return null
 }
 
 export function buildExternalBookMetadataPatch(meta: ExternalBookMetadata, now = Date.now()): Partial<IBookItem> {
-  const patch: Partial<IBookItem> = { metadata_source: meta.source || 'openlibrary', metadata_updated_at: now }
+  const patch: Partial<IBookItem> = { metadata_source: meta.source || 'googlebooks', metadata_updated_at: now }
   if (meta.title) patch.title = meta.title
   if (meta.author) patch.author = meta.author
   if (meta.summary) patch.summary = meta.summary
