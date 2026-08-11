@@ -448,7 +448,14 @@ export async function createProxyServer(port: number) {
           xUrlp: upstreamHeaders['x-urlp'] || ''
         })
       }
-      await new Promise((resolve, reject) => {
+      await new Promise((resolve) => {
+        let isFinished = false
+        const finishResponse = (endClient = false) => {
+          if (isFinished) return
+          isFinished = true
+          if (endClient && !clientRes.writableEnded) clientRes.end()
+          resolve(true)
+        }
         // 处理请求，让下载的流量经过代理服务器
         const httpRequest = ~proxyUrl.indexOf('https') ? https : http
         const agentServer = httpRequest.request(proxyUrl, {
@@ -548,12 +555,12 @@ export async function createProxyServer(port: number) {
               reportQuarkError()
               const playlist = Buffer.concat(chunks).toString('utf8')
               clientRes.end(rewriteMpvProxyPlaylist(playlist, String(proxyUrl), mpvProxyContext, target => buildMpvProxyUrl(target)))
-              resolve(true)
+              finishResponse()
             })
           } else {
             httpResp.on('end', () => {
               reportQuarkError()
-              resolve(true)
+              finishResponse()
             })
             if (decryptTransform) {
               httpResp.pipe(decryptTransform).pipe(clientRes)
@@ -561,7 +568,18 @@ export async function createProxyServer(port: number) {
               httpResp.pipe(clientRes)
             }
           }
-          httpResp.on('close', reportQuarkError)
+          httpResp.on('aborted', () => {
+            reportQuarkError()
+            finishResponse(true)
+          })
+          httpResp.on('error', () => {
+            reportQuarkError()
+            finishResponse(true)
+          })
+          httpResp.on('close', () => {
+            reportQuarkError()
+            if (!httpResp.complete) finishResponse(true)
+          })
         })
         clientReq.pipe(agentServer)
         // 关闭解密流
@@ -569,7 +587,7 @@ export async function createProxyServer(port: number) {
           decryptTransform && decryptTransform.destroy()
         })
         agentServer.on('error', (e: Error) => {
-          clientRes.end()
+          finishResponse(true)
           console.log('proxyServer socket error: ' + e)
         })
         // 重定向的请求 关闭时 关闭被重定向的请求

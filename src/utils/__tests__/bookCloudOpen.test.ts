@@ -23,4 +23,12 @@ describe('cloud book open contracts', () => {
 
     expect(source).toContain('AliHttp.GetString(downUrl.url, user_id, filesize, maxsize, downUrl.headers || {}, true)')
   })
+
+  it('turns a stalled cloud download into a recoverable reader error', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/utils/bookReader.ts'), 'utf8')
+
+    expect(source).toContain('const BOOK_FETCH_TIMEOUT_MS = 60000')
+    expect(source).toContain('signal: controller.signal')
+    expect(source).toContain("throw new Error('书籍下载超时，请重试')")
+  })
 })

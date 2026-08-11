@@ -45,3 +45,16 @@ describe('shouldRefreshProxyUrl', () => {
     })).toBe(false)
   })
 })
+
+describe('proxy response lifecycle', () => {
+  it('ends the local response when an upstream stream closes before completing', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(process.cwd(), 'src/utils/proxyhelper.ts'), 'utf8')
+
+    expect(source).toContain("httpResp.on('aborted'")
+    expect(source).toContain("httpResp.on('close', () => {")
+    expect(source).toContain('if (!httpResp.complete) finishResponse(true)')
+    expect(source).toContain('if (endClient && !clientRes.writableEnded) clientRes.end()')
+  })
+})

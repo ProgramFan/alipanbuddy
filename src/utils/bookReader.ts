@@ -124,6 +124,7 @@ async function configurePdfJsWorker() {
 
 type RenderKitModule = typeof import('../vendor/reader/readerkit.min.js')
 const READER_RENDER_SETTLE_TIMEOUT_MS = 1800
+const BOOK_FETCH_TIMEOUT_MS = 60000
 
 function createReaderOptions(options: BookReaderOptions) {
   const isScroll = options.readerMode === 'scroll'
@@ -257,9 +258,18 @@ export function applyDoublePageCss(container: HTMLElement, readerMode: string) {
 }
 
 async function fetchBookBuffer(sourceUrl: string): Promise<ArrayBuffer> {
-  const resp = await fetch(sourceUrl)
-  if (!resp.ok) throw new Error(`书籍加载失败 HTTP ${resp.status}`)
-  return resp.arrayBuffer()
+  const controller = new AbortController()
+  const timeoutId = window.setTimeout(() => controller.abort(), BOOK_FETCH_TIMEOUT_MS)
+  try {
+    const resp = await fetch(sourceUrl, { signal: controller.signal })
+    if (!resp.ok) throw new Error(`书籍加载失败 HTTP ${resp.status}`)
+    return await resp.arrayBuffer()
+  } catch (error) {
+    if (controller.signal.aborted) throw new Error('书籍下载超时，请重试')
+    throw error
+  } finally {
+    window.clearTimeout(timeoutId)
+  }
 }
 
 function readProgressText(rendition: any): string {
