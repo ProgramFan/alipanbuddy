@@ -148,9 +148,10 @@ describe('BookReaderModal template structure', () => {
 
     expect(source).toContain('applyDoublePageCss')
     expect(applySource).toContain('applyDoublePageCss(container, readerLayoutMode.value)')
-    // 双页模式仍需注入 column-count: 2 到 documentElement
-    expect(readerSource).toContain("doc.documentElement.style.setProperty('column-count', '2', 'important')")
+    // 双页模式仍需注入 column-count: 2，但不能污染单页引擎自己的分页样式。
+    expect(readerSource).toContain("doc.documentElement.setAttribute('data-boxplayer-double-page', 'true')")
     expect(readerSource).toContain('kookit-double-page-override')
+    expect(readerSource).not.toContain("for (const el of [doc.documentElement, doc.body])")
     // 单页/滚动模式不能强制 column-count:1 / overflow:hidden / width:100%（boxplayer
     // 的横向分页和容器滚动会被破坏，造成只显示部分文字）
     expect(readerSource).not.toMatch(/createElement\(['"]style['"]\)[\s\S]{0,80}kookit-single-page-override/)

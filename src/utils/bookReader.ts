@@ -231,17 +231,11 @@ export function applyDoublePageCss(container: HTMLElement, readerMode: string) {
       if (oldDouble) oldDouble.remove()
       const oldSingle = doc.getElementById('kookit-single-page-override')
       if (oldSingle) oldSingle.remove()
-      const cleanupProps = ['column-count', 'column-width', 'column-gap', 'column-fill', 'width', 'max-width', 'overflow-x', 'overflow-y'] as const
-      for (const el of [doc.documentElement, doc.body]) {
-        for (const prop of cleanupProps) el.style.removeProperty(prop)
-      }
-      if (doc.body) {
-        for (const child of Array.from(doc.body.children)) {
-          const el = child as HTMLElement
-          for (const prop of ['column-count', 'column-width', 'column-gap', 'column-fill'] as const) {
-            el.style.removeProperty(prop)
-          }
+      if (doc.documentElement.getAttribute('data-boxplayer-double-page') === 'true') {
+        for (const prop of ['column-count', 'column-width', 'column-gap'] as const) {
+          doc.documentElement.style.removeProperty(prop)
         }
+        doc.documentElement.removeAttribute('data-boxplayer-double-page')
       }
       continue
     }
@@ -251,9 +245,7 @@ export function applyDoublePageCss(container: HTMLElement, readerMode: string) {
     const gapRaw = Math.floor(containerWidth / 12)
     const gap = gapRaw % 2 === 0 ? gapRaw : gapRaw - 1
     const colWidth = (containerWidth - gap) / 2
-    doc.documentElement.style.setProperty('column-count', '2', 'important')
-    doc.documentElement.style.setProperty('column-width', `${colWidth}px`, 'important')
-    doc.documentElement.style.setProperty('column-gap', `${gap}px`, 'important')
+    doc.documentElement.setAttribute('data-boxplayer-double-page', 'true')
     let styleEl = doc.getElementById('kookit-double-page-override') as HTMLStyleElement | null
     if (!styleEl) {
       styleEl = doc.createElement('style')
