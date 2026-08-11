@@ -74,7 +74,8 @@ describe('115 subtitle playback', () => {
     expect(source).toContain('const getSubtitleFileList = async (includeSubfolders = false)')
     expect(source).toContain('if (includeSubfolders) {')
     expect(source).toContain('const getSubTitleList = async (art: Artplayer, autoLoad = true)')
-    expect(source).toContain('getSubTitleList(art, false)')
+    expect(source).toContain("useSettingStore().mediaLibrarySubtitleScope === 'include-subfolders'")
+    expect(source).not.toContain('subTitleListMode')
     expect(source).toContain('if (!autoLoad && onlineSubData.name)')
   })
 

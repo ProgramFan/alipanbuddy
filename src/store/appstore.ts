@@ -87,6 +87,14 @@ export interface IPageVideoPlaylistEntry {
   encType?: string
 }
 
+export interface IPageVideoSubtitleFile {
+  file_id: string
+  name: string
+  parent_file_id: string
+  drive_id: string
+  ext?: string
+}
+
 export interface IPageVideo {
   user_id: string
   tokenfrom?: string
@@ -122,6 +130,7 @@ export interface IPageVideo {
   media_server_chapters?: Array<{ start: number, end: number, title: string }>
   custom_playlist_label?: string
   custom_playlist?: IPageVideoPlaylistEntry[]
+  library_subtitle_files?: IPageVideoSubtitleFile[]
 }
 
 export interface IPageMusicTrack {

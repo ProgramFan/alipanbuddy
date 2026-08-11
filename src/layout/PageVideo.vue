@@ -1134,7 +1134,6 @@ const createVideo = async (name: string) => {
 const initStorage = (art: Artplayer) => {
   const storage = art.storage
   if (storage.get('autoJumpCursor') === undefined) storage.set('autoJumpCursor', true)
-  if (storage.get('subTitleListMode') === undefined) storage.set('subTitleListMode', false)
   if (storage.get('subtitleSize') === undefined) storage.set('subtitleSize', 30)
   if (storage.get('subtitleTranslate') === undefined) storage.set('subtitleTranslate', 0)
   if (storage.get('autoSkipEnd') === undefined) storage.set('autoSkipEnd', 0)
@@ -1389,7 +1388,17 @@ const getDirFileList = async (dir_id: string, hasDir: boolean, category: string 
 const getSubtitleFileList = async (includeSubfolders = false): Promise<selectorItem[]> => {
   const subtitlePattern = /srt|vtt|ass|ssa/
   const currentDirItems = await getDirFileList(pageVideo.parent_file_id, false, '')
-  const subtitleFiles = currentDirItems.filter((item) => subtitlePattern.test(item.ext || ''))
+  const subtitleFiles = [
+    ...(pageVideo.library_subtitle_files || []).map((item) => ({
+      html: item.name,
+      name: item.name,
+      file_id: item.file_id,
+      parent_file_id: item.parent_file_id,
+      drive_id: item.drive_id,
+      ext: item.ext || item.name.split('.').pop() || ''
+    })),
+    ...currentDirItems.filter((item) => subtitlePattern.test(item.ext || ''))
+  ]
 
   if (includeSubfolders) {
     // Subtitle libraries are commonly stored in immediate child folders. Keep the video folder first so a sibling subtitle wins ties.
@@ -2986,7 +2995,7 @@ const clearDownloadedSubtitleSelector = () => {
 const getSubTitleList = async (art: Artplayer, autoLoad = true) => {
   // Load subtitles from the video folder and each immediate child folder.
   let subSelector: selectorItem[]
-  const includeSubfolders = !!art.storage.get('subTitleListMode')
+  const includeSubfolders = useSettingStore().mediaLibrarySubtitleScope === 'include-subfolders'
   const onlineSubSelector = await getSubtitleFileList(includeSubfolders)
   // console.log('onlineSubSelector', onlineSubSelector)
   subSelector = dedupeSubtitleSelectors([...embedSubSelector, ...onlineSubSelector, ...downloadedSubSelector])
@@ -3102,20 +3111,6 @@ const getSubTitleList = async (art: Artplayer, autoLoad = true) => {
           art.notice.show = tips
         }
         return item.html
-      }
-    }, {
-      html: t('video.subtitleList'),
-      tooltip: art.storage.get('subTitleListMode') ? t('video.includeSubfolders') : t('video.sameFolder'),
-      switch: art.storage.get('subTitleListMode'),
-      onSwitch: (item: SettingOption) => {
-        const next = !item.switch
-        item.tooltip = next ? t('video.includeSubfolders') : t('video.sameFolder')
-        art.storage.set('subTitleListMode', next)
-        Promise.resolve().then(() => getSubTitleList(art, false)).catch((error) => {
-          console.error('刷新字幕列表失败:', error)
-          art.notice.show = t('video.subtitleLoadFailed')
-        })
-        return next
       }
     }, ...(multipleSubtitleCandidates.length >= 2 ? [{
       html: t('video.dualSubtitle'),

@@ -4,7 +4,7 @@ import AliFile from '../aliapi/file'
 import AliFileCmd from '../aliapi/filecmd'
 import ServerHttp from '../aliapi/server'
 import { ITokenInfo, useAppStore, useFootStore, usePanFileStore, usePanTreeStore, useSettingStore, useUserStore } from '../store'
-import { IPageCode, IPageDocx, IPageEpub, IPageImage, IPageMusic, IPageMusicTrack, IPageOffice, IPagePdf, IPageSheet, IPageVideo, IPageVideoPlaylistEntry } from '../store/appstore'
+import { IPageCode, IPageDocx, IPageEpub, IPageImage, IPageMusic, IPageMusicTrack, IPageOffice, IPagePdf, IPageSheet, IPageVideo, IPageVideoPlaylistEntry, IPageVideoSubtitleFile } from '../store/appstore'
 import UserDAL from '../user/userdal'
 import { clickWait } from './debounce'
 import DebugLog from './debuglog'
@@ -273,6 +273,13 @@ async function Video(
     if (info && typeof info !== 'string') {
       parent_file_name = info.name
     }
+    const librarySubtitleFiles: IPageVideoSubtitleFile[] = ((file as any).library_subtitle_files || []).map((subtitle: any) => ({
+      file_id: subtitle.id,
+      name: subtitle.name,
+      parent_file_id: subtitle.parentFileId || file.parent_file_id,
+      drive_id: subtitle.driveId || file.drive_id,
+      ext: subtitle.name?.split('.').pop()
+    }))
     const pageVideo: IPageVideo = {
       user_id: token.user_id,
       tokenfrom: token.tokenfrom === 'unknown' ? 'aliyun' : token.tokenfrom,
@@ -287,7 +294,8 @@ async function Video(
       encType: getEncType(playCursorInfo?.info || ''),
       play_cursor: play_cursor,
       custom_playlist_label: options?.customPlaylistLabel || '',
-      custom_playlist: buildSiblingVideoPlaylist(file, token.user_id, token.tokenfrom === 'unknown' ? 'aliyun' : token.tokenfrom, options?.customPlaylist)
+      custom_playlist: buildSiblingVideoPlaylist(file, token.user_id, token.tokenfrom === 'unknown' ? 'aliyun' : token.tokenfrom, options?.customPlaylist),
+      library_subtitle_files: librarySubtitleFiles
     }
     window.WebOpenWindow({ page: 'PageVideo', data: pageVideo, theme: 'dark' })
     return

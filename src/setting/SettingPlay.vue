@@ -246,6 +246,20 @@ onMounted(() => {
           </a-radio-group>
           </div>
         </div>
+
+        <div class='play-setting-group'>
+          <div class='play-setting-header'>
+            <div class='settinghead'>{{ t('settings.play.mediaSubtitleScope') }}</div>
+          </div>
+          <div class='settingrow play-setting-row play-setting-row--stack'>
+            <a-radio-group type='button' tabindex='-1' :model-value='settingStore.mediaLibrarySubtitleScope'
+                           @update:model-value='cb({ mediaLibrarySubtitleScope: $event })'>
+              <a-radio tabindex='-1' value='same-folder'>{{ t('settings.play.subtitleSameFolder') }}</a-radio>
+              <a-radio tabindex='-1' value='include-subfolders'>{{ t('settings.play.subtitleIncludeSubfolders') }}</a-radio>
+            </a-radio-group>
+            <div class='hitText'>{{ t('settings.play.mediaSubtitleScopeHint') }}</div>
+          </div>
+        </div>
       </template>
 
       <template v-if='playerType.includes("mpv") || playerType.includes("potplayer")'>
