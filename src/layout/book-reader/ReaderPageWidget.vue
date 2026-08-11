@@ -37,11 +37,11 @@ const isSingle = computed(() => props.layoutMode !== 'double')
   <!-- koodo footer-container -->
   <div v-if="!hideFooter" class="pw-footer">
     <template v-if="isDouble">
-      <span class="pw-footer-page">{{ currentPage ? `Page ${currentPage * 2 - 1}` : 'Page —' }}</span>
-      <span class="pw-footer-page">{{ currentPage ? `Page ${currentPage * 2}` : 'Page —' }}</span>
+      <span class="pw-footer-page">{{ currentPage ? `Chapter Page ${currentPage * 2 - 1}` : 'Chapter Page —' }}</span>
+      <span class="pw-footer-page">{{ currentPage ? `Chapter Page ${currentPage * 2}` : 'Chapter Page —' }}</span>
     </template>
     <template v-else>
-      <span>{{ currentPage ? `Page ${currentPage}` : 'Page —' }}<span v-if="totalPage"> / {{ totalPage }}</span></span>
+      <span>{{ currentPage ? `Chapter Page ${currentPage}` : 'Chapter Page —' }}<span v-if="totalPage"> / {{ totalPage }}</span></span>
     </template>
   </div>
 

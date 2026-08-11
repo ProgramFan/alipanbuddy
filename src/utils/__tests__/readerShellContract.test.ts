@@ -41,4 +41,10 @@ describe('ReaderShell contract', () => {
     expect(library).toContain("import DB from '../utils/db'")
     expect(library).toContain('const savedBook = (await DB.getBookItemsByIds([book.id]).catch(() => []))[0]')
   })
+
+  it('labels pagination as chapter-relative', () => {
+    const widget = read('src/layout/book-reader/ReaderPageWidget.vue')
+    expect(widget).toContain('Chapter Page ${currentPage}')
+    expect(widget).toContain('Chapter Page ${currentPage * 2 - 1}')
+  })
 })
