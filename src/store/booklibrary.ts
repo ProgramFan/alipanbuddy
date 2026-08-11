@@ -10,9 +10,7 @@ import { buildShelfGroups, loadGlobalNoteTags, normalizeBookSortMode, normalizeB
 import DB from '../utils/db'
 import UserDAL from '../user/userdal'
 import AliHttp from '../aliapi/alihttp'
-import { getEncType, getProxyUrl, getRawUrl } from '../utils/proxyhelper'
-import { extractEpubMeta } from '../utils/bookEpubMeta'
-import { buildEmbeddedEpubMetadataPatch, canHydrateCloudEpubMetadata } from '../utils/bookCloudMetadata'
+import { buildExternalBookMetadataPatch, canHydrateExternalBookMetadata, lookupExternalBookMetadata } from '../utils/bookExternalMetadata'
 
 const LS_LASTSCAN = 'bookLibrary.lastScanAt'
 const LS_SUBTAB = 'bookLibrary.subTab'
@@ -21,8 +19,8 @@ const LS_MANAGER_SORT_ORDER = 'bookLibrary.readerSortOrder'
 const LS_VIEW_MODE = 'bookLibrary.readerViewMode'
 const BOOK_THUMBNAIL_HYDRATE_LIMIT = 72
 const BOOK_THUMBNAIL_HYDRATE_CONCURRENCY = 6
-const BOOK_EPUB_METADATA_HYDRATE_LIMIT = 12
-const BOOK_EPUB_METADATA_HYDRATE_CONCURRENCY = 2
+const BOOK_EXTERNAL_METADATA_HYDRATE_LIMIT = 24
+const BOOK_EXTERNAL_METADATA_HYDRATE_CONCURRENCY = 3
 const BOOK_PAGE_SIZE = 240
 
 export type BookSubTab = 'shelf' | 'all' | 'authors' | 'formats' | 'folders'
@@ -131,7 +129,7 @@ const useBookLibraryStore = defineStore('booklibrary', () => {
   const loadedBookRecordCount = ref(0)
   const isLoadingNextPage = ref(false)
   const hydratedThumbnailIds = new Set<string>()
-  const hydratedEmbeddedEpubIds = new Set<string>()
+  const hydratedExternalMetadataIds = new Set<string>()
   const notesByBookId = ref<Record<string, IBookNote[]>>({})
   const bookmarksByBookId = ref<Record<string, IBookBookmark[]>>({})
   const loaded = ref(false)
@@ -191,31 +189,18 @@ const useBookLibraryStore = defineStore('booklibrary', () => {
     }
   }
 
-  async function hydrateEmbeddedEpubMetadata(sourceBooks: IBookItem[]) {
+  async function hydrateExternalBookMetadata(sourceBooks: IBookItem[]) {
     const sources = sourceBooks
-      .filter((book) => !hydratedEmbeddedEpubIds.has(book.id) && canHydrateCloudEpubMetadata(book))
-      .slice(0, BOOK_EPUB_METADATA_HYDRATE_LIMIT)
-    for (const book of sources) hydratedEmbeddedEpubIds.add(book.id)
+      .filter((book) => !hydratedExternalMetadataIds.has(book.id) && canHydrateExternalBookMetadata(book))
+      .slice(0, BOOK_EXTERNAL_METADATA_HYDRATE_LIMIT)
+    for (const book of sources) hydratedExternalMetadataIds.add(book.id)
     const updates = new Map<string, Partial<IBookItem>>()
-    for (let index = 0; index < sources.length; index += BOOK_EPUB_METADATA_HYDRATE_CONCURRENCY) {
-      const batch = sources.slice(index, index + BOOK_EPUB_METADATA_HYDRATE_CONCURRENCY)
+    for (let index = 0; index < sources.length; index += BOOK_EXTERNAL_METADATA_HYDRATE_CONCURRENCY) {
+      const batch = sources.slice(index, index + BOOK_EXTERNAL_METADATA_HYDRATE_CONCURRENCY)
       const resolved = await Promise.all(batch.map(async (book) => {
         try {
-          const raw = await getRawUrl(book.user_id, book.drive_id, book.file_id, book.encType || getEncType({ description: book.description || '' }), '', false, 'other', 'Origin', '', book.tokenfrom || '')
-          if (typeof raw === 'string' || !raw.url) return null
-          const response = await fetch(getProxyUrl({
-            user_id: book.user_id,
-            drive_id: book.drive_id,
-            file_id: book.file_id,
-            file_size: raw.size || book.size,
-            proxy_url: raw.url,
-            proxy_headers: JSON.stringify(raw.headers || {}),
-            content_disposition: 'inline',
-            file_name: book.file_name
-          }), { signal: AbortSignal.timeout(20_000) })
-          if (!response.ok) return null
-          const meta = await extractEpubMeta(await response.arrayBuffer())
-          return { id: book.id, patch: buildEmbeddedEpubMetadataPatch(meta) }
+          const meta = await lookupExternalBookMetadata(book)
+          return meta ? { id: book.id, patch: buildExternalBookMetadataPatch(meta) } : null
         } catch {
           return null
         }
@@ -344,7 +329,7 @@ const useBookLibraryStore = defineStore('booklibrary', () => {
       loadedBookRecordCount.value += list.length
       if (fixed.length) DB.saveBookItems(fixed).catch(() => {})
       void hydrateAliyunThumbnails(fixed)
-      void hydrateEmbeddedEpubMetadata(fixed)
+      void hydrateExternalBookMetadata(fixed)
       return fixed.length > 0
     } finally {
       isLoadingNextPage.value = false
@@ -426,7 +411,7 @@ const useBookLibraryStore = defineStore('booklibrary', () => {
       books.value = []
       loadedBookRecordCount.value = 0
       hydratedThumbnailIds.clear()
-      hydratedEmbeddedEpubIds.clear()
+      hydratedExternalMetadataIds.clear()
       await refreshBookCounts()
       await loadNextPage()
     }
