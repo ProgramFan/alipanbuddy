@@ -10,6 +10,7 @@ import { getWebDavConnection, getWebDavConnectionId, isWebDavDrive, listWebDavDi
 import UserDAL from '../user/userdal'
 import { buildExpectedSeasons } from './mediaCoverage'
 import { isThirdPartyProviderFolder, iterateProviderFolderPages, listProviderFolderItems } from './providerFolderList'
+import { libraryScanRateLimitScope, rateLimitScanPages, rateLimitSingleScanPage } from './libraryScanRateLimiter'
 import DB from './db'
 import { mergeDriveFileSources } from './mediaSourceMembership'
 import { associateMediaSubtitles, type MediaSubtitleFolderScope } from './mediaSubtitleAssociation'
@@ -256,16 +257,17 @@ export class MediaScanner {
   }
 
   private async *iterateFolderPages(folder: IAliGetFileModel, scanContext: ScanContext): AsyncGenerator<IAliGetFileModel[]> {
+    const scope = libraryScanRateLimitScope(scanContext.userId, folder.drive_id || scanContext.driveId)
     const listMethodWasOverridden = this.getFolderItemsWithRetry !== MediaScanner.prototype.getFolderItemsWithRetry
     if (!listMethodWasOverridden && isThirdPartyProviderFolder(scanContext.userId, folder.drive_id || scanContext.driveId)) {
-      yield* iterateProviderFolderPages({ folder, userId: scanContext.userId, driveId: folder.drive_id || scanContext.driveId, silent: scanContext.silent, shouldStop: () => this.shouldStop })
+      yield* rateLimitScanPages(scope, iterateProviderFolderPages({ folder, userId: scanContext.userId, driveId: folder.drive_id || scanContext.driveId, silent: scanContext.silent, shouldStop: () => this.shouldStop }))
       return
     }
     if (!listMethodWasOverridden && isAliyunUser(scanContext.userId)) {
-      yield* AliDirFileList.ApiDirFileListPages(scanContext.userId, folder.drive_id || scanContext.driveId, folder.file_id, folder.name, 'name asc', '', false)
+      yield* rateLimitScanPages(scope, AliDirFileList.ApiDirFileListPages(scanContext.userId, folder.drive_id || scanContext.driveId, folder.file_id, folder.name, 'name asc', '', false))
       return
     }
-    yield await this.getFolderItemsWithRetry(folder, scanContext)
+    yield* rateLimitSingleScanPage(scope, () => this.getFolderItemsWithRetry(folder, scanContext))
   }
 
   private getIndexedDriveFileIds(): Set<string> {

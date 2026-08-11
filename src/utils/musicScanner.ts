@@ -10,6 +10,7 @@ import { IMusicTrack } from '../types/music'
 import { buildLibrarySourceId } from '../types/librarySource'
 import DebugLog from './debuglog'
 import { isThirdPartyProviderFolder, iterateProviderFolderPages, listProviderFolderItems } from './providerFolderList'
+import { libraryScanRateLimitScope, rateLimitScanPages, rateLimitSingleScanPage } from './libraryScanRateLimiter'
 
 
 const AUDIO_EXTS = new Set([
@@ -409,15 +410,16 @@ class MusicScanner {
   }
 
   private async *iterateFolderPages(folder: IAliGetFileModel, user_id: string, drive_id: string): AsyncGenerator<IAliGetFileModel[]> {
+    const scope = libraryScanRateLimitScope(user_id, drive_id)
     if (isThirdPartyProviderFolder(user_id, drive_id)) {
-      yield* iterateProviderFolderPages({ folder, userId: user_id, driveId: drive_id, silent: this.silent, shouldStop: () => this.shouldStop })
+      yield* rateLimitScanPages(scope, iterateProviderFolderPages({ folder, userId: user_id, driveId: drive_id, silent: this.silent, shouldStop: () => this.shouldStop }))
       return
     }
     if (isAliyunUser(user_id)) {
-      yield* AliDirFileList.ApiDirFileListPages(user_id, drive_id, folder.file_id, folder.name || '', 'name asc', '', false)
+      yield* rateLimitScanPages(scope, AliDirFileList.ApiDirFileListPages(user_id, drive_id, folder.file_id, folder.name || '', 'name asc', '', false))
       return
     }
-    yield await this.listFolder(folder, user_id, drive_id)
+    yield* rateLimitSingleScanPage(scope, () => this.listFolder(folder, user_id, drive_id))
   }
 
   private async listFolder(

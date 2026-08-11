@@ -1,4 +1,5 @@
 import type { IBookItem } from '../types/book'
+import { runRateLimitedScanRequest } from './libraryScanRateLimiter'
 
 export interface ExternalBookMetadata {
   title?: string
@@ -158,7 +159,8 @@ export async function lookupExternalBookMetadata(book: IBookItem, request: typeo
   for (const provider of providers) {
     try {
       log?.(`${logPrefix} 查询 ${provider.name}：title=${book.title || '-'} author=${book.author || '-'} isbn=${book.isbn || '-'}`)
-      const meta = await provider.lookup(book, request)
+      const scope = provider.name === 'Google Books' ? 'external:googlebooks' : 'external:openlibrary'
+      const meta = await runRateLimitedScanRequest(scope, () => provider.lookup(book, request))
       if (!meta) {
         log?.(`${logPrefix} ${provider.name} 未命中`)
         continue
