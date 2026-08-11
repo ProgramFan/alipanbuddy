@@ -2272,7 +2272,7 @@ const resolveMpvEmbeddedExternalSubtitle = async (): Promise<{ url: string; titl
   if (pageVideo.drive_id === 'local' || pageVideo.drive_id === 'media_server') return undefined
   if (!pageVideo.parent_file_id || !pageVideo.file_name) return undefined
 
-  const subtitleFiles = await getSubtitleFileList()
+  const subtitleFiles = await getSubtitleFileList(useSettingStore().mediaLibrarySubtitleScope === 'include-subfolders')
   if (!subtitleFiles.length) return undefined
   const subtitleFile = PlayerUtils.filterSubtitleFile(pageVideo.file_name, subtitleFiles as any) as selectorItem | undefined
   if (!subtitleFile?.file_id) return undefined

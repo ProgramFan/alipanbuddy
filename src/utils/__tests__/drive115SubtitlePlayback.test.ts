@@ -68,6 +68,14 @@ describe('115 subtitle playback', () => {
     expect(source).toContain('await loadSubtitleItem(art, subSelector[similarity.index])')
   })
 
+  it('routes embedded MPV external subtitles through the authenticated cloud subtitle resolver', () => {
+    const source = readSource('src/layout/PageVideo.vue')
+
+    expect(source).toContain("const subtitleFiles = await getSubtitleFileList(useSettingStore().mediaLibrarySubtitleScope === 'include-subfolders')")
+    expect(source).toContain('const subtitleUrl = await resolveCloudSubtitleUrl(subtitleFile)')
+    expect(source).toContain('mpvEmbeddedSubtitleSources.value = subtitleSources')
+  })
+
   it('applies the subtitle folder scope without reloading the active subtitle', () => {
     const source = readSource('src/layout/PageVideo.vue')
 
