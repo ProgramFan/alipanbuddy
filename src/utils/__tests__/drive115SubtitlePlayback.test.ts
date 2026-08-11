@@ -36,14 +36,16 @@ describe('115 subtitle playback', () => {
     expect(source).not.toContain('art.subtitle.url = embedSubSelector[0].url')
   })
 
-  it('uses a bundled CJK fallback font and raises ASS subtitles above the player edge', () => {
+  it('loads the bundled CJK font before creating an ASS track and raises subtitles above the player edge', () => {
     const source = readSource('src/layout/PageVideo.vue')
 
-    expect(source).toContain("const JASSUBCjkFont = '/fonts/NotoSansCJKsc-Regular.otf'")
-    expect(source).toContain("'noto sans cjk sc': JASSUBCjkFont")
-    expect(source).toContain("fallbackFont: 'noto sans cjk sc'")
+    expect(source).toContain("import JASSUBCjkFont from '../assets/fonts/NotoSansCJKsc-Regular.otf?url'")
+    expect(source).toContain('const getJassubCjkFont = async')
+    expect(source).toContain('const cjkFont = await getJassubCjkFont()')
+    expect(source).toContain("availableFonts['microsoft yahei'] = cjkFont")
+    expect(source).toContain('fonts: cjkFont ? [cjkFont] : []')
     expect(source).toContain('transform: translateY(-5%)')
-    expect(existsSync(resolve(process.cwd(), 'public/fonts/NotoSansCJKsc-Regular.otf'))).toBe(true)
+    expect(existsSync(resolve(process.cwd(), 'src/assets/fonts/NotoSansCJKsc-Regular.otf'))).toBe(true)
   })
 
   it('refreshes a newly loaded subtitle track and returns the selected label', () => {

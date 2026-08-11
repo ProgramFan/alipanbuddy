@@ -29,8 +29,7 @@ import JASSUBWorker from 'jassub/dist/jassub-worker.js?url'
 import JASSUBWorkerWasm from 'jassub/dist/jassub-worker.wasm?url'
 import JASSUBWorkerModernWasm from 'jassub/dist/jassub-worker-modern.wasm?url'
 import JASSUBDefaultFont from 'jassub/dist/default.woff2?url'
-
-const JASSUBCjkFont = '/fonts/NotoSansCJKsc-Regular.otf'
+import JASSUBCjkFont from '../assets/fonts/NotoSansCJKsc-Regular.otf?url'
 import {
   autoMatchDanmaku,
   buildDanmakuPluginOption,
@@ -48,6 +47,7 @@ import {
 } from '../utils/subtitleApi'
 import type { SubtitleSearchResult } from '../utils/subtitleApi'
 import { dedupeSubtitleSelectors } from '../utils/subtitleSelector'
+import { updateSettingPreservingActivePanel } from '../utils/artplayerSetting'
 import message from '../utils/message'
 import { captureVideoQualitySwitchPlaybackState } from '../utils/videoQualitySwitch'
 import { getLocalVideoProgress, saveLocalVideoProgress } from '../utils/videoProgress'
@@ -70,6 +70,21 @@ import {
   reportMediaServerPlaybackStart,
   reportMediaServerPlaybackStop
 } from '../media-server/contentGateway'
+
+let jassubCjkFontData: Uint8Array | undefined
+
+const getJassubCjkFont = async (): Promise<Uint8Array | undefined> => {
+  if (jassubCjkFontData) return jassubCjkFontData
+  try {
+    const response = await fetch(JASSUBCjkFont)
+    if (!response.ok) return undefined
+    const data = new Uint8Array(await response.arrayBuffer())
+    if (data.byteLength > 0) jassubCjkFontData = data
+    return jassubCjkFontData
+  } catch {
+    return undefined
+  }
+}
 
 const appStore = useAppStore()
 const mediaStore = useMediaLibraryStore()
@@ -2121,20 +2136,27 @@ const loadPlugins = async (art: Artplayer) => {
     danmuku: []
   } as any))
   // ASS/SSA 字幕插件
+  const cjkFont = await getJassubCjkFont()
+  const availableFonts: Record<string, string | Uint8Array> = {
+    'liberation sans': JASSUBDefaultFont
+  }
+  let fallbackFont = 'liberation sans'
+  if (cjkFont) {
+    availableFonts['noto sans cjk sc'] = cjkFont
+    availableFonts['noto sans sc'] = cjkFont
+    availableFonts['pingfang sc'] = cjkFont
+    availableFonts['microsoft yahei'] = cjkFont
+    availableFonts.simhei = cjkFont
+    availableFonts.simsun = cjkFont
+    fallbackFont = 'noto sans cjk sc'
+  }
   art.plugins.add(artplayerPluginJassub({
     workerUrl: JASSUBWorker,
     wasmUrl: JASSUBWorkerWasm,
     modernWasmUrl: JASSUBWorkerModernWasm,
-    availableFonts: {
-      'liberation sans': JASSUBDefaultFont,
-      'noto sans cjk sc': JASSUBCjkFont,
-      'noto sans sc': JASSUBCjkFont,
-      'pingfang sc': JASSUBCjkFont,
-      'microsoft yahei': JASSUBCjkFont,
-      'simhei': JASSUBCjkFont,
-      'simsun': JASSUBCjkFont
-    },
-    fallbackFont: 'noto sans cjk sc',
+    fonts: cjkFont ? [cjkFont] : [],
+    availableFonts: availableFonts as any,
+    fallbackFont,
     subContent: '[Script Info]\nScriptType: v4.00+'
   }))
   clearJassubSubtitle(art)
@@ -2975,7 +2997,7 @@ const getSubTitleList = async (art: Artplayer, autoLoad = true) => {
   const multipleSubtitleCandidates = subSelector.filter(isMultipleSubtitleSupported)
   const subtitleTranslate = art.storage.get('subtitleTranslate')
   // 字幕设置面板
-  art.setting.update({
+  updateSettingPreservingActivePanel(art.setting as any, {
     name: 'Subtitle',
     html: t('video.subtitleSettings'),
     tooltip: art.subtitle.show ? (hasSubtitleSource(subDefault) ? t('video.subtitleOn') : subDefault.html) : t('video.subtitleOff'),
