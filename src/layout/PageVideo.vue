@@ -2944,6 +2944,37 @@ const loadSubtitleItem = async (art: Artplayer, item: selectorItem) => {
     : loadSubtitleUrlToPlayer(art, item)
 }
 
+const updateSubtitleListControl = (art: Artplayer, subSelector: selectorItem[], subDefault: selectorItem) => {
+  art.controls.update({
+    name: 'subtitleListControl',
+    index: 20,
+    position: 'right',
+    style: { padding: '0 10px', marginRight: '8px', opacity: '0.92' },
+    html: t('video.subtitle'),
+    tooltip: hasSubtitleSource(subDefault) ? subDefault.html : t('video.noAvailableSubtitle'),
+    selector: subSelector,
+    onSelect: async (selector: any, element: HTMLElement) => {
+      const item = selector as selectorItem
+      if (!hasSubtitleSource(item)) {
+        art.notice.show = t('video.noAvailableSubtitle')
+        Artplayer.utils.removeClass(element, 'art-current')
+        return t('video.subtitle')
+      }
+      if (!art.subtitle.show) art.subtitle.show = true
+      try {
+        art.notice.show = ''
+        await loadSubtitleItem(art, item)
+        return t('video.subtitle')
+      } catch (error) {
+        console.error('加载字幕失败:', error)
+        art.notice.show = `加载${item.name || item.html}字幕失败`
+        Artplayer.utils.removeClass(element, 'art-current')
+        return t('video.subtitle')
+      }
+    }
+  })
+}
+
 // 内嵌字幕
 let embedSubSelector: selectorItem[] = []
 let downloadedSubSelector: selectorItem[] = []
@@ -2994,6 +3025,7 @@ const getSubTitleList = async (art: Artplayer, autoLoad = true) => {
     }
   }
   const subDefault = subSelector.find((item) => item.default) || subSelector[0]
+  updateSubtitleListControl(art, subSelector, subDefault)
   const multipleSubtitleCandidates = subSelector.filter(isMultipleSubtitleSupported)
   const subtitleTranslate = art.storage.get('subtitleTranslate')
   // 字幕设置面板
@@ -3148,7 +3180,7 @@ const getSubTitleList = async (art: Artplayer, autoLoad = true) => {
         art.subtitle.style('fontSize', size)
         return size
       }
-    }, ...subSelector],
+    }],
     onSelect: async (selector: any, element: HTMLElement, event: Event) => {
       const item = selector as selectorItem
       if (art.subtitle.show) {

@@ -78,6 +78,14 @@ describe('115 subtitle playback', () => {
     expect(source).toContain('if (!autoLoad && onlineSubData.name)')
   })
 
+  it('places cloud and embedded subtitle selection beside the audio-track control', () => {
+    const source = readSource('src/layout/PageVideo.vue')
+
+    expect(source).toContain("name: 'subtitleListControl'")
+    expect(source).toContain("position: 'right'")
+    expect(source).toContain('selector: subSelector')
+  })
+
   it('uses the shared 115 user-agent when the subtitle proxy requests upstream data', () => {
     const playerSource = readSource('src/layout/PageVideo.vue')
     const source = readSource('src/utils/proxyhelper.ts')
