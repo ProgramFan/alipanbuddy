@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useAppStore } from '../store'
 import SettingPlay from './SettingPlay.vue'
 import SettingMediaServerPlayback from './SettingMediaServerPlayback.vue'
@@ -25,6 +25,43 @@ withDefaults(defineProps<{ sidebarVisible?: boolean }>(), { sidebarVisible: true
 let observer: any
 
 const hideSetting = computed(() => appStore.appTab !== 'setting')
+const settingSearch = ref('')
+const settingSearchResults = ref<Array<{ label: string; element: HTMLElement }>>([])
+
+const matchesSettingSearch = (text: string, query: string) => {
+  const source = text.toLocaleLowerCase()
+  const keyword = query.toLocaleLowerCase().replace(/\s+/g, '')
+  if (!keyword) return true
+  if (source.includes(keyword)) return true
+  let position = 0
+  return [...keyword].every((character) => {
+    position = source.indexOf(character, position)
+    if (position < 0) return false
+    position += character.length
+    return true
+  })
+}
+
+const refreshSettingSearch = async () => {
+  await nextTick()
+  const query = settingSearch.value.trim()
+  if (!query) {
+    settingSearchResults.value = []
+    return
+  }
+  const rows = Array.from(document.querySelectorAll<HTMLElement>('#SettingObserver .settingrow'))
+  settingSearchResults.value = rows
+    .filter((row) => matchesSettingSearch(row.innerText.replace(/\s+/g, ' '), query))
+    .slice(0, 20)
+    .map((element) => ({ label: element.innerText.replace(/\s+/g, ' ').trim(), element }))
+}
+
+const locateSettingSearchResult = (result: { element: HTMLElement }) => {
+  result.element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  result.element.classList.remove('settings-search-hit')
+  window.requestAnimationFrame(() => result.element.classList.add('settings-search-hit'))
+  window.setTimeout(() => result.element.classList.remove('settings-search-hit'), 1400)
+}
 
 const sectionMeta: Record<string, { title: string }> = {
   SettingUI: { title: 'settings.app' },
@@ -174,6 +211,13 @@ onUnmounted(() => {
     </a-layout-sider>
     <a-layout-content id="SettingObserver" class="xbyright fullscroll settings-content" tabindex="-1" @keydown.tab.prevent="() => true">
       <div id="SettingDiv" class="settings-content-inner">
+        <div class="settings-search">
+          <a-input-search v-model="settingSearch" allow-clear :placeholder="t('settings.searchPlaceholder')" @input="refreshSettingSearch" @clear="refreshSettingSearch" />
+          <div v-if="settingSearch.trim()" class="settings-search-results">
+            <button v-for="result in settingSearchResults" :key="result.label" type="button" @click="locateSettingSearchResult(result)">{{ result.label }}</button>
+            <span v-if="!settingSearchResults.length">{{ t('settings.searchNoResults') }}</span>
+          </div>
+        </div>
 <!--        <div class="settings-hero">-->
 <!--          <div>-->
 <!--            <div class="settings-hero-kicker">BoxPlayer Workspace</div>-->
@@ -283,6 +327,51 @@ onUnmounted(() => {
   position: relative;
   width: min(1180px, 100%);
   margin: 0 auto;
+}
+
+.settings-search {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  margin: 0 0 18px;
+  padding: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 12px 28px rgba(78, 97, 128, 0.1);
+  backdrop-filter: blur(18px);
+}
+
+.settings-search-results {
+  display: grid;
+  gap: 6px;
+  max-height: 240px;
+  margin-top: 10px;
+  overflow: auto;
+}
+
+.settings-search-results button,
+.settings-search-results span {
+  overflow: hidden;
+  padding: 8px 10px;
+  color: #52627c;
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 0;
+  border-radius: 9px;
+  background: rgba(241, 245, 249, 0.78);
+}
+
+.settings-search-results button { cursor: pointer; }
+.settings-search-results button:hover { color: #1d4ed8; background: rgba(219, 234, 254, 0.9); }
+.settings-search-hit { animation: settings-search-hit 1.4s ease-out; }
+
+@keyframes settings-search-hit {
+  0%, 45% { background: rgba(147, 197, 253, 0.32); }
+  100% { background: transparent; }
 }
 
 .settings-hero {
