@@ -37,7 +37,7 @@ import {
 import type { IBookItem } from '../types/book'
 import type { IBookBookmark } from '../types/bookBookmark'
 import type { IBookNote } from '../types/bookNote'
-import { getFormat } from '../utils/bookReaderCapabilities'
+import { getFormat, isFixedLayoutBookFormat } from '../utils/bookReaderCapabilities'
 import { buildBookReadingPatch, buildBookReadingTimePatch, normalizeReaderPosition, type BookReaderPosition } from '../utils/bookReaderState'
 import {
   loadBookReaderPreferences,
@@ -178,6 +178,8 @@ const progressText = ref('')
 const readingProgressValue = ref(0)
 const currentPage = ref(0)
 const totalPage = ref(0)
+const isPageJumpEditing = ref(false)
+const isChapterJumpEditing = ref(false)
 const bookChapters = ref<BookChapter[]>([])
 const selectedBookChapter = ref<number | undefined>(undefined)
 const searchQuery = ref('')
@@ -296,8 +298,10 @@ const fullTranslationController = createBookFullTranslationController({
   }
 })
 let applyFullTranslationPromise = Promise.resolve()
+let readerProgressRequestId = 0
 
 function jumpToChapter() {
+  isChapterJumpEditing.value = false
   const raw = chapterJumpText.value.trim()
   if (!raw) {
     chapterJumpText.value = String((selectedBookChapter.value ?? 0) + 1)
@@ -308,13 +312,14 @@ function jumpToChapter() {
     chapterJumpText.value = String((selectedBookChapter.value ?? 0) + 1)
     return
   }
-  selectBookChapter(num - 1)
+  void selectBookChapter(num - 1)
   chapterJumpText.value = String(num)
   // Blur the input so keyboard arrows navigate pages instead
   ;(document.activeElement as HTMLInputElement)?.blur()
 }
 
-function jumpToPage() {
+async function jumpToPage() {
+  isPageJumpEditing.value = false
   const raw = pageJumpText.value.trim()
   if (!raw) {
     pageJumpText.value = String(currentPage.value || 1)
@@ -327,7 +332,9 @@ function jumpToPage() {
     return
   }
   if (bookReader?.rendition?.goToPage) {
-    bookReader.rendition.goToPage(num)
+    await bookReader.rendition.goToPage(num)
+    syncReaderProgress(2)
+    void saveBookPosition()
   }
   pageJumpText.value = String(num)
   ;(document.activeElement as HTMLInputElement)?.blur()
@@ -390,6 +397,7 @@ const hoverTimers: Partial<Record<EdgeSide, number>> = {}
 
 const ext = computed(() => (props.book?.ext || '').toLowerCase())
 const readerIsPDF = computed(() => ext.value === 'pdf')
+const readerIsFixedLayout = computed(() => isFixedLayoutBookFormat(ext.value))
 const isReader = computed(() => true)
 const canUseTextToSpeech = computed(() => true)
 const speechLocales = computed(() => {
@@ -616,6 +624,7 @@ function flushReadingSession() {
 }
 
 function cleanup() {
+  readerProgressRequestId += 1
   readerLifecycleToken += 1
   fullTranslationRerenderRequestId += 1
   finishPanelResize()
@@ -646,6 +655,12 @@ function cleanup() {
   sourceUrl.value = ''
   progressText.value = ''
   readingProgressValue.value = 0
+  currentPage.value = 0
+  totalPage.value = 0
+  pageJumpText.value = ''
+  chapterJumpText.value = ''
+  isPageJumpEditing.value = false
+  isChapterJumpEditing.value = false
   bookChapters.value = []
   selectedBookChapter.value = undefined
   searchResults.value = []
@@ -1013,6 +1028,8 @@ function bindRenderedHook() {
   if (!rendition?.on || !currentReader) return
   function handlePageChanged() {
     if (currentReader !== bookReader) return
+    syncReaderProgress(2)
+    scheduleBookPositionSave()
     scheduleFullTranslation().catch(() => {})
   }
   function handleRendered() {
@@ -1332,10 +1349,17 @@ async function locateAnnotationTarget() {
 
 function syncReaderProgress(retry = 0) {
   if (!bookReader) return
+  const currentReader = bookReader
+  const requestId = ++readerProgressRequestId
   try {
     const position = bookReader.getPosition()
+    const chapterIndex = Number(position?.chapterDocIndex)
+    if (Number.isInteger(chapterIndex) && chapterIndex >= 0 && chapterIndex < bookChapters.value.length) {
+      selectedBookChapter.value = chapterIndex
+      if (!isChapterJumpEditing.value) chapterJumpText.value = String(chapterIndex + 1)
+    }
     if (position?.percentage !== undefined) {
-      readingProgressValue.value = Math.round(position.percentage * 100)
+      readingProgressValue.value = Math.max(0, Math.min(100, Math.round(position.percentage * 100)))
       const chapter = position.chapterTitle
       progressText.value = chapter || `${readingProgressValue.value}%`
     }
@@ -1343,12 +1367,16 @@ function syncReaderProgress(retry = 0) {
     if (rendition?.getProgress) {
       Promise.resolve(rendition.getProgress())
         .then((p: any) => {
+          if (currentReader !== bookReader || requestId !== readerProgressRequestId) return
           const pageProgress = normalizeReaderPageProgress(p, position)
           const fallbackProgress = pageProgress.currentPage ? pageProgress : estimateReaderPageProgressFromElement(readerContainer.value)
           if (pageProgress.percentage !== undefined) {
-            readingProgressValue.value = Math.round(pageProgress.percentage * 100)
+            readingProgressValue.value = Math.max(0, Math.min(100, Math.round(pageProgress.percentage * 100)))
           }
-          if (fallbackProgress.currentPage) currentPage.value = fallbackProgress.currentPage
+          if (fallbackProgress.currentPage) {
+            currentPage.value = fallbackProgress.currentPage
+            if (!isPageJumpEditing.value) pageJumpText.value = String(fallbackProgress.currentPage)
+          }
           if (fallbackProgress.totalPage) totalPage.value = fallbackProgress.totalPage
           if (!fallbackProgress.currentPage && retry > 0) {
             window.setTimeout(() => syncReaderProgress(retry - 1), 350)
@@ -1358,7 +1386,10 @@ function syncReaderProgress(retry = 0) {
     } else {
       const pageProgress = normalizeReaderPageProgress(undefined, position)
       const fallbackProgress = pageProgress.currentPage ? pageProgress : estimateReaderPageProgressFromElement(readerContainer.value)
-      if (fallbackProgress.currentPage) currentPage.value = fallbackProgress.currentPage
+      if (fallbackProgress.currentPage) {
+        currentPage.value = fallbackProgress.currentPage
+        if (!isPageJumpEditing.value) pageJumpText.value = String(fallbackProgress.currentPage)
+      }
       if (fallbackProgress.totalPage) totalPage.value = fallbackProgress.totalPage
     }
   } catch {}
@@ -3065,6 +3096,9 @@ onBeforeUnmount(() => {
         :show-page-border="readerIsShowPageBorder"
         :current-page="currentPage"
         :total-page="totalPage"
+        :current-chapter="(selectedBookChapter ?? 0) + 1"
+        :chapter-count="bookChapters.length"
+        :is-fixed-layout="readerIsFixedLayout"
         :hide-footer="readerIsHideFooter"
       />
 
@@ -4028,26 +4062,32 @@ onBeforeUnmount(() => {
       <!-- koodo-style Bottom Panel (ProgressPanel) -->
       <div :class="['edge-panel', 'panel-bottom', isBottomPanelVisible ? 'open' : '']" @mouseleave="hidePanel('bottom')">
         <div class="progress-panel-inner">
-          <p class="progress-text">
-            <span>Progress: {{ readingProgressValue }}%</span>
+          <p class="progress-heading">
+            <span>Reading progress</span>
+            <strong>{{ readingProgressValue }}%</strong>
           </p>
-          <p class="progress-text" style="margin-top: 0">
-            <span>Pages</span>
-            <input type="text" class="progress-jump-input" :value="pageJumpText" @focus="pageJumpText = ''" @input="pageJumpText = ($event.target as HTMLInputElement).value" @blur="jumpToPage" @keydown.enter="jumpToPage" />
+          <p class="progress-context">
+            <template v-if="!readerIsFixedLayout">
+              <span>Chapter</span>
+              <input type="text" class="progress-jump-input" :value="chapterJumpText || (selectedBookChapter ?? 0) + 1" inputmode="numeric" @focus="isChapterJumpEditing = true; ($event.target as HTMLInputElement).select()" @input="chapterJumpText = ($event.target as HTMLInputElement).value" @blur="jumpToChapter" @keydown.enter.prevent="($event.target as HTMLInputElement).blur()" />
+              <span>/ {{ bookChapters.length || '-' }}</span>
+              <span class="progress-divider">·</span>
+            </template>
+            <span>{{ readerIsFixedLayout ? 'Page' : 'Chapter page' }}</span>
+            <input type="text" class="progress-jump-input" :value="pageJumpText || currentPage || ''" inputmode="numeric" @focus="isPageJumpEditing = true; ($event.target as HTMLInputElement).select()" @input="pageJumpText = ($event.target as HTMLInputElement).value" @blur="jumpToPage" @keydown.enter.prevent="($event.target as HTMLInputElement).blur()" />
             <span>/ {{ totalPage || currentPage || '-' }}</span>
-            &nbsp;&nbsp;&nbsp;
-            <span>Chapters</span>
-            <input type="text" class="progress-jump-input" :value="chapterJumpText" @focus="chapterJumpText = ''" @input="chapterJumpText = ($event.target as HTMLInputElement).value" @blur="jumpToChapter" @keydown.enter="jumpToChapter" />
-            <span>/ {{ bookChapters.length || '-' }}</span>
           </p>
-          <div style="display: flex; justify-content: space-between; align-items: center; width: 90%; margin-left: 5%">
-            <div class="chapter-btn prev-chapter-btn" @click="prevPage()" :title="t('previous.page')">
+          <div class="progress-controls">
+            <button type="button" class="chapter-btn prev-chapter-btn" :title="t('previous.page')" :aria-label="t('previous.page')" @click="prevPage()">
               <ChevronLeft :size="14" :stroke-width="2.5" />
+            </button>
+            <div class="progress-range-wrap">
+              <input :value="readingProgressValue" type="range" class="progress-range" min="0" max="100" step="1" aria-label="Reading progress" :aria-valuetext="`${readingProgressValue}%`" :style="{ '--progress-fill': `${readingProgressValue}%` }" @input="readingProgressValue = Number(($event.target as HTMLInputElement).value)" @change="seekReaderProgress(readingProgressValue)" />
+              <span class="progress-range-value">{{ readingProgressValue }}%</span>
             </div>
-            <input :value="readingProgressValue" type="range" class="progress-range" min="0" max="100" step="1" @input="readingProgressValue = Number(($event.target as HTMLInputElement).value)" @change="seekReaderProgress(readingProgressValue)" />
-            <div class="chapter-btn next-chapter-btn" @click="nextPage()" :title="t('next.page')">
+            <button type="button" class="chapter-btn next-chapter-btn" :title="t('next.page')" :aria-label="t('next.page')" @click="nextPage()">
               <ChevronRight :size="14" :stroke-width="2.5" />
-            </div>
+            </button>
           </div>
           <ReaderPanelButton class="panel-pin" :active="lockedPanels.bottom" :title="lockedPanels.bottom ? t('unlock') : t('lock.panel')" @click="togglePanelLock('bottom')">
             <Pin v-if="lockedPanels.bottom" :size="14" :stroke-width="1.8" />
@@ -5277,16 +5317,14 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 6px 0;
-  gap: 0;
+  padding: 10px 18px 12px;
+  gap: 3px;
 }
 
-.progress-text {
-  font-size: 15px;
+.progress-heading,
+.progress-context {
   width: 100%;
   text-align: center;
-  height: 25px;
-  overflow: hidden;
   margin: 0;
   color: var(--panel-fg);
   display: flex;
@@ -5294,20 +5332,43 @@ onBeforeUnmount(() => {
   justify-content: center;
   gap: 4px;
 }
-.progress-text span {
+.progress-heading {
+  font-size: 12px;
+  line-height: 18px;
+  letter-spacing: 0.02em;
+  opacity: 0.72;
+}
+.progress-heading strong {
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  opacity: 1;
+}
+.progress-context {
+  min-height: 24px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.progress-context span {
   opacity: 0.75;
   font-size: 13px;
 }
+.progress-divider {
+  margin: 0 6px;
+}
 .progress-jump-input {
-  width: 30px;
+  width: 42px;
   height: 20px;
-  border: 2px solid rgba(128, 128, 128, 0.4);
-  border-radius: 5px;
+  border: 1px solid rgba(128, 128, 128, 0.45);
+  border-radius: 4px;
   outline: none;
   text-align: center;
   font-size: 12px;
-  background: transparent;
+  font-variant-numeric: tabular-nums;
+  background: color-mix(in srgb, var(--reader-page) 76%, transparent);
   color: var(--panel-fg);
+}
+.progress-jump-input:focus {
+  border-color: var(--reader-text);
 }
 
 .chapter-btn {
@@ -5330,12 +5391,34 @@ onBeforeUnmount(() => {
   border-color: rgba(112, 112, 112, 0.8);
 }
 
+.progress-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: min(720px, 92vw);
+  gap: 10px;
+}
+.progress-range-wrap {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  gap: 9px;
+}
 .progress-range {
   -webkit-appearance: none;
-  width: 200px;
-  background: transparent;
-  margin: 0 8px;
+  width: 100%;
+  min-width: 120px;
+  height: 18px;
+  margin: 0;
   cursor: pointer;
+}
+.progress-range-value {
+  width: 34px;
+  color: var(--panel-fg);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 .progress-range::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -5359,18 +5442,24 @@ onBeforeUnmount(() => {
   box-sizing: border-box;
 }
 .progress-range::-webkit-slider-runnable-track {
-  width: 200px;
-  height: 0;
-  border-bottom: 2px solid rgba(112, 112, 112, 1);
+  width: 100%;
+  height: 3px;
+  border-radius: 999px;
   cursor: pointer;
-  background: transparent;
+  background: linear-gradient(to right, var(--reader-text) var(--progress-fill), rgba(112, 112, 112, 0.32) var(--progress-fill));
 }
 .progress-range::-moz-range-track {
-  width: 200px;
-  height: 0;
-  border-bottom: 2px solid rgba(112, 112, 112, 1);
+  width: 100%;
+  height: 3px;
+  border-radius: 999px;
+  border: 0;
   cursor: pointer;
-  background: transparent;
+  background: rgba(112, 112, 112, 0.32);
+}
+.progress-range::-moz-range-progress {
+  height: 3px;
+  border-radius: 999px;
+  background: var(--reader-text);
 }
 
 /* === POPUPS (keep existing) === */

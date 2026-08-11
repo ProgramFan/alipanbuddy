@@ -121,6 +121,33 @@ describe('BookReaderModal template structure', () => {
     expect(syncSource).not.toContain('rendition.getProgress().then')
   })
 
+  it('keeps reflowable chapter pages separate from fixed-layout document pages', () => {
+    const source = readFileSync(resolve(__dirname, '../../layout/BookReaderModal.vue'), 'utf8')
+    const widgetSource = readFileSync(resolve(__dirname, '../../layout/book-reader/ReaderPageWidget.vue'), 'utf8')
+
+    expect(source).toContain('isFixedLayoutBookFormat')
+    expect(source).toContain(':is-fixed-layout="readerIsFixedLayout"')
+    expect(source).toContain("readerIsFixedLayout ? 'Page' : 'Chapter page'")
+    expect(widgetSource).toContain('isFixedLayout: boolean')
+    expect(widgetSource).toContain('Chapter ${props.currentChapter || 1}')
+  })
+
+  it('refreshes page and chapter labels after any engine page change without accepting stale progress', () => {
+    const source = readFileSync(resolve(__dirname, '../../layout/BookReaderModal.vue'), 'utf8')
+    const hookStart = source.indexOf('function bindRenderedHook')
+    const hookEnd = source.indexOf('async function loadReaderBookBook', hookStart)
+    const hookSource = source.slice(hookStart, hookEnd)
+    const syncStart = source.indexOf('function syncReaderProgress')
+    const syncEnd = source.indexOf('function bindReaderIframeEventListeners', syncStart)
+    const syncSource = source.slice(syncStart, syncEnd)
+
+    expect(hookSource).toContain('syncReaderProgress(2)')
+    expect(hookSource).toContain('scheduleBookPositionSave()')
+    expect(syncSource).toContain('readerProgressRequestId')
+    expect(syncSource).toContain('requestId !== readerProgressRequestId')
+    expect(syncSource).toContain('position?.chapterDocIndex')
+  })
+
   it('applies reader margin through live iframe content CSS instead of rerendering the book', () => {
     const source = readFileSync(resolve(__dirname, '../../layout/BookReaderModal.vue'), 'utf8')
     const styleStart = source.indexOf('const readerStageStyle')
