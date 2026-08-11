@@ -388,7 +388,7 @@ const useBookLibraryStore = defineStore('booklibrary', () => {
       merged,
       ...books.value.slice(idx + 1)
     ]
-    DB.saveBookItems([merged]).catch(() => {})
+    await DB.saveBookItems([merged]).catch(() => {})
   }
 
   async function toggleFavoriteBook(id: string) {

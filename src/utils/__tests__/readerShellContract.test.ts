@@ -24,4 +24,15 @@ describe('ReaderShell contract', () => {
     expect(modal).toContain("import ReaderShell from './book-reader/ReaderShell.vue'")
     expect(modal).toContain('<ReaderShell')
   })
+
+  it('persists the reading position before Exit closes the reader', () => {
+    const modal = read('src/layout/BookReaderModal.vue')
+    const closeStart = modal.indexOf('async function close()')
+    const saveStart = modal.indexOf('await saveBookPosition(true)', closeStart)
+    const emitStart = modal.indexOf("emit('update:visible', false)", closeStart)
+
+    expect(closeStart).toBeGreaterThan(-1)
+    expect(saveStart).toBeGreaterThan(closeStart)
+    expect(emitStart).toBeGreaterThan(saveStart)
+  })
 })

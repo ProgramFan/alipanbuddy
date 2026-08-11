@@ -473,7 +473,8 @@ const imagePreviewStyle = computed(() => ({
   transform: getBookImageTransform(imagePreviewRotateIndex.value)
 }))
 
-function close() {
+async function close() {
+  await saveBookPosition(true)
   exitReaderFullscreen()
   emit('update:visible', false)
 }
