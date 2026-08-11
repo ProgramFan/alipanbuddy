@@ -12,6 +12,9 @@ import UserDAL from '../user/userdal'
 import AliHttp from '../aliapi/alihttp'
 import { buildExternalBookMetadataPatch, canHydrateExternalBookMetadata, lookupExternalBookMetadata } from '../utils/bookExternalMetadata'
 import DebugLog from '../utils/debuglog'
+import { parseBookMeta } from '../utils/bookFilenameMeta'
+
+export { parseBookMeta } from '../utils/bookFilenameMeta'
 
 const LS_LASTSCAN = 'bookLibrary.lastScanAt'
 const LS_SUBTAB = 'bookLibrary.subTab'
@@ -26,12 +29,6 @@ const BOOK_PAGE_SIZE = 240
 
 export type BookSubTab = 'shelf' | 'all' | 'authors' | 'formats' | 'folders'
 
-const AUTHOR_TITLE_RE = /^(.+?)\s*[-–—_]\s*(.+)$/
-const BRACKET_AUTHOR_RE = /^[\[【（(](.+?)[\]】）)]\s*(.+)$/
-const TITLE_AUTHOR_RE = /^(.+?)\s*[\(（](.+?)[\)）]$/
-const COMMON_TAGS_RE = /(?:\[[^\]]+\]|【[^】]+】|（[^）]+）|\([^)]+\))/g
-const CATALOG_PREFIX_RE = /^\d{5,}(?=(?:[.\s_-]|\p{Script=Han}))(?:[.\s_-])*/u
-
 function loadJson<T>(key: string, fallback: T): T {
   try {
     const s = localStorage.getItem(key)
@@ -45,70 +42,6 @@ function loadJson<T>(key: string, fallback: T): T {
 
 function saveJson(key: string, value: unknown) {
   try { localStorage.setItem(key, JSON.stringify(value)) } catch {}
-}
-
-function stripExt(name: string): string {
-  if (!name) return ''
-  const i = name.lastIndexOf('.')
-  return i > 0 ? name.slice(0, i) : name
-}
-
-function cleanBookPart(value: string): string {
-  return value.replace(CATALOG_PREFIX_RE, '').replace(COMMON_TAGS_RE, ' ').replace(/\s+/g, ' ').trim()
-}
-
-export function parseBookMeta(fileName: string): Pick<IBookItem, 'title' | 'author' | 'summary' | 'metadata_source'> {
-  const raw = stripExt(fileName).replace(/\s+/g, ' ').trim()
-  if (!raw) return { title: fileName || '未命名书籍', author: '未知作者', summary: '', metadata_source: 'unknown' }
-
-  const bracket = raw.match(BRACKET_AUTHOR_RE)
-  if (bracket?.[1] && bracket?.[2]) {
-    return {
-      author: bracket[1].trim(),
-      title: bracket[2].replace(COMMON_TAGS_RE, ' ').replace(/\s+/g, ' ').trim(),
-      summary: '',
-      metadata_source: 'filename'
-    }
-  }
-
-  const titleAuthor = raw.match(TITLE_AUTHOR_RE)
-  if (titleAuthor?.[1] && titleAuthor?.[2] && titleAuthor[2].length <= 40) {
-    return {
-      title: cleanBookPart(titleAuthor[1]),
-      author: titleAuthor[2].trim(),
-      summary: '',
-      metadata_source: 'filename'
-    }
-  }
-
-  const pair = raw.match(AUTHOR_TITLE_RE)
-  if (pair?.[1] && pair?.[2] && pair[1].length <= 40) {
-    const left = cleanBookPart(pair[1])
-    const right = cleanBookPart(pair[2])
-    // 大型书库常以“005215 书名 - 作者”或“00571980书名_作者”命名。
-    // 编号在左侧时，右侧的短文本更可信地是作者，不能继续按“作者 - 书名”解析。
-    if (CATALOG_PREFIX_RE.test(pair[1])) {
-      return {
-        title: left || raw,
-        author: right || '未知作者',
-        summary: '',
-        metadata_source: 'filename'
-      }
-    }
-    return {
-      author: left || '未知作者',
-      title: right || raw,
-      summary: '',
-      metadata_source: 'filename'
-    }
-  }
-
-  return {
-    title: cleanBookPart(raw) || raw,
-    author: '未知作者',
-    summary: '',
-    metadata_source: 'filename'
-  }
 }
 
 function ensureBookMeta(book: IBookItem): IBookItem {

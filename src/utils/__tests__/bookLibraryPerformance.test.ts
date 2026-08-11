@@ -34,10 +34,12 @@ describe('book library large collection safeguards', () => {
 
   it('recognizes title-author filenames that start with a catalogue number', () => {
     const source = read('src/store/booklibrary.ts')
+    const parserSource = read('src/utils/bookFilenameMeta.ts')
 
-    expect(source).toContain('const CATALOG_PREFIX_RE')
-    expect(source).toContain('if (CATALOG_PREFIX_RE.test(pair[1]))')
-    expect(source).toContain('title: left || raw')
-    expect(source).toContain('author: right || \'未知作者\'')
+    expect(source).toContain("export { parseBookMeta } from '../utils/bookFilenameMeta'")
+    expect(parserSource).toContain('const CATALOG_PREFIX_RE')
+    expect(parserSource).toContain('CATALOG_PREFIX_RE.test(raw)')
+    expect(parserSource).toContain('title: left || raw')
+    expect(parserSource).toContain('author: right || \'未知作者\'')
   })
 })
