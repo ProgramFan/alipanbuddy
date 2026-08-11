@@ -137,6 +137,13 @@ onUnmounted(() => {
         <span class="settings-side-kicker">{{ t('settings.preferences') }}</span>
         <strong>{{ t('settings.center') }}</strong>
       </div>
+      <div class="settings-search">
+        <a-input-search v-model="settingSearch" allow-clear :placeholder="t('settings.searchPlaceholder')" @input="refreshSettingSearch" @clear="refreshSettingSearch" />
+        <div v-if="settingSearch.trim()" class="settings-search-results">
+          <button v-for="result in settingSearchResults" :key="result.label" type="button" @click="locateSettingSearchResult(result)">{{ result.label }}</button>
+          <span v-if="!settingSearchResults.length">{{ t('settings.searchNoResults') }}</span>
+        </div>
+      </div>
       <a-menu :selected-keys="[appStore.GetAppTabMenu]" :style="{ width: '100%' }" class="xbyleftmenu single-boundary-sidebar-menu"
               @update:selected-keys="appStore.toggleTabMenu('setting', $event[0])">
         <div class="settings-menu-group">{{ t('settings.group.general') }}</div>
@@ -211,13 +218,6 @@ onUnmounted(() => {
     </a-layout-sider>
     <a-layout-content id="SettingObserver" class="xbyright fullscroll settings-content" tabindex="-1" @keydown.tab.prevent="() => true">
       <div id="SettingDiv" class="settings-content-inner">
-        <div class="settings-search">
-          <a-input-search v-model="settingSearch" allow-clear :placeholder="t('settings.searchPlaceholder')" @input="refreshSettingSearch" @clear="refreshSettingSearch" />
-          <div v-if="settingSearch.trim()" class="settings-search-results">
-            <button v-for="result in settingSearchResults" :key="result.label" type="button" @click="locateSettingSearchResult(result)">{{ result.label }}</button>
-            <span v-if="!settingSearchResults.length">{{ t('settings.searchNoResults') }}</span>
-          </div>
-        </div>
 <!--        <div class="settings-hero">-->
 <!--          <div>-->
 <!--            <div class="settings-hero-kicker">BoxPlayer Workspace</div>-->
@@ -330,24 +330,41 @@ onUnmounted(() => {
 }
 
 .settings-search {
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: 3;
-  margin: 0 0 18px;
-  padding: 12px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.82);
-  box-shadow: 0 12px 28px rgba(78, 97, 128, 0.1);
-  backdrop-filter: blur(18px);
+  margin: 0 4px 16px;
+}
+
+.settings-search .arco-input-wrapper {
+  min-height: 36px;
+  padding-inline: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.26);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.62);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.settings-search .arco-input {
+  color: #26364f;
+  font-size: 12px;
+}
+
+.settings-search .arco-input::placeholder {
+  color: #77869c;
+  opacity: 1;
 }
 
 .settings-search-results {
   display: grid;
   gap: 6px;
-  max-height: 240px;
-  margin-top: 10px;
+  max-height: 200px;
+  margin-top: 8px;
+  padding: 6px;
   overflow: auto;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.78);
+  box-shadow: 0 10px 22px rgba(78, 97, 128, 0.1);
 }
 
 .settings-search-results button,
@@ -844,6 +861,37 @@ body[arco-theme='dark'] .settings-side-title {
   box-shadow:
     0 18px 36px rgba(0, 0, 0, 0.24),
     inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+}
+
+body[arco-theme='dark'] .settings-search .arco-input-wrapper {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+body[arco-theme='dark'] .settings-search .arco-input {
+  color: rgba(238, 244, 252, 0.94);
+}
+
+body[arco-theme='dark'] .settings-search .arco-input::placeholder {
+  color: rgba(191, 201, 216, 0.56);
+}
+
+body[arco-theme='dark'] .settings-search-results {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(18, 24, 34, 0.9);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+}
+
+body[arco-theme='dark'] .settings-search-results button,
+body[arco-theme='dark'] .settings-search-results span {
+  color: rgba(210, 221, 236, 0.8);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+body[arco-theme='dark'] .settings-search-results button:hover {
+  color: #8ff5ea;
+  background: rgba(0, 245, 212, 0.1);
 }
 
 body[arco-theme='dark'] .settings-hero {
