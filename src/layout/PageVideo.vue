@@ -29,6 +29,8 @@ import JASSUBWorker from 'jassub/dist/jassub-worker.js?url'
 import JASSUBWorkerWasm from 'jassub/dist/jassub-worker.wasm?url'
 import JASSUBWorkerModernWasm from 'jassub/dist/jassub-worker-modern.wasm?url'
 import JASSUBDefaultFont from 'jassub/dist/default.woff2?url'
+
+const JASSUBCjkFont = '/fonts/NotoSansCJKsc-Regular.otf'
 import {
   autoMatchDanmaku,
   buildDanmakuPluginOption,
@@ -2124,9 +2126,15 @@ const loadPlugins = async (art: Artplayer) => {
     wasmUrl: JASSUBWorkerWasm,
     modernWasmUrl: JASSUBWorkerModernWasm,
     availableFonts: {
-      'liberation sans': JASSUBDefaultFont
+      'liberation sans': JASSUBDefaultFont,
+      'noto sans cjk sc': JASSUBCjkFont,
+      'noto sans sc': JASSUBCjkFont,
+      'pingfang sc': JASSUBCjkFont,
+      'microsoft yahei': JASSUBCjkFont,
+      'simhei': JASSUBCjkFont,
+      'simsun': JASSUBCjkFont
     },
-    fallbackFont: 'liberation sans',
+    fallbackFont: 'noto sans cjk sc',
     subContent: '[Script Info]\nScriptType: v4.00+'
   }))
   clearJassubSubtitle(art)
@@ -3459,6 +3467,7 @@ onBeforeUnmount(() => {
 
 :deep(#artPlayer .JASSUB canvas) {
   pointer-events: none;
+  transform: translateY(-5%);
 }
 
 .danmaku-modal {

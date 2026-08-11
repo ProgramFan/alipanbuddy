@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
@@ -34,6 +34,16 @@ describe('115 subtitle playback', () => {
     expect(source).toContain('await loadSubtitleUrlToPlayer(art, embedSubSelector[0])')
     expect(source).toContain('ext: getSubtitleExtension(subtitle.url)')
     expect(source).not.toContain('art.subtitle.url = embedSubSelector[0].url')
+  })
+
+  it('uses a bundled CJK fallback font and raises ASS subtitles above the player edge', () => {
+    const source = readSource('src/layout/PageVideo.vue')
+
+    expect(source).toContain("const JASSUBCjkFont = '/fonts/NotoSansCJKsc-Regular.otf'")
+    expect(source).toContain("'noto sans cjk sc': JASSUBCjkFont")
+    expect(source).toContain("fallbackFont: 'noto sans cjk sc'")
+    expect(source).toContain('transform: translateY(-5%)')
+    expect(existsSync(resolve(process.cwd(), 'public/fonts/NotoSansCJKsc-Regular.otf'))).toBe(true)
   })
 
   it('refreshes a newly loaded subtitle track and returns the selected label', () => {
