@@ -278,6 +278,7 @@ async function Video(
       name: subtitle.name,
       parent_file_id: subtitle.parentFileId || file.parent_file_id,
       drive_id: subtitle.driveId || file.drive_id,
+      user_id: subtitle.userId || token.user_id,
       ext: subtitle.name?.split('.').pop()
     }))
     const pageVideo: IPageVideo = {

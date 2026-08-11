@@ -603,6 +603,7 @@ type selectorItem = {
   drive_id?: string;
   parent_file_id?: string;
   password?: string;
+  tokenfrom?: string;
   encType?: string;
   headers?: Record<string, string>;
   isDir?: boolean;
@@ -1395,6 +1396,7 @@ const getSubtitleFileList = async (includeSubfolders = false): Promise<selectorI
       file_id: item.file_id,
       parent_file_id: item.parent_file_id,
       drive_id: item.drive_id,
+      user_id: item.user_id,
       ext: item.ext || item.name.split('.').pop() || ''
     })),
     ...currentDirItems.filter((item) => subtitlePattern.test(item.ext || ''))
@@ -2861,11 +2863,13 @@ const readSubtitleItemText = async (item: selectorItem) => {
 
 const resolveCloudSubtitleUrl = async (item: selectorItem): Promise<string> => {
   if (!item.file_id) return item.url || ''
+  const userId = item.user_id || pageVideo.user_id
   const driveId = item.drive_id || pageVideo.drive_id
-  const data = await DriveFile.ApiFileDownloadUrl(pageVideo.user_id, driveId, item.file_id, 14400, pageVideo.tokenfrom)
+  const tokenfrom = item.tokenfrom || (userId === pageVideo.user_id ? pageVideo.tokenfrom : '')
+  const data = await DriveFile.ApiFileDownloadUrl(userId, driveId, item.file_id, 14400, tokenfrom)
   if (typeof data === 'string' || !data.url) return ''
   return getProxyUrl({
-    user_id: pageVideo.user_id,
+    user_id: userId,
     drive_id: driveId,
     file_id: item.file_id,
     encType: item.encType,

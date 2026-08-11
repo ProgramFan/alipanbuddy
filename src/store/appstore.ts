@@ -92,6 +92,7 @@ export interface IPageVideoSubtitleFile {
   name: string
   parent_file_id: string
   drive_id: string
+  user_id?: string
   ext?: string
 }
 
