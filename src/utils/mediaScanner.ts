@@ -264,7 +264,7 @@ export class MediaScanner {
       return
     }
     if (!listMethodWasOverridden && isAliyunUser(scanContext.userId)) {
-      yield* rateLimitScanPages(scope, AliDirFileList.ApiDirFileListPages(scanContext.userId, folder.drive_id || scanContext.driveId, folder.file_id, folder.name, 'name asc', '', false))
+      yield* AliDirFileList.ApiDirFileListPages(scanContext.userId, folder.drive_id || scanContext.driveId, folder.file_id, folder.name, 'name asc', '', false, scope)
       return
     }
     yield* rateLimitSingleScanPage(scope, () => this.getFolderItemsWithRetry(folder, scanContext))

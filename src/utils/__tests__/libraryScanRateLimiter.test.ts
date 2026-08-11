@@ -3,7 +3,8 @@ import { isScanRateLimitedError, libraryScanRateLimitScope } from '../librarySca
 
 describe('library scan rate limiter', () => {
   it('uses one shared scope per cloud account and drive', () => {
-    expect(libraryScanRateLimitScope('user-a', 'drive-a')).toBe('cloud:user-a:drive-a')
+    expect(libraryScanRateLimitScope('user-a', 'drive-a')).toBe('cloud:user-a')
+    expect(libraryScanRateLimitScope('user-a', 'drive-b')).toBe('cloud:user-a')
   })
 
   it('recognizes provider and metadata API rate-limit responses', () => {

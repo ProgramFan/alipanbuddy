@@ -335,7 +335,8 @@ class MusicScanner {
         const seen = new Set<string>()
         const driveLabel = drive_id.slice(-6)
         store.setScanProgress(`正在扫描 ${label} · drive ${driveLabel}`, scanned, totalFound)
-        for await (const items of AliFileWalk.ApiWalkFilePages(token.user_id, drive_id, 'root', '', 'updated_at desc', 'file')) {
+        const scope = libraryScanRateLimitScope(token.user_id, drive_id)
+        for await (const items of AliFileWalk.ApiWalkFilePages(token.user_id, drive_id, 'root', '', 'updated_at desc', 'file', scope)) {
           if (this.shouldStop) break
           scanned += items.length
           // walk API does not guarantee order, so filter every page instead of
@@ -416,7 +417,7 @@ class MusicScanner {
       return
     }
     if (isAliyunUser(user_id)) {
-      yield* rateLimitScanPages(scope, AliDirFileList.ApiDirFileListPages(user_id, drive_id, folder.file_id, folder.name || '', 'name asc', '', false))
+      yield* AliDirFileList.ApiDirFileListPages(user_id, drive_id, folder.file_id, folder.name || '', 'name asc', '', false, scope)
       return
     }
     yield* rateLimitSingleScanPage(scope, () => this.listFolder(folder, user_id, drive_id))
