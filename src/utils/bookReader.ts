@@ -430,7 +430,9 @@ export async function createBookReader(options: BookReaderOptions, cachedContent
   }
   const chapterDocs = rendition.getChapterDoc?.() || []
   if (chapterDocs.length > 0) {
-    await rendition.goToPosition?.(serializeReaderPositionForJump(buildInitialReaderPosition(options.initialPosition)))
+    // ReaderKit may leave a position jump pending for a malformed or slow EPUB.
+    // The book itself is already rendered, so do not keep the reader shell loading forever.
+    await waitForReaderRender(rendition.goToPosition?.(serializeReaderPositionForJump(buildInitialReaderPosition(options.initialPosition))))
   }
   applyReaderDefaultCss(options.container, ReaderKit, options)
   applyDoublePageCss(options.container, options.readerMode || 'single')

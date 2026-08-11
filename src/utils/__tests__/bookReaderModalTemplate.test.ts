@@ -173,6 +173,7 @@ describe('BookReaderModal template structure', () => {
     expect(readerSource).toContain('scope.pdfjsLib')
     expect(createReaderSource).toContain('await configurePdfJsWorker()')
     expect(createReaderSource.indexOf('await configurePdfJsWorker()')).toBeLessThan(createReaderSource.indexOf("import('../vendor/reader/readerkit.min.js')"))
+    expect(readerSource).toContain('await waitForReaderRender(rendition.goToPosition?.(')
   })
 
   it('does not reset custom reader colors when font size changes', () => {
