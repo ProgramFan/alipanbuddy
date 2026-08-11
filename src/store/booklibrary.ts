@@ -11,6 +11,7 @@ import DB from '../utils/db'
 import UserDAL from '../user/userdal'
 import AliHttp from '../aliapi/alihttp'
 import { buildExternalBookMetadataPatch, canHydrateExternalBookMetadata, lookupExternalBookMetadata } from '../utils/bookExternalMetadata'
+import DebugLog from '../utils/debuglog'
 
 const LS_LASTSCAN = 'bookLibrary.lastScanAt'
 const LS_SUBTAB = 'bookLibrary.subTab'
@@ -193,15 +194,20 @@ const useBookLibraryStore = defineStore('booklibrary', () => {
     const sources = sourceBooks
       .filter((book) => !hydratedExternalMetadataIds.has(book.id) && canHydrateExternalBookMetadata(book))
       .slice(0, BOOK_EXTERNAL_METADATA_HYDRATE_LIMIT)
+    if (sources.length) DebugLog.mSaveLog('info', `[book-metadata] 本页待补全 ${sources.length} 本（最多 ${BOOK_EXTERNAL_METADATA_HYDRATE_LIMIT} 本）`, undefined)
     for (const book of sources) hydratedExternalMetadataIds.add(book.id)
     const updates = new Map<string, Partial<IBookItem>>()
     for (let index = 0; index < sources.length; index += BOOK_EXTERNAL_METADATA_HYDRATE_CONCURRENCY) {
       const batch = sources.slice(index, index + BOOK_EXTERNAL_METADATA_HYDRATE_CONCURRENCY)
       const resolved = await Promise.all(batch.map(async (book) => {
         try {
-          const meta = await lookupExternalBookMetadata(book)
+          const meta = await lookupExternalBookMetadata(book, fetch, (message, error) => {
+            if (error || message.includes('HTTP ')) DebugLog.mSaveWarning(message, error)
+            else DebugLog.mSaveLog('info', message, undefined)
+          })
           return meta ? { id: book.id, patch: buildExternalBookMetadataPatch(meta) } : null
-        } catch {
+        } catch (error) {
+          DebugLog.mSaveWarning(`[book-metadata] ${book.file_name} 元数据补全失败`, error)
           return null
         }
       }))
@@ -209,6 +215,7 @@ const useBookLibraryStore = defineStore('booklibrary', () => {
         if (item) updates.set(item.id, item.patch)
       }
     }
+    if (sources.length) DebugLog.mSaveLog('info', `[book-metadata] 本页补全完成：命中 ${updates.size}/${sources.length}，含封面 ${[...updates.values()].filter((patch) => !!patch.cover_url).length}/${updates.size}`, undefined)
     if (!updates.size) return
     const changed = books.value.map((book) => updates.has(book.id) ? { ...book, ...updates.get(book.id) } : book)
     books.value = changed

@@ -20,4 +20,14 @@ describe('book external metadata', () => {
     expect(canHydrateExternalBookMetadata(book({ cover_url: 'https://cover.example/a.jpg' }))).toBe(false)
     expect(buildExternalBookMetadataPatch({ title: 'Title', coverUrl: 'https://cover.example/a.jpg' }, 123)).toMatchObject({ metadata_source: 'openlibrary', metadata_updated_at: 123, cover_url: 'https://cover.example/a.jpg' })
   })
+
+  it('reports lookup outcomes to the caller supplied diagnostics logger', async () => {
+    const source = await import('node:fs').then(({ readFileSync }) => readFileSync(new URL('../bookExternalMetadata.ts', import.meta.url), 'utf8'))
+
+    expect(source).toContain('ExternalBookMetadataLogger')
+    expect(source).toContain('log?.(`${logPrefix} 查询 OpenLibrary')
+    expect(source).toContain('log?.(`${logPrefix} OpenLibrary 请求失败`, error)')
+    expect(source).toContain('log?.(`${logPrefix} 未命中：候选=')
+    expect(source).toContain('log?.(`${logPrefix} 命中：')
+  })
 })

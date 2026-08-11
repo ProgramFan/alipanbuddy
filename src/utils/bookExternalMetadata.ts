@@ -26,6 +26,7 @@ type OpenLibraryDocument = {
 
 const OPEN_LIBRARY_SEARCH_URL = 'https://openlibrary.org/search.json'
 const UNKNOWN_AUTHOR = new Set(['', '未知作者', 'unknown author'])
+export type ExternalBookMetadataLogger = (message: string, error?: unknown) => void
 
 function normalized(value = ''): string {
   return value.toLowerCase().replace(/[\s\p{P}\p{S}_]+/gu, '')
@@ -63,25 +64,40 @@ export function canHydrateExternalBookMetadata(book: IBookItem): boolean {
   return !book.cover_url && !book.thumbnail && !String(book.metadata_source || '').startsWith('openlibrary') && !!(book.title || book.file_name)
 }
 
-export async function lookupExternalBookMetadata(book: IBookItem, request: typeof fetch = fetch): Promise<ExternalBookMetadata | null> {
-  const response = await request(buildSearchUrl(book), { signal: AbortSignal.timeout(12_000) })
-  if (!response.ok) return null
-  const body = await response.json() as { docs?: OpenLibraryDocument[] }
-  const candidate = (body.docs || [])
-    .map((doc) => ({ doc, score: matchScore(book, doc) }))
-    .sort((a, b) => b.score - a.score)[0]
-  if (!candidate || candidate.score < 75) return null
-  const doc = candidate.doc
-  return {
-    title: doc.title,
-    author: firstText(doc.author_name),
-    summary: firstText(doc.first_sentence),
-    coverUrl: doc.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg` : '',
-    isbn: firstText(doc.isbn),
-    publisher: firstText(doc.publisher),
-    publishedDate: doc.first_publish_year ? String(doc.first_publish_year) : '',
-    language: firstText(doc.language),
-    subjects: (doc.subject || []).slice(0, 8)
+export async function lookupExternalBookMetadata(book: IBookItem, request: typeof fetch = fetch, log?: ExternalBookMetadataLogger): Promise<ExternalBookMetadata | null> {
+  const logPrefix = `[book-metadata] ${book.ext.toUpperCase()} ${book.file_name}`
+  try {
+    log?.(`${logPrefix} 查询 OpenLibrary：title=${book.title || '-'} author=${book.author || '-'} isbn=${book.isbn || '-'}`)
+    const response = await request(buildSearchUrl(book), { signal: AbortSignal.timeout(12_000) })
+    if (!response.ok) {
+      log?.(`${logPrefix} OpenLibrary HTTP ${response.status}`)
+      return null
+    }
+    const body = await response.json() as { docs?: OpenLibraryDocument[] }
+    const candidate = (body.docs || [])
+      .map((doc) => ({ doc, score: matchScore(book, doc) }))
+      .sort((a, b) => b.score - a.score)[0]
+    if (!candidate || candidate.score < 75) {
+      log?.(`${logPrefix} 未命中：候选=${body.docs?.length || 0}，最高分=${candidate?.score || 0}`)
+      return null
+    }
+    const doc = candidate.doc
+    const coverUrl = doc.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg` : ''
+    log?.(`${logPrefix} 命中：${doc.title || '-'}，得分=${candidate.score}，封面=${coverUrl ? '有' : '无'}`)
+    return {
+      title: doc.title,
+      author: firstText(doc.author_name),
+      summary: firstText(doc.first_sentence),
+      coverUrl,
+      isbn: firstText(doc.isbn),
+      publisher: firstText(doc.publisher),
+      publishedDate: doc.first_publish_year ? String(doc.first_publish_year) : '',
+      language: firstText(doc.language),
+      subjects: (doc.subject || []).slice(0, 8)
+    }
+  } catch (error) {
+    log?.(`${logPrefix} OpenLibrary 请求失败`, error)
+    throw error
   }
 }
 
