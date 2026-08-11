@@ -376,18 +376,21 @@ const useBookLibraryStore = defineStore('booklibrary', () => {
 
   async function updateBookMetadata(id: string, patch: Partial<IBookItem>) {
     const idx = books.value.findIndex((b) => b.id === id)
-    if (idx < 0) return
+    const current = idx >= 0 ? books.value[idx] : (await DB.getBookItemsByIds([id]).catch(() => []))[0]
+    if (!current) return
     const merged: IBookItem = {
-      ...books.value[idx],
+      ...current,
       ...patch,
-      id: books.value[idx].id,
+      id: current.id,
       metadata_updated_at: Date.now()
     }
-    books.value = [
-      ...books.value.slice(0, idx),
-      merged,
-      ...books.value.slice(idx + 1)
-    ]
+    if (idx >= 0) {
+      books.value = [
+        ...books.value.slice(0, idx),
+        merged,
+        ...books.value.slice(idx + 1)
+      ]
+    }
     await DB.saveBookItems([merged]).catch(() => {})
   }
 

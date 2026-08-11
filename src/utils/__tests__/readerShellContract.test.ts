@@ -35,4 +35,10 @@ describe('ReaderShell contract', () => {
     expect(saveStart).toBeGreaterThan(closeStart)
     expect(emitStart).toBeGreaterThan(saveStart)
   })
+
+  it('opens books with their latest persisted reading position', () => {
+    const library = read('src/layout/PageBookLibrary.vue')
+    expect(library).toContain("import DB from '../utils/db'")
+    expect(library).toContain('const savedBook = (await DB.getBookItemsByIds([book.id]).catch(() => []))[0]')
+  })
 })

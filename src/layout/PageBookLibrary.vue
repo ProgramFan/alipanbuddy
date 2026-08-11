@@ -38,6 +38,7 @@ import { useReaderI18n } from '../utils/readerI18n'
 import { t } from '../i18n'
 import { getStoredTokenProvider } from '../utils/driveProvider'
 import { groupBookWorks } from '../utils/bookWorks'
+import DB from '../utils/db'
 
 withDefaults(defineProps<{ sidebarVisible?: boolean }>(), { sidebarVisible: true })
 
@@ -877,9 +878,11 @@ async function clearLibrary() {
 async function openBook(book: IBookItem, options: { keepAnnotationTarget?: boolean } = {}) {
   if (!options.keepAnnotationTarget) pendingAnnotationTarget.value = null
 
-  const token = book.user_id && book.user_id !== 'local' ? await UserDAL.GetUserTokenFromDB(book.user_id) : undefined
+  const savedBook = (await DB.getBookItemsByIds([book.id]).catch(() => []))[0]
+  const latestBook = savedBook ? { ...book, ...savedBook } : book
+  const token = latestBook.user_id && latestBook.user_id !== 'local' ? await UserDAL.GetUserTokenFromDB(latestBook.user_id) : undefined
   const tokenfrom = getStoredTokenProvider(token)
-  const readerBook = tokenfrom === 'unknown' ? book : { ...book, tokenfrom }
+  const readerBook = tokenfrom === 'unknown' ? latestBook : { ...latestBook, tokenfrom }
 
   if (window.WebOpenWindow) {
     window.WebOpenWindow({ page: 'PageBookReader', data: JSON.parse(JSON.stringify(readerBook)), theme: 'dark' })
