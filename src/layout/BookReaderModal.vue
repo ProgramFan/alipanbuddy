@@ -37,7 +37,7 @@ import {
 import type { IBookItem } from '../types/book'
 import type { IBookBookmark } from '../types/bookBookmark'
 import type { IBookNote } from '../types/bookNote'
-import { getFormat, isFixedLayoutBookFormat } from '../utils/bookReaderCapabilities'
+import { getFormat, isComicBookFormat, isFixedLayoutBookFormat } from '../utils/bookReaderCapabilities'
 import { buildBookReadingPatch, buildBookReadingTimePatch, normalizeReaderPosition, type BookReaderPosition } from '../utils/bookReaderState'
 import {
   loadBookReaderPreferences,
@@ -128,6 +128,8 @@ const sourceUrl = ref('')
 const readerMode = ref<BookReaderThemeMode>(savedPreferences.themeMode)
 const fontSize = ref(savedPreferences.fontSize)
 const readerLayoutMode = ref<BookReaderLayoutMode>(savedPreferences.readerLayoutMode)
+const comicLayoutMode = ref<BookReaderLayoutMode>('single')
+const comicReadingDirection = ref<'ltr' | 'rtl'>('ltr')
 const readerIndent = ref(savedPreferences.readerIndent)
 const readerHyphenation = ref(savedPreferences.readerHyphenation)
 const readerBionic = ref(savedPreferences.readerBionic)
@@ -397,8 +399,11 @@ const hoverTimers: Partial<Record<EdgeSide, number>> = {}
 
 const ext = computed(() => (props.book?.ext || '').toLowerCase())
 const readerIsPDF = computed(() => ext.value === 'pdf')
+const readerIsComic = computed(() => isComicBookFormat(ext.value))
 const readerIsFixedLayout = computed(() => isFixedLayoutBookFormat(ext.value))
 const isReader = computed(() => true)
+const activeReaderLayoutMode = computed<BookReaderLayoutMode>(() => (readerIsComic.value ? comicLayoutMode.value : readerLayoutMode.value))
+const isComicRightToLeft = computed(() => readerIsComic.value && comicReadingDirection.value === 'rtl')
 const canUseTextToSpeech = computed(() => true)
 const speechLocales = computed(() => {
   const locales = speechVoices.value.map((voice) => voice.lang).filter(Boolean)
@@ -418,16 +423,16 @@ const filteredSpeechVoices = computed(() => {
 const selectedSpeechVoice = computed(() => speechVoices.value.find((voice) => getSpeechVoiceId(voice) === readerVoiceURI.value))
 const readerTitle = computed(() => props.book?.title || props.book?.file_name || t('reader.title'))
 const modeClass = computed(() => `reader-${readerMode.value}`)
-const isDoublePageMode = computed(() => isReader.value && readerLayoutMode.value === 'double')
+const isDoublePageMode = computed(() => isReader.value && activeReaderLayoutMode.value === 'double')
 const shellThemeStyle = computed(() => {
   if (!isReader.value) return {}
-  const visiblePageColor = applyReaderBrightnessToColor(readerBackgroundColor.value, readerBrightness.value)
+  const visiblePageColor = readerIsComic.value ? '#0b0c0f' : applyReaderBrightnessToColor(readerBackgroundColor.value, readerBrightness.value)
   return {
     '--reader-page': visiblePageColor,
     '--reader-text': readerTextColor.value
   }
 })
-const readerVisibleBackgroundColor = computed(() => applyReaderBrightnessToColor(readerBackgroundColor.value, readerBrightness.value))
+const readerVisibleBackgroundColor = computed(() => (readerIsComic.value ? '#0b0c0f' : applyReaderBrightnessToColor(readerBackgroundColor.value, readerBrightness.value)))
 const currentBookNotes = computed<IBookNote[]>(() => {
   const id = props.book?.id
   return id ? [...(bookStore.notesByBookId[id] || [])].sort((a, b) => a.created_at - b.created_at) : []
@@ -459,10 +464,10 @@ const readerStageStyle = computed(() =>
   buildReaderStageStyle({
     scale: readerScale.value,
     margin: readerMargin.value,
-    backgroundColor: readerBackgroundColor.value,
+    backgroundColor: readerIsComic.value ? '#0b0c0f' : readerBackgroundColor.value,
     textColor: readerTextColor.value,
-    brightness: readerBrightness.value,
-    layoutMode: readerLayoutMode.value
+    brightness: readerIsComic.value ? 1 : readerBrightness.value,
+    layoutMode: activeReaderLayoutMode.value
   })
 )
 const selectionPopupStyle = computed(() => ({
@@ -858,7 +863,7 @@ function handleReaderIframeKeyDown(event: KeyboardEvent) {
   if (tag === 'INPUT' || tag === 'TEXTAREA' || target?.isContentEditable) return
   if (hasReaderSelection()) return
 
-  const isScroll = readerLayoutMode.value === 'scroll'
+  const isScroll = activeReaderLayoutMode.value === 'scroll'
   const key = event.key.toLowerCase()
   const isScrollKey = ['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'pageup', 'pagedown', ' ', 'home', 'end'].includes(key)
 
@@ -879,7 +884,7 @@ let lastReaderWheelAt = 0
 
 function handleReaderIframeWheel(event: WheelEvent) {
   if (!props.visible || !isReader.value) return
-  if (readerLayoutMode.value === 'scroll') {
+  if (activeReaderLayoutMode.value === 'scroll') {
     scheduleBookPositionSave(true)
     return // native scroll
   }
@@ -894,7 +899,7 @@ function handleReaderIframeWheel(event: WheelEvent) {
 }
 
 function handleReaderIframeTouchStart(event: TouchEvent) {
-  if (!props.visible || !isReader.value || readerLayoutMode.value === 'scroll') return
+  if (!props.visible || !isReader.value || activeReaderLayoutMode.value === 'scroll') return
   const touch = event.touches[0]
   if (!touch) return
   readerTouchStart = { x: touch.clientX, y: touch.clientY, time: Date.now() }
@@ -902,7 +907,7 @@ function handleReaderIframeTouchStart(event: TouchEvent) {
 
 function handleReaderIframeTouchEnd(event: TouchEvent) {
   if (!props.visible || !isReader.value) return
-  if (readerLayoutMode.value === 'scroll') {
+  if (activeReaderLayoutMode.value === 'scroll') {
     scheduleBookPositionSave(true)
     return // native scroll
   }
@@ -917,7 +922,7 @@ function handleReaderIframeTouchEnd(event: TouchEvent) {
   if (Math.abs(dx) < 56 || Math.abs(dx) < Math.abs(dy) * 1.25) return
   event.preventDefault()
   window.setTimeout(() => {
-    if (!props.visible || !isReader.value || readerLayoutMode.value === 'scroll') return
+    if (!props.visible || !isReader.value || activeReaderLayoutMode.value === 'scroll') return
     if (selectionPopupVisible.value || hasReaderSelection()) return
     if (dx < 0) nextPage()
     else prevPage()
@@ -1002,7 +1007,7 @@ function bindIframeColumnGuard(iframe: HTMLIFrameElement) {
   const doc = iframe.contentDocument
   if (!doc?.documentElement) return
   const guard = new MutationObserver((mutations) => {
-    if (readerLayoutMode.value === 'double') return
+    if (activeReaderLayoutMode.value === 'double') return
     // 单页/滚动模式下，引擎可能在异步加载阶段写入双页相关 column 样式残留，
     // 这里只在检测到样式变更时调用 applyDoublePageCss 清理双页覆盖（不再注入
     // column-count:1，避免破坏 boxplayer 的横向分页 / 容器滚动）。
@@ -1012,7 +1017,7 @@ function bindIframeColumnGuard(iframe: HTMLIFrameElement) {
       return false
     })
     if (!needsApply) return
-    applyDoublePageCss(readerContainer.value!, readerLayoutMode.value)
+    applyDoublePageCss(readerContainer.value!, activeReaderLayoutMode.value)
   })
   guard.observe(doc.documentElement, { attributeFilter: ['style'], attributes: true, childList: true, subtree: true })
   if (doc.body) {
@@ -1040,7 +1045,7 @@ function bindRenderedHook() {
     // 多次延迟覆盖，对抗引擎的异步写入
     const apply = () => {
       if (currentReader !== bookReader || !readerContainer.value) return
-      applyDoublePageCss(readerContainer.value!, readerLayoutMode.value)
+      applyDoublePageCss(readerContainer.value!, activeReaderLayoutMode.value)
       const fontFamily = readerFontFamily.value === 'Built-in font' ? '' : readerFontFamily.value
       const iframes = readerContainer.value!.querySelectorAll('iframe')
       iframes.forEach((iframe) => {
@@ -1057,7 +1062,7 @@ function bindRenderedHook() {
             fontStyle.textContent = `body *{font-family:"${fontFamily}",sans-serif!important}`
           }
         }
-        if (readerLayoutMode.value === 'scroll') {
+        if (activeReaderLayoutMode.value === 'scroll') {
           const el = iframe as HTMLIFrameElement
           el.style.setProperty('overflow', 'visible', 'important')
           const doc = el.contentDocument
@@ -1066,7 +1071,7 @@ function bindRenderedHook() {
         const iframeDoc = iframe.contentDocument
         if (iframeDoc) injectTranslationLoadingOverride(iframeDoc)
       })
-      if (readerLayoutMode.value === 'scroll') {
+      if (activeReaderLayoutMode.value === 'scroll') {
         readerContainer.value!.style.setProperty('overflow-y', 'auto', 'important')
       }
     }
@@ -1226,9 +1231,9 @@ function injectTranslationLoadingOverride(doc: Document) {
 function applyReaderStyles() {
   const container = readerContainer.value
   if (!container) return
-  const isScroll = readerLayoutMode.value === 'scroll'
+  const isScroll = activeReaderLayoutMode.value === 'scroll'
   const iframes = container.querySelectorAll('iframe')
-  applyDoublePageCss(container, readerLayoutMode.value)
+  applyDoublePageCss(container, activeReaderLayoutMode.value)
 
   // 先设置容器可滚动
   if (isScroll && container) {
@@ -1267,7 +1272,7 @@ function applyReaderStyles() {
       marginStyle.id = 'reader-content-margin-override'
       doc.head.appendChild(marginStyle)
     }
-    marginStyle.textContent = buildReaderContentMarginCss(readerMargin.value, readerLayoutMode.value)
+    marginStyle.textContent = buildReaderContentMarginCss(readerMargin.value, activeReaderLayoutMode.value)
 
     injectTranslationLoadingOverride(doc)
 
@@ -1294,7 +1299,7 @@ function buildCurrentReaderOptions(): BookReaderOptions {
     ext: ext.value,
     container: readerContainer.value!,
     initialPosition: savedPosition,
-    readerMode: readerLayoutMode.value,
+    readerMode: activeReaderLayoutMode.value,
     isDarkMode: readerMode.value === 'dark',
     fontSize: fontSize.value,
     isIndent: readerIndent.value,
@@ -2831,12 +2836,14 @@ function scrollReaderByNativeArrow(direction: -1 | 1) {
 }
 
 function handleReaderPrevButton() {
-  if (readerLayoutMode.value === 'scroll') scrollPageUp()
+  if (activeReaderLayoutMode.value === 'scroll') scrollPageUp()
+  else if (isComicRightToLeft.value) nextPage()
   else prevPage()
 }
 
 function handleReaderNextButton() {
-  if (readerLayoutMode.value === 'scroll') scrollPageDown()
+  if (activeReaderLayoutMode.value === 'scroll') scrollPageDown()
+  else if (isComicRightToLeft.value) prevPage()
   else nextPage()
 }
 
@@ -2851,7 +2858,7 @@ function handleKeyDown(e: KeyboardEvent) {
   const tag = target?.tagName
   if (tag === 'INPUT' || tag === 'TEXTAREA' || target?.isContentEditable) return
   const key = e.key.toLowerCase()
-  const isScroll = readerLayoutMode.value === 'scroll'
+  const isScroll = activeReaderLayoutMode.value === 'scroll'
 
   const isNavKey = ['arrowleft', 'arrowright', 'arrowup', 'arrowdown', 'pageup', 'pagedown', ' '].includes(key)
   if (isNavKey) {
@@ -2985,6 +2992,7 @@ watch(
     readerScale,
     fontSize,
     readerLayoutMode,
+    comicLayoutMode,
     readerBookLayout,
     readerConvertChinese,
     readerTextOrientation,
@@ -3084,14 +3092,14 @@ onBeforeUnmount(() => {
 
 <template>
   <Teleport to="body">
-    <div v-if="visible" :class="['viewer', modeClass, { 'viewer-scroll': readerLayoutMode === 'scroll' }]" :style="shellThemeStyle" @keydown="handleKeyDown">
+    <div v-if="visible" :class="['viewer', modeClass, { 'viewer-scroll': activeReaderLayoutMode === 'scroll', 'viewer-comic': readerIsComic }]" :style="shellThemeStyle" @keydown="handleKeyDown">
       <ReaderBackground :page-color="readerVisibleBackgroundColor" />
       <ReaderPageWidget
         :chapter-title="progressText"
         :book-name="readerTitle"
         :percentage="readingProgressValue"
         :reading-time="readingTimeDisplay"
-        :layout-mode="readerLayoutMode"
+        :layout-mode="activeReaderLayoutMode"
         :text-color="readerTextColor"
         :show-page-border="readerIsShowPageBorder"
         :current-page="currentPage"
@@ -3103,8 +3111,8 @@ onBeforeUnmount(() => {
       />
 
       <!-- 阅读舞台 -->
-      <div :class="['reader-stage', { 'reader-stage-scroll': readerLayoutMode === 'scroll' }]">
-        <div id="page-area" ref="readerContainer" :class="['stage-reader', { 'stage-reader-double': isDoublePageMode, 'stage-reader-scroll': readerLayoutMode === 'scroll' }]" :style="readerStageStyle"></div>
+      <div :class="['reader-stage', { 'reader-stage-scroll': activeReaderLayoutMode === 'scroll', 'reader-stage-comic': readerIsComic }]">
+        <div id="page-area" ref="readerContainer" :class="['stage-reader', { 'stage-reader-comic': readerIsComic, 'stage-reader-comic-rtl': isComicRightToLeft, 'stage-reader-double': isDoublePageMode, 'stage-reader-scroll': activeReaderLayoutMode === 'scroll' }]" :style="readerStageStyle"></div>
         <a-spin v-if="loading" class="stage-loading" :size="32" :tip="t('loading')" />
         <a-empty v-if="!loading && errorText" class="stage-error" :description="errorText" />
       </div>
@@ -3232,12 +3240,14 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- koodo-style page-turn: prev on left, next on right -->
-      <button v-if="isReader && !readerIsHidePageButton" class="page-turn-prev" :style="{ left: lockedPanels.left ? '315px' : '15px' }" type="button" @pointerdown.stop.prevent="handleReaderPrevButton" :title="t('previous.page')">
-        <ChevronLeft :size="20" :stroke-width="2.5" />
+      <button v-if="isReader && !readerIsHidePageButton" class="page-turn-prev" :style="{ left: lockedPanels.left ? '315px' : '15px' }" type="button" @pointerdown.stop.prevent="handleReaderPrevButton" :title="isComicRightToLeft ? t('next.page') : t('previous.page')">
+        <ChevronRight v-if="isComicRightToLeft" :size="20" :stroke-width="2.5" />
+        <ChevronLeft v-else :size="20" :stroke-width="2.5" />
       </button>
       <div class="page-turn-cluster" :style="rightPageTurnStyle">
-        <button v-if="isReader && !readerIsHidePageButton" class="page-turn-btn page-turn-next" type="button" @pointerdown.stop.prevent="handleReaderNextButton" :title="t('next.page')">
-          <ChevronRight :size="20" :stroke-width="2.5" />
+        <button v-if="isReader && !readerIsHidePageButton" class="page-turn-btn page-turn-next" type="button" @pointerdown.stop.prevent="handleReaderNextButton" :title="isComicRightToLeft ? t('previous.page') : t('next.page')">
+          <ChevronLeft v-if="isComicRightToLeft" :size="20" :stroke-width="2.5" />
+          <ChevronRight v-else :size="20" :stroke-width="2.5" />
         </button>
         <button v-if="canUseTextToSpeech && !readerIsHideAudiobookButton" class="page-turn-btn" :class="{ active: speechActive }" type="button" @click.stop.prevent="speechActive ? stopReaderSpeech() : speakCurrentPage()" :title="t('tts')">
           <Volume2 :size="20" :stroke-width="speechActive ? 2.5 : 1.8" />
@@ -3251,7 +3261,7 @@ onBeforeUnmount(() => {
 
       <!-- Top-right corner: scale + PDF convert + grid menu (koodo-style) -->
       <div v-show="!isRightPanelVisible" class="reader-topright-controls" :style="rightFloatingControlsStyle">
-        <div v-if="(readerLayoutMode === 'scroll' || readerLayoutMode === 'single') && !readerIsHideScaleButton" class="reader-scale-wrap">
+        <div v-if="(activeReaderLayoutMode === 'scroll' || activeReaderLayoutMode === 'single') && !readerIsHideScaleButton" class="reader-scale-wrap">
           <div class="reader-scale-btn" @click="isShowScale = !isShowScale">
             <ZoomIn :size="18" :stroke-width="1.8" />
           </div>
@@ -3457,18 +3467,28 @@ onBeforeUnmount(() => {
         <div v-if="rightTab === 'settings'" class="panel-body panel-settings" :class="{ 'settings-locked': settingsLocked }" style="overflow-y: auto; flex: 1">
           <!-- View Mode (match koodo ModeControl) -->
           <div class="setting-section">
-            <div class="setting-section-title">{{ t('view.mode') }}</div>
+            <div class="setting-section-title">{{ readerIsComic ? 'Comic layout' : t('view.mode') }}</div>
             <div class="view-mode-control">
-              <div :class="['view-mode-btn', readerLayoutMode === 'single' ? 'active' : '']" @click="readerLayoutMode = 'single'" title="Single page">
+              <div :class="['view-mode-btn', activeReaderLayoutMode === 'single' ? 'active' : '']" @click="readerIsComic ? (comicLayoutMode = 'single') : (readerLayoutMode = 'single')" title="Single page">
                 <BookOpen :size="18" :stroke-width="1.8" />
               </div>
-              <div :class="['view-mode-btn', readerLayoutMode === 'double' ? 'active' : '']" @click="readerLayoutMode = 'double'" title="Double page">
+              <div :class="['view-mode-btn', activeReaderLayoutMode === 'double' ? 'active' : '']" @click="readerIsComic ? (comicLayoutMode = 'double') : (readerLayoutMode = 'double')" title="Double page">
                 <span style="font-size: 18px; font-weight: 600">⧉</span>
               </div>
-              <div :class="['view-mode-btn', readerLayoutMode === 'scroll' ? 'active' : '']" @click="readerLayoutMode = 'scroll'" title="Scroll">
+              <div :class="['view-mode-btn', activeReaderLayoutMode === 'scroll' ? 'active' : '']" @click="readerIsComic ? (comicLayoutMode = 'scroll') : (readerLayoutMode = 'scroll')" title="Scroll">
                 <List :size="18" :stroke-width="1.8" />
               </div>
             </div>
+            <template v-if="readerIsComic">
+              <div class="comic-layout-hint">Single page is recommended for spreads; use two-page mode for regular albums.</div>
+              <div class="comic-direction-row">
+                <span>Reading direction</span>
+                <a-radio-group v-model="comicReadingDirection" type="button" size="mini">
+                  <a-radio value="ltr">LTR</a-radio>
+                  <a-radio value="rtl">RTL</a-radio>
+                </a-radio-group>
+              </div>
+            </template>
           </div>
 
           <!-- Background Color (match koodo ThemeList) -->
@@ -4283,6 +4303,28 @@ onBeforeUnmount(() => {
 }
 .stage-reader-scroll:hover::-webkit-scrollbar-thumb {
   background: rgba(128, 128, 128, 0.3);
+}
+
+.reader-stage-comic {
+  top: 18px;
+  bottom: 18px;
+  user-select: none;
+}
+.stage-reader-comic {
+  background: #0b0c0f;
+  color: #fff;
+}
+.stage-reader-comic :deep(iframe) {
+  background: #0b0c0f !important;
+}
+.stage-reader-comic-rtl {
+  direction: rtl;
+}
+.stage-reader-comic.stage-reader-double::before {
+  left: 50%;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: none;
 }
 
 /* Double-page spine (keep existing) */
@@ -5156,6 +5198,22 @@ onBeforeUnmount(() => {
 }
 .view-mode-btn:hover {
   opacity: 0.7;
+}
+.comic-layout-hint {
+  margin-top: 10px;
+  color: var(--panel-fg);
+  font-size: 11px;
+  line-height: 1.5;
+  opacity: 0.62;
+}
+.comic-direction-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+  color: var(--panel-fg);
+  font-size: 12px;
 }
 
 .color-swatch-list {

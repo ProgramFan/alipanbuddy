@@ -132,6 +132,19 @@ describe('BookReaderModal template structure', () => {
     expect(widgetSource).toContain('Chapter ${props.currentChapter || 1}')
   })
 
+  it('gives archive-based comic books their own layout and reading direction controls', () => {
+    const source = readFileSync(resolve(__dirname, '../../layout/BookReaderModal.vue'), 'utf8')
+
+    expect(source).toContain('isComicBookFormat')
+    expect(source).toContain("const comicLayoutMode = ref<BookReaderLayoutMode>('single')")
+    expect(source).toContain("const comicReadingDirection = ref<'ltr' | 'rtl'>('ltr')")
+    expect(source).toContain('activeReaderLayoutMode')
+    expect(source).toContain("'viewer-comic': readerIsComic")
+    expect(source).toContain('Comic layout')
+    expect(source).toContain('Reading direction')
+    expect(source).toContain('stage-reader-comic-rtl')
+  })
+
   it('refreshes page and chapter labels after any engine page change without accepting stale progress', () => {
     const source = readFileSync(resolve(__dirname, '../../layout/BookReaderModal.vue'), 'utf8')
     const hookStart = source.indexOf('function bindRenderedHook')
@@ -159,7 +172,7 @@ describe('BookReaderModal template structure', () => {
 
     expect(source).toContain("from '../utils/bookReaderLayout'")
     expect(styleSource).toContain('buildReaderStageStyle')
-    expect(source).toContain('buildReaderContentMarginCss(readerMargin.value, readerLayoutMode.value)')
+    expect(source).toContain('buildReaderContentMarginCss(readerMargin.value, activeReaderLayoutMode.value)')
     expect(source).toContain("marginStyle.id = 'reader-content-margin-override'")
     expect(source).toContain('watch([readerMargin], () => {')
     expect(source).toContain('applyReaderStyles()')
@@ -174,7 +187,7 @@ describe('BookReaderModal template structure', () => {
     const applySource = source.slice(applyStart, applyEnd)
 
     expect(source).toContain('applyDoublePageCss')
-    expect(applySource).toContain('applyDoublePageCss(container, readerLayoutMode.value)')
+    expect(applySource).toContain('applyDoublePageCss(container, activeReaderLayoutMode.value)')
     // 双页模式仍需注入 column-count: 2，但不能污染单页引擎自己的分页样式。
     expect(readerSource).toContain("doc.documentElement.setAttribute('data-boxplayer-double-page', 'true')")
     expect(readerSource).toContain('kookit-double-page-override')
