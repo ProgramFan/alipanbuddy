@@ -14,6 +14,17 @@ describe('book external metadata', () => {
     expect(String(requestMock.mock.calls[0][0])).toContain('author=%E5%88%98%E6%85%88%E6%AC%A3')
   })
 
+  it('falls back to Google Books when OpenLibrary times out', async () => {
+    const requestMock = vi.fn(async (url: string) => {
+      if (url.includes('openlibrary.org')) throw new DOMException('signal timed out', 'TimeoutError')
+      return { ok: true, json: async () => ({ items: [{ volumeInfo: { title: 'The Wailing Wind', authors: ['Tony Hillerman'], imageLinks: { thumbnail: 'http://books.google.test/cover.jpg' } } }] }) }
+    })
+    const logs: string[] = []
+    await expect(lookupExternalBookMetadata(book({ file_name: 'The Wailing Wind - Tony Hillerman.mobi', title: 'The Wailing Wind', author: 'Tony Hillerman' }), requestMock as unknown as typeof fetch, (message) => logs.push(message))).resolves.toMatchObject({ source: 'googlebooks', coverUrl: 'https://books.google.test/cover.jpg' })
+    expect(requestMock).toHaveBeenCalledTimes(2)
+    expect(logs.some((message) => message.includes('Google Books 命中'))).toBe(true)
+  })
+
   it('rejects low confidence results and preserves existing cover records', async () => {
     const request = vi.fn(async () => ({ ok: true, json: async () => ({ docs: [{ title: '不同的书', author_name: ['其他作者'] }] }) })) as unknown as typeof fetch
     await expect(lookupExternalBookMetadata(book(), request)).resolves.toBeNull()
@@ -25,9 +36,9 @@ describe('book external metadata', () => {
     const source = await import('node:fs').then(({ readFileSync }) => readFileSync(new URL('../bookExternalMetadata.ts', import.meta.url), 'utf8'))
 
     expect(source).toContain('ExternalBookMetadataLogger')
-    expect(source).toContain('log?.(`${logPrefix} 查询 OpenLibrary')
-    expect(source).toContain('log?.(`${logPrefix} OpenLibrary 请求失败`, error)')
-    expect(source).toContain('log?.(`${logPrefix} 未命中：候选=')
-    expect(source).toContain('log?.(`${logPrefix} 命中：')
+    expect(source).toContain("{ name: 'Google Books', lookup: lookupGoogleBooksMetadata }")
+    expect(source).toContain('const EXTERNAL_BOOK_METADATA_TIMEOUT_MS = 6000')
+    expect(source).toContain('log?.(`${logPrefix} ${provider.name} 请求失败`, error)')
+    expect(source).toContain('log?.(`${logPrefix} ${provider.name} 命中：')
   })
 })
