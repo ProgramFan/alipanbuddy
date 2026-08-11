@@ -145,6 +145,15 @@ describe('BookReaderModal template structure', () => {
     expect(source).toContain('stage-reader-comic-rtl')
   })
 
+  it('materializes system-opened local books before ReaderKit fetches them', () => {
+    const source = readFileSync(resolve(__dirname, '../../layout/BookReaderModal.vue'), 'utf8')
+
+    expect(source).toContain('readLocalBookSource(props.sourceUrlOverride)')
+    expect(source).toContain("window.require('fs')")
+    expect(source).toContain('URL.createObjectURL(new Blob([new Uint8Array(bytes)]))')
+    expect(source).toContain('URL.revokeObjectURL(localBookObjectUrl)')
+  })
+
   it('refreshes page and chapter labels after any engine page change without accepting stale progress', () => {
     const source = readFileSync(resolve(__dirname, '../../layout/BookReaderModal.vue'), 'utf8')
     const hookStart = source.indexOf('function bindRenderedHook')

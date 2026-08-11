@@ -125,6 +125,7 @@ const readerContainer = ref<HTMLDivElement>()
 const loading = ref(false)
 const errorText = ref('')
 const sourceUrl = ref('')
+let localBookObjectUrl = ''
 const readerMode = ref<BookReaderThemeMode>(savedPreferences.themeMode)
 const fontSize = ref(savedPreferences.fontSize)
 const readerLayoutMode = ref<BookReaderLayoutMode>(savedPreferences.readerLayoutMode)
@@ -656,6 +657,10 @@ function cleanup() {
   if (bookReader) {
     bookReader.destroy()
     bookReader = null
+  }
+  if (localBookObjectUrl) {
+    URL.revokeObjectURL(localBookObjectUrl)
+    localBookObjectUrl = ''
   }
   sourceUrl.value = ''
   progressText.value = ''
@@ -1475,7 +1480,7 @@ function togglePanel(side: EdgeSide) {
 }
 
 async function resolveSourceUrl(book: IBookItem): Promise<string> {
-  if (props.sourceUrlOverride) return props.sourceUrlOverride
+  if (props.sourceUrlOverride) return readLocalBookSource(props.sourceUrlOverride)
 
   // 本地导入的图书：从 description 中提取 dataUrl
   if (book.user_id === 'local' || book.drive_id === 'local') {
@@ -1502,6 +1507,15 @@ async function resolveSourceUrl(book: IBookItem): Promise<string> {
     content_disposition: 'inline',
     file_name: book.file_name
   })
+}
+
+function readLocalBookSource(source: string): string {
+  if (!source.startsWith('file:') || !window.require) return source
+  const fs = window.require('fs') as { readFileSync: (filePath: string) => Uint8Array }
+  const url = window.require('url') as { fileURLToPath: (fileUrl: string) => string }
+  const bytes = fs.readFileSync(url.fileURLToPath(source))
+  localBookObjectUrl = URL.createObjectURL(new Blob([new Uint8Array(bytes)]))
+  return localBookObjectUrl
 }
 
 function scheduleBookPositionSave(record = false) {

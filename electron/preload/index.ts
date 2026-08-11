@@ -440,6 +440,20 @@ window.onExternalDownloadOpen = (callback: (payload: string) => void) => {
   ipcRenderer.on('external-download:open', (_event, payload: string) => callback(payload))
 }
 
+const pendingExternalFilePayloads: Array<{ filePath: string; fileUrl: string }> = []
+const externalFileCallbacks = new Set<(payload: { filePath: string; fileUrl: string }) => void>()
+ipcRenderer.on('external-file:open', (_event, payload: { filePath: string; fileUrl: string }) => {
+  if (!externalFileCallbacks.size) {
+    pendingExternalFilePayloads.push(payload)
+    return
+  }
+  externalFileCallbacks.forEach((callback) => callback(payload))
+})
+window.onExternalFileOpen = (callback: (payload: { filePath: string; fileUrl: string }) => void) => {
+  externalFileCallbacks.add(callback)
+  while (pendingExternalFilePayloads.length) callback(pendingExternalFilePayloads.shift()!)
+}
+
 // fix: new-windows event
 ipcRenderer.on('webview-new-window', (e, webContentsId, details) => {
   const webview = document.getElementById('webview') as any

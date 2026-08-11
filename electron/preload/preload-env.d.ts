@@ -37,6 +37,7 @@ declare interface Window {
   WebQuarkDownloadUrl: any
   WebSetCookies: any
   WebOpenWindow: any
+  onExternalFileOpen: (callback: (payload: { filePath: string; fileUrl: string }) => void) => void
   WebOpenLyric: any
   WebSendLyric: any
   WebCloseLyric: any

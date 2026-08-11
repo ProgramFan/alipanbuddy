@@ -67,6 +67,7 @@ declare global {
     TvBoxInvoke: (channel: string, data: unknown) => Promise<unknown>
     ReedyInvoke: (channel: string, ...args: any[]) => Promise<any>
     onExternalDownloadOpen: (callback: (payload: string) => void) => void
+    onExternalFileOpen: (callback: (payload: { filePath: string; fileUrl: string }) => void) => void
     MsImageCacheSyncConfig: any
     MsImageCacheStats: () => Promise<{ totalBytes: number; servers: unknown[] }>
     MsImageCacheClear: (serverId?: string) => Promise<{ cleared: number }>
