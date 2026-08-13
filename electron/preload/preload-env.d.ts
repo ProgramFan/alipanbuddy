@@ -17,6 +17,7 @@ declare interface Window {
   WebSpawnSync: any
   WebExecSync: any
   WebShowOpenDialogSync: any
+  WebShowOpenDialog: (config: Electron.OpenDialogOptions) => Promise<string[]>
   WebShowSaveDialogSync: any
   WebShowItemInFolder: any
   WebPlatformSync: any

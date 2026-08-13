@@ -802,6 +802,7 @@ const useSettingStore = defineStore('setting', {
       }
       SaveSetting()
       useAppStore().toggleTheme(setting.uiTheme)
+      if (Object.hasOwn(partial, 'uiTheme')) window.WebSaveTheme({ theme: setting.uiTheme })
       window.MainProxyHost = setting.debugProxyHost
       window.MainProxyPort = setting.debugProxyPort
       window.WinMsgToUpload({ cmd: 'SettingRefresh' })

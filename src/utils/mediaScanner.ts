@@ -99,19 +99,6 @@ export class MediaScanner {
       const subtitleIndex: SubtitleAssociationIndex = { files: [], folderParents: new Map() }
       let totalProcessed = 0
 
-      // 立即添加文件夹到源列表，用户无需等待刮削完成即可看到
-      this.mediaStore.addFolder({
-        id: folderKey,
-        fileId: folder.file_id,
-        name: folder.name,
-        path: folder.path || '',
-        userId: scanContext.userId,
-        driveId: scanContext.driveId,
-        driveServerId: scanContext.driveServerId,
-        scanDate: new Date(),
-        itemCount: 0
-      })
-
       console.log('开始扫描网盘文件夹:', folder.name)
       const shouldRunAIScrape = Boolean(options.aiScrape && await this.canRunInternalAIScrape())
       let totalFound = 0
@@ -145,19 +132,21 @@ export class MediaScanner {
           await DB.reconcileMediaLibraryFolder(folderKey, [...existingIds])
           this.mediaStore.reconcileFolderSource(folderKey, existingIds)
         }
-        const mediaFolder: MediaLibraryFolder = {
-          id: folderKey,
-          fileId: folder.file_id,
-          name: folder.name,
-          path: folder.path || '',
-          userId: scanContext.userId,
-          driveId: scanContext.driveId,
-          driveServerId: scanContext.driveServerId,
-          scanDate: new Date(),
-          itemCount: totalFound
+        if (totalFound > 0) {
+          const mediaFolder: MediaLibraryFolder = {
+            id: folderKey,
+            fileId: folder.file_id,
+            name: folder.name,
+            path: folder.path || '',
+            userId: scanContext.userId,
+            driveId: scanContext.driveId,
+            driveServerId: scanContext.driveServerId,
+            scanDate: new Date(),
+            itemCount: totalFound
+          }
+          this.mediaStore.addFolder(mediaFolder)
+          this.mediaStore.pruneOrphanDuplicateFolders()
         }
-        this.mediaStore.addFolder(mediaFolder)
-        this.mediaStore.pruneOrphanDuplicateFolders()
         if (!options.silent) {
           message.success(`扫描完成！共处理 ${totalProcessed} 个视频文件`)
         }

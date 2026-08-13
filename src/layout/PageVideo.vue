@@ -2,7 +2,7 @@
 import { KeyboardState, useAppStore, useKeyboardStore, usePanFileStore, useSettingStore } from '../store'
 import { useMediaLibraryStore } from '../store/medialibrary'
 import type { MediaLibraryItem } from '../types/media'
-import { h, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, h, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { Button, Input, Modal, Option as AOption, Select } from '@arco-design/web-vue'
 import Artplayer from 'artplayer'
 import HlsJs from 'hls.js'
@@ -45,8 +45,10 @@ import {
   getSubtitleExtension,
   searchSubtitles
 } from '../utils/subtitleApi'
-import type { SubtitleSearchResult } from '../utils/subtitleApi'
-import { dedupeSubtitleSelectors } from '../utils/subtitleSelector'
+import type { SubtitleSearchFormat, SubtitleSearchResult } from '../utils/subtitleApi'
+import { dedupeSubtitleSelectors, hasSubtitleSource, selectSingleSubtitleCandidates } from '../utils/subtitleSelector'
+import { formatEmbeddedSubtitleLabel } from '../utils/subtitleLanguage'
+import { resolveFullscreenModalContainer } from '../utils/fullscreenModal'
 import { updateSettingPreservingActivePanel } from '../utils/artplayerSetting'
 import message from '../utils/message'
 import { captureVideoQualitySwitchPlaybackState } from '../utils/videoQualitySwitch'
@@ -62,7 +64,7 @@ import { resolveDriveProvider } from '../utils/driveProvider'
 import { getWebDavConnection, getWebDavConnectionId, isWebDavDrive, listWebDavDirectory } from '../utils/webdavClient'
 import useMediaServerRegistryStore from '../store/mediaServerRegistry'
 import MpvEmbeddedSurface from '../components/MpvEmbeddedSurface.vue'
-import { t } from '../i18n'
+import { t, useLocale } from '../i18n'
 import {
   getMediaServerItemDetail,
   getMediaServerPlaybackInfo,
@@ -90,6 +92,7 @@ const appStore = useAppStore()
 const mediaStore = useMediaLibraryStore()
 const mediaServerRegistry = useMediaServerRegistryStore()
 const pageVideo = appStore.pageVideo!
+const locale = useLocale()
 const isTop = ref(false)
 let autoPlayNumber = 0
 let lastPlayNumber = -1
@@ -104,6 +107,7 @@ let pendingMediaServerSeekTime: number | null = null
 const mediaServerControlNames = new Set<string>()
 let danmakuAutoLoadingKey = ''
 let danmakuAutoLoadedKey = ''
+let activeSearchModal: { close: () => void } | undefined
 const useMacEmbeddedMpv = useSettingStore().uiVideoPlayer === 'mpv' && window.platform === 'darwin'
 const mpvEmbeddedUrl = ref('')
 const mpvEmbeddedHeaders = ref<Record<string, string>>({})
@@ -1687,7 +1691,22 @@ const toStringValue = (value: unknown) => {
   return typeof value === 'string' ? value : String(value ?? '')
 }
 
+const focusActiveSearchModal = () => {
+  if (!activeSearchModal) return false
+  requestAnimationFrame(() => {
+    const dialog = document.querySelector<HTMLElement>('.arco-modal.danmaku-search-modal')
+    const focusTarget = dialog?.querySelector<HTMLElement>('.danmaku-search-input') || dialog
+    focusTarget?.focus({ preventScroll: true })
+  })
+  return true
+}
+
+const getSearchModalPopupContainer = (art: Artplayer) => {
+  return resolveFullscreenModalContainer(art.fullscreen, document.fullscreenElement) as HTMLElement | undefined
+}
+
 const openDanmakuSearchModal = (art: Artplayer) => {
+  if (focusActiveSearchModal()) return
   const apis = getDanmakuApis()
   if (!apis.length) {
     message.warning(t('video.configureDanmakuApi'))
@@ -1877,14 +1896,20 @@ const openDanmakuSearchModal = (art: Artplayer) => {
     closable: false,
     footer: false,
     maskClosable: true,
+    renderToBody: true,
+    popupContainer: getSearchModalPopupContainer(art),
     modalClass: 'danmaku-search-modal',
     bodyClass: 'danmaku-search-modal-body',
     onOpen: runSearch,
+    onClose: () => {
+      if (activeSearchModal === modal) activeSearchModal = undefined
+    },
     content: () => h('div', { class: 'danmaku-modal' }, [
       renderHeader(),
       viewMode.value === 'episodes' ? renderEpisodesView() : renderSearchView()
     ])
   })
+  activeSearchModal = modal
 }
 
 const loadSubtitleTextToPlayer = async (art: Artplayer, name: string, ext: string, data: string) => {
@@ -1903,6 +1928,63 @@ const loadSubtitleTextToPlayer = async (art: Artplayer, name: string, ext: strin
   onlineSubData.ext = normalizedExt
   onlineSubData.dataUrl = URL.createObjectURL(new Blob([onlineSubData.data], { type: normalizedExt === 'vtt' ? 'text/vtt' : 'text/plain' }))
   await switchSubtitleText(art, name, normalizedExt, onlineSubData.data)
+}
+
+const selectLocalSubtitleFile = () => new Promise<File | undefined>((resolve) => {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = '.ass,.ssa,.srt,.vtt'
+  input.style.display = 'none'
+  const cleanup = () => input.remove()
+  input.addEventListener('change', () => {
+    const file = input.files?.[0]
+    cleanup()
+    resolve(file)
+  }, { once: true })
+  input.addEventListener('cancel', () => {
+    cleanup()
+    resolve(undefined)
+  }, { once: true })
+  document.body.appendChild(input)
+  input.click()
+})
+
+const importLocalSubtitle = async (art: Artplayer) => {
+  try {
+    let name = ''
+    let data = ''
+    if (typeof window.WebShowOpenDialog === 'function') {
+      const paths = await window.WebShowOpenDialog({
+        title: t('video.importLocalSubtitle'),
+        buttonLabel: t('common.open'),
+        properties: ['openFile'],
+        filters: [{ name: 'Subtitle files', extensions: ['ass', 'ssa', 'srt', 'vtt'] }]
+      })
+      const subtitlePath = paths[0]
+      if (!subtitlePath) return
+      const fs = window.require?.('fs') as { readFileSync?: (filePath: string) => Uint8Array } | undefined
+      const bytes = fs?.readFileSync?.(subtitlePath)
+      if (!bytes) throw new Error('Unable to read subtitle file')
+      name = path.basename(subtitlePath)
+      data = decodeSubtitleBuffer(Uint8Array.from(bytes).buffer)
+    } else {
+      const file = await selectLocalSubtitleFile()
+      if (!file) return
+      name = file.name
+      data = decodeSubtitleBuffer(await file.arrayBuffer())
+    }
+    const ext = getSubtitleExtension(name)
+    await loadSubtitleTextToPlayer(art, name, ext, data)
+    addDownloadedSubtitleToSelector(name, ext, data)
+    // The local subtitle is already active. A cloud-directory refresh is optional
+    // and must not turn a successful import into a visible failure.
+    await getSubTitleList(art, false).catch((error) => {
+      console.warn('刷新字幕列表失败，本地字幕已加载:', error)
+    })
+  } catch (error) {
+    console.error('导入本地字幕失败:', error)
+    art.notice.show = t('video.subtitleLoadFailed')
+  }
 }
 
 const addDownloadedSubtitleToSelector = (name: string, ext: string, data: string) => {
@@ -1937,8 +2019,8 @@ const loadSubtitleUrlToPlayer = async (art: Artplayer, item: selectorItem) => {
 const loadMediaServerWebSubtitle = async (art: Artplayer, preferredStreamIndex = -1) => {
   const sources = pageVideo.media_subtitle_sources || []
   embedSubSelector = sources.map((source) => ({
-    html: source.title || t('video.subtitle'),
-    name: source.title || t('video.subtitle'),
+    html: formatEmbeddedSubtitleLabel(source.title, locale.value) || t('video.subtitle'),
+    name: formatEmbeddedSubtitleLabel(source.title, locale.value) || t('video.subtitle'),
     ext: getSubtitleExtension(source.url),
     url: source.url,
     default: source.streamIndex === preferredStreamIndex
@@ -1958,12 +2040,15 @@ const loadMediaServerWebSubtitle = async (art: Artplayer, preferredStreamIndex =
 }
 
 const openSubtitleSearchModal = (art: Artplayer) => {
+  if (focusActiveSearchModal()) return
   const keyword = ref(getVideoSearchTitle())
   const language = ref('zh-cn')
+  const format = ref<'all' | Exclude<SubtitleSearchFormat, 'unknown'>>('all')
   const loading = ref(false)
   const downloadingFileId = ref<number>()
   const errorText = ref('')
   const results = ref<SubtitleSearchResult[]>([])
+  const visibleResults = computed(() => format.value === 'all' ? results.value : results.value.filter((subtitle) => subtitle.format === format.value))
   let modal: any
 
   const runSearch = async () => {
@@ -2012,7 +2097,10 @@ const openSubtitleSearchModal = (art: Artplayer) => {
         h('span', { class: 'subtitle-doc-glyph' })
       ]),
       h('span', { class: 'danmaku-result-copy' }, [
-        h('span', { class: 'danmaku-result-title' }, subtitle.name),
+        h('span', { class: 'subtitle-result-title-row' }, [
+          h('span', { class: 'danmaku-result-title' }, subtitle.name),
+          ...(subtitle.format === 'unknown' ? [] : [h('span', { class: 'subtitle-format-badge' }, subtitle.format.toUpperCase())])
+        ]),
         h('span', { class: 'danmaku-result-meta' }, `${subtitle.language}  下载: ${formatSubtitleDownloadCount(subtitle.downloadCount)}`)
       ]),
       h('span', { class: ['subtitle-download-arrow', downloadingFileId.value === subtitle.fileId ? 'is-loading' : ''] }, downloadingFileId.value === subtitle.fileId ? t('video.loading') : t('video.load'))
@@ -2023,7 +2111,8 @@ const openSubtitleSearchModal = (art: Artplayer) => {
     if (loading.value && !results.value.length) return h('div', { class: 'danmaku-empty' }, `${t('video.searching')}...`)
     if (errorText.value) return h('div', { class: 'danmaku-empty' }, errorText.value)
     if (!results.value.length) return h('div', { class: 'danmaku-empty' }, keyword.value.trim() ? t('video.noSubtitleFound') : t('video.enterSearchKeyword'))
-    return results.value.map(renderSubtitleRow)
+    if (!visibleResults.value.length) return h('div', { class: 'danmaku-empty' }, t('video.noSubtitleFormatFound'))
+    return visibleResults.value.map(renderSubtitleRow)
   }
 
   modal = Modal.open({
@@ -2033,9 +2122,14 @@ const openSubtitleSearchModal = (art: Artplayer) => {
     closable: false,
     footer: false,
     maskClosable: false,
+    renderToBody: true,
+    popupContainer: getSearchModalPopupContainer(art),
     modalClass: 'danmaku-search-modal subtitle-search-modal',
     bodyClass: 'danmaku-search-modal-body',
     onOpen: runSearch,
+    onClose: () => {
+      if (activeSearchModal === modal) activeSearchModal = undefined
+    },
     content: () => h('div', { class: 'danmaku-modal' }, [
       h('div', { class: 'danmaku-full-header' }, [
         h('button', {
@@ -2059,6 +2153,19 @@ const openSubtitleSearchModal = (art: Artplayer) => {
               if (keyword.value.trim()) void runSearch()
             }
           }, () => subtitleLanguages.map((item) => h(AOption, { value: item.code }, () => item.name))),
+          h(Select, {
+            class: 'subtitle-format-select',
+            modelValue: format.value,
+            triggerProps: { autoFitPopupMinWidth: true },
+            'onUpdate:modelValue': (value: string | number | boolean | Record<string, any> | Array<string | number | boolean | Record<string, any>>) => {
+              format.value = toStringValue(value) as 'all' | Exclude<SubtitleSearchFormat, 'unknown'>
+            }
+          }, () => [
+            ['all', t('video.subtitleFormatAll')],
+            ['srt', 'SRT'],
+            ['ass', 'ASS'],
+            ['vtt', 'VTT']
+          ].map(([value, label]) => h(AOption, { value }, () => label))),
           h('div', { class: 'danmaku-input-wrap' }, [
             h(Input, {
               class: 'danmaku-search-input',
@@ -2078,7 +2185,7 @@ const openSubtitleSearchModal = (art: Artplayer) => {
         ]),
         h('section', { class: 'danmaku-result-shell' }, [
           h('div', { class: 'danmaku-result-toolbar' }, [
-            h('span', {}, loading.value ? t('video.searching') : results.value.length ? t('video.foundSubtitles', { count: results.value.length }) : t('video.searchResults')),
+            h('span', {}, loading.value ? t('video.searching') : visibleResults.value.length ? t('video.foundSubtitles', { count: visibleResults.value.length }) : t('video.searchResults')),
             h('span', {}, subtitleLanguages.find(item => item.code === language.value)?.name || '')
           ]),
           h('div', { class: 'danmaku-modal-list' }, renderContentState())
@@ -2086,6 +2193,7 @@ const openSubtitleSearchModal = (art: Artplayer) => {
       ])
     ])
   })
+  activeSearchModal = modal
 }
 
 const defaultControls = async (art: Artplayer) => {
@@ -2261,7 +2369,7 @@ const resolvePageVideoMpvSource = async (): Promise<{ url: string; headers?: Rec
         proxy_headers: JSON.stringify(subtitle.headers)
       })
       : subtitle.url,
-    title: t('video.embeddedSubtitle', { language: subtitle.language })
+    title: formatEmbeddedSubtitleLabel(subtitle.language, locale.value)
   }))
   return { url: source.url, headers: source.headers, type: source.type, qualityLabel: source.qualityLabel, quality: defaultQuality.quality, qualities, subtitles }
 }
@@ -2571,8 +2679,8 @@ const getVideoInfo = async (art: Artplayer) => {
           })
           : subtitle.url
         embedSubSelector.push({
-          html: t('video.embeddedSubtitle', { language: subtitle.language }),
-          name: subtitle.language,
+          html: formatEmbeddedSubtitleLabel(subtitle.language, locale.value),
+          name: formatEmbeddedSubtitleLabel(subtitle.language, locale.value),
           ext: getSubtitleExtension(subtitle.url),
           url: subtitleUrl,
           default: i === 0
@@ -2846,10 +2954,6 @@ const isMultipleSubtitleSupported = (item: selectorItem) => {
   return ['srt', 'vtt'].includes(ext) && (!!item.url || !!item.file_id || typeof item.data === 'string')
 }
 
-const hasSubtitleSource = (item?: selectorItem) => {
-  return !!item && (!!item.url || !!item.file_id || typeof item.data === 'string')
-}
-
 const readSubtitleItemText = async (item: selectorItem) => {
   if (!item.file_id) return ''
   const url = await resolveCloudSubtitleUrl(item)
@@ -3040,6 +3144,7 @@ const getSubTitleList = async (art: Artplayer, autoLoad = true) => {
   const subDefault = subSelector.find((item) => item.default) || subSelector[0]
   updateSubtitleListControl(art, subSelector, subDefault)
   const multipleSubtitleCandidates = subSelector.filter(isMultipleSubtitleSupported)
+  const singleSubtitleCandidates = selectSingleSubtitleCandidates(subSelector)
   const subtitleTranslate = art.storage.get('subtitleTranslate')
   // 字幕设置面板
   updateSettingPreservingActivePanel(art.setting as any, {
@@ -3116,6 +3221,12 @@ const getSubTitleList = async (art: Artplayer, autoLoad = true) => {
         }
         return item.html
       }
+    }, {
+      html: t('video.importLocalSubtitle'),
+      tooltip: t('video.importLocalSubtitle'),
+      onClick: async (item: SettingOption) => {
+        await importLocalSubtitle(art)
+      }
     }, ...(multipleSubtitleCandidates.length >= 2 ? [{
       html: t('video.dualSubtitle'),
       tooltip: multipleSubtitleMode === 'double' ? t('video.on') : (multipleSubtitleMode === 'reverse' ? t('video.reverse') : t('video.off')),
@@ -3144,15 +3255,15 @@ const getSubTitleList = async (art: Artplayer, autoLoad = true) => {
         if (ok && item.$parent) item.$parent.tooltip = item.mode === 'reverse' ? t('video.reverse') : t('video.on')
         return item.html
       }
-    }, {
+    }] : []), ...(singleSubtitleCandidates.length ? [{
       html: t('video.singleSubtitle'),
       tooltip: t('video.selectDisplay'),
-      selector: multipleSubtitleCandidates.slice(0, 2).map((candidate, index) => ({
+      selector: singleSubtitleCandidates.map((candidate, index) => ({
         html: candidate.name || candidate.html || t('video.subtitleIndex', { index: index + 1 }),
         subtitleIndex: index
       })),
       onSelect: async (item: SettingOption) => {
-        const candidate = multipleSubtitleCandidates[item.subtitleIndex]
+        const candidate = singleSubtitleCandidates[item.subtitleIndex]
         if (!candidate) return item.html
         clearMultipleSubtitleState(art)
         if (candidate.file_id) await loadOnlineSub(art, candidate)
@@ -3182,6 +3293,9 @@ const getSubTitleList = async (art: Artplayer, autoLoad = true) => {
     }],
     onSelect: async (selector: any, element: HTMLElement, event: Event) => {
       const item = selector as selectorItem
+      // Setting actions (for example “Import Local Subtitle”) also bubble here.
+      // They are not subtitle sources and must never be handed to the subtitle loader.
+      if (!hasSubtitleSource(item)) return false
       if (art.subtitle.show) {
         try {
           art.notice.show = ''
@@ -3324,6 +3438,8 @@ const handleTop = (_e: any) => {
 }
 
 onBeforeUnmount(() => {
+  activeSearchModal?.close()
+  activeSearchModal = undefined
   if (pageVideo.drive_id === 'media_server') {
     void sendMediaServerStopReport(useMacEmbeddedMpv ? mpvEmbeddedStatus.value?.position || pageVideo.play_cursor || 0 : ArtPlayerRef?.currentTime || 0)
   }
@@ -4049,7 +4165,11 @@ onBeforeUnmount(() => {
 }
 
 .subtitle-searchbar {
-  grid-template-columns: 150px minmax(0, 1fr) 116px;
+  grid-template-columns: 150px 116px minmax(0, 1fr) 116px;
+}
+
+.subtitle-format-select .arco-select-view-single {
+  min-width: 116px;
 }
 
 .danmaku-api-select .arco-select-view-single {
@@ -4276,6 +4396,30 @@ onBeforeUnmount(() => {
   min-width: 0;
   flex-direction: column;
   gap: 6px;
+}
+
+.subtitle-result-title-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.subtitle-result-title-row .danmaku-result-title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.subtitle-format-badge {
+  flex: 0 0 auto;
+  border: 1px solid rgba(113, 165, 255, .42);
+  border-radius: 4px;
+  padding: 2px 5px;
+  color: #9dc0ff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
 }
 
 .danmaku-result-title {

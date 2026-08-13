@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildUpstreamProxyHeaders } from '../proxyHeaders'
+import { buildUpstreamProxyHeaders, ensureInlinePreviewRange, normalizeProxyRangeHeaders, normalizeProxyStatusCode } from '../proxyHeaders'
 import { shouldRefreshProxyUrl } from '../proxyCache'
 
 describe('buildUpstreamProxyHeaders', () => {
@@ -27,6 +27,39 @@ describe('buildUpstreamProxyHeaders', () => {
     expect(headers['if-none-match']).toBeUndefined()
     expect(headers.referer).toBeUndefined()
     expect(headers.authorization).toBeUndefined()
+  })
+})
+
+describe('ensureInlinePreviewRange', () => {
+  it('requests the complete PDF when an inline preview has no range request', () => {
+    expect(ensureInlinePreviewRange({}, true).range).toBe('bytes=0-')
+  })
+
+  it('preserves PDF.js byte-range requests and leaves downloads unchanged', () => {
+    expect(ensureInlinePreviewRange({ range: 'bytes=524288-589823' }, true).range).toBe('bytes=524288-589823')
+    expect(ensureInlinePreviewRange({}, false).range).toBeUndefined()
+  })
+})
+
+describe('normalizeProxyStatusCode', () => {
+  it('marks a content-range response as partial even when the upstream incorrectly returns 200', () => {
+    expect(normalizeProxyStatusCode(200, 'bytes 0-524287/21662389')).toBe(206)
+  })
+
+  it('keeps ordinary complete and already-partial responses unchanged', () => {
+    expect(normalizeProxyStatusCode(200)).toBe(200)
+    expect(normalizeProxyStatusCode(206, 'bytes 0-524287/21662389')).toBe(206)
+  })
+})
+
+describe('normalizeProxyRangeHeaders', () => {
+  it('keeps the accept-ranges value PDF.js requires when an upstream duplicates bytes', () => {
+    expect(normalizeProxyRangeHeaders({ 'content-range': 'bytes 0-65535/36240717', 'accept-ranges': ['bytes', 'bytes'] })['accept-ranges']).toBe('bytes')
+    expect(normalizeProxyRangeHeaders({ 'content-range': 'bytes 0-65535/36240717', 'accept-ranges': 'bytes, bytes' })['accept-ranges']).toBe('bytes')
+  })
+
+  it('does not rewrite unrelated range capabilities', () => {
+    expect(normalizeProxyRangeHeaders({ 'content-range': 'bytes 0-65535/36240717', 'accept-ranges': ['bytes', 'none'] })['accept-ranges']).toEqual(['bytes', 'none'])
   })
 })
 

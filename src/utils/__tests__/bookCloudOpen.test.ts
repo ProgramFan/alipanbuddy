@@ -3,12 +3,13 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 describe('cloud book open contracts', () => {
-  it('opens EPUB through the provider-neutral reader path for every drive', () => {
+  it('opens every reader-supported cloud book format through the provider-neutral reader', () => {
     const source = readFileSync(resolve(process.cwd(), 'src/utils/openfile.ts'), 'utf8')
 
-    expect(source).toContain("if ((file.ext || '').toLowerCase() === 'epub') {")
-    expect(source).not.toContain('EPUB_PREVIEW_DRIVES')
-    expect(source).toContain("getRawUrl(token.user_id, file.drive_id, file.file_id, getEncType(file), password, file.icon == 'iconweifa', 'other', 'Origin')")
+    expect(source).toContain("if (getBookFileExt(file) !== 'pdf' && isReaderFormat(getBookFileExt(file))) {")
+    expect(source).toContain("window.WebOpenWindow({ page: 'PageBookReader', data: book, theme: 'dark' })")
+    const readerSource = readFileSync(resolve(process.cwd(), 'src/layout/BookReaderModal.vue'), 'utf8')
+    expect(readerSource).toContain("getRawUrl(book.user_id, book.drive_id, book.file_id")
   })
 
   it('keeps Baidu download headers with the returned book URL', () => {
