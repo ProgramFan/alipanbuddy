@@ -34,18 +34,26 @@ fn build_resolver(app: AppHandle) -> UrlResolver {
 
 pub fn build_context(app: &AppHandle) -> ProxyContext {
     let proxy = app.state::<AppState>().http_proxy.lock().clone();
-    let mut builder = reqwest::Client::builder().danger_accept_invalid_certs(true).pool_max_idle_per_host(16).connect_timeout(Duration::from_secs(15));
-    if !proxy.is_empty() {
-        if let Ok(p) = reqwest::Proxy::all(&proxy) {
-            builder = builder.proxy(p);
+    let make = |follow: bool| {
+        let mut builder = reqwest::Client::builder()
+            .danger_accept_invalid_certs(true)
+            .pool_max_idle_per_host(16)
+            .connect_timeout(Duration::from_secs(15))
+            // never replace our explicit `Referer` with the previous url
+            .referer(false)
+            .redirect(if follow { reqwest::redirect::Policy::limited(10) } else { reqwest::redirect::Policy::none() });
+        if !proxy.is_empty() {
+            if let Ok(p) = reqwest::Proxy::all(&proxy) {
+                builder = builder.proxy(p);
+            }
+        } else {
+            builder = builder.no_proxy();
         }
-    } else {
-        builder = builder.no_proxy();
-    }
-    let client = builder.build().unwrap_or_else(|_| reqwest::Client::new());
+        builder.build().unwrap_or_else(|_| reqwest::Client::new())
+    };
     let tokens = app.state::<AppState>().user_tokens.clone();
     let lookup: TokenLookup = Arc::new(move |user_id: &str| tokens.lock().get(user_id).cloned());
-    ProxyContext::new(client, build_resolver(app.clone())).with_tokens(lookup)
+    ProxyContext::new(make(true), build_resolver(app.clone())).with_direct_client(make(false)).with_tokens(lookup)
 }
 
 pub async fn start_server(app: &AppHandle, port: u16) -> Result<u16, String> {

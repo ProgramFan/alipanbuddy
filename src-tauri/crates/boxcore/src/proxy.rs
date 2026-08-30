@@ -66,6 +66,8 @@ struct CachedUrl {
 #[derive(Clone)]
 pub struct ProxyContext {
     pub client: reqwest::Client,
+    /// Same settings as `client` but never follows redirects (`/image` walks them itself).
+    pub direct: reqwest::Client,
     pub resolver: UrlResolver,
     pub tokens: TokenLookup,
     pub api_base: String,
@@ -74,7 +76,13 @@ pub struct ProxyContext {
 
 impl ProxyContext {
     pub fn new(client: reqwest::Client, resolver: UrlResolver) -> Self {
-        ProxyContext { client, resolver, tokens: Arc::new(|_| None), api_base: DEFAULT_API_BASE.to_string(), cache: Arc::new(Mutex::new(None)) }
+        let direct = reqwest::Client::builder().redirect(reqwest::redirect::Policy::none()).build().unwrap_or_default();
+        ProxyContext { client, direct, resolver, tokens: Arc::new(|_| None), api_base: DEFAULT_API_BASE.to_string(), cache: Arc::new(Mutex::new(None)) }
+    }
+
+    pub fn with_direct_client(mut self, direct: reqwest::Client) -> Self {
+        self.direct = direct;
+        self
     }
 
     pub fn with_tokens(mut self, tokens: TokenLookup) -> Self {
@@ -311,9 +319,12 @@ async fn handle(State(ctx): State<ProxyContext>, req: Request) -> Response {
 /// Thumbnails / image previews. Electron injected `Authorization` + `Referer` into the webview's
 /// `<img src="https://api.aliyundrive.com/v2/file/download?...">` requests; a Tauri webview cannot,
 /// so the renderer points those `<img>` tags at this route instead.
+///
+/// The API answers with a 302 to the CDN. Redirects are followed by hand: reqwest would rewrite
+/// `Referer` to the API url on the way, which the CDN rejects with 403.
 async fn image(ctx: ProxyContext, req: Request, query: HashMap<String, String>) -> Response {
     let user_id = query.get("user_id").cloned().unwrap_or_default();
-    let Some(url) = image_upstream_url(&ctx.api_base, &query) else {
+    let Some(api_url) = image_upstream_url(&ctx.api_base, &query) else {
         return text_response(StatusCode::BAD_REQUEST, "missing drive_id/file_id");
     };
     let Some(token) = (ctx.tokens)(&user_id).filter(|t| !t.is_empty()) else {
@@ -321,31 +332,56 @@ async fn image(ctx: ProxyContext, req: Request, query: HashMap<String, String>) 
         return text_response(StatusCode::UNAUTHORIZED, "no access token for user");
     };
     let auth = if token.starts_with("Bearer ") { token } else { format!("Bearer {token}") };
-    let mut headers = HeaderMap::new();
-    if let Ok(v) = HeaderValue::from_str(&auth) {
-        headers.insert(header::AUTHORIZATION, v);
-    }
-    headers.insert(header::REFERER, HeaderValue::from_static("https://www.aliyundrive.com/"));
-    headers.insert(header::ORIGIN, HeaderValue::from_static("https://www.aliyundrive.com"));
-    headers.insert(header::USER_AGENT, HeaderValue::from_static(ALIYUN_UA));
-    headers.insert(header::ACCEPT, HeaderValue::from_static("image/avif,image/webp,image/apng,image/*,*/*;q=0.8"));
-    headers.insert("x-canary", HeaderValue::from_static("client=windows,app=adrive,version=v4.12.0"));
-    if let Some(range) = req.headers().get(header::RANGE) {
-        headers.insert(header::RANGE, range.clone());
-    }
     let method = if req.method() == Method::HEAD { Method::HEAD } else { Method::GET };
     let is_get = method == Method::GET;
-    // reqwest drops `Authorization` when the 302 to the CDN changes host; `Referer` is kept.
-    let upstream = match ctx.client.request(method, &url).headers(headers).send().await {
-        Ok(r) => r,
-        Err(err) => {
-            log::warn!("image proxy upstream error: {err}");
-            return text_response(StatusCode::BAD_GATEWAY, "upstream error");
+    let range = req.headers().get(header::RANGE).cloned();
+
+    let mut current = api_url.clone();
+    let mut upstream: Option<reqwest::Response> = None;
+    for hop in 0..6 {
+        let mut headers = HeaderMap::new();
+        headers.insert(header::REFERER, HeaderValue::from_static("https://www.aliyundrive.com/"));
+        headers.insert(header::USER_AGENT, HeaderValue::from_static(ALIYUN_UA));
+        headers.insert(header::ACCEPT, HeaderValue::from_static("image/avif,image/webp,image/apng,image/*,*/*;q=0.8"));
+        if hop == 0 {
+            // credentials only for the API itself, never for the CDN it redirects to
+            if let Ok(v) = HeaderValue::from_str(&auth) {
+                headers.insert(header::AUTHORIZATION, v);
+            }
+            headers.insert(header::ORIGIN, HeaderValue::from_static("https://www.aliyundrive.com"));
+            headers.insert("x-canary", HeaderValue::from_static("client=windows,app=adrive,version=v4.12.0"));
         }
+        if let Some(r) = &range {
+            headers.insert(header::RANGE, r.clone());
+        }
+        let resp = match ctx.direct.request(method.clone(), &current).headers(headers).send().await {
+            Ok(r) => r,
+            Err(err) => {
+                log::warn!("image proxy upstream error ({}): {err}", short_url(&current));
+                return text_response(StatusCode::BAD_GATEWAY, "upstream error");
+            }
+        };
+        if resp.status().is_redirection() {
+            let location = resp.headers().get(header::LOCATION).and_then(|v| v.to_str().ok()).map(|s| s.to_string());
+            if let Some(next) = location.and_then(|loc| reqwest::Url::parse(&current).ok().and_then(|base| base.join(&loc).ok())) {
+                current = next.to_string();
+                continue;
+            }
+        }
+        upstream = Some(resp);
+        break;
+    }
+    let Some(upstream) = upstream else {
+        log::warn!("image proxy: too many redirects for {}", short_url(&api_url));
+        return text_response(StatusCode::BAD_GATEWAY, "too many redirects");
     };
+
     let status = upstream.status();
     if !status.is_success() {
-        log::warn!("image proxy: upstream {} for {}", status.as_u16(), url.split('?').next().unwrap_or(""));
+        let mut body = upstream.text().await.unwrap_or_default();
+        body.truncate(300);
+        log::warn!("image proxy: upstream {} for {}: {}", status.as_u16(), short_url(&current), body.trim());
+        return Response::builder().status(status.as_u16()).header(header::CONTENT_TYPE, "text/plain").body(Body::from(body)).unwrap();
     }
     let mut builder = Response::builder().status(status.as_u16());
     for (name, value) in upstream.headers().iter() {
@@ -359,6 +395,10 @@ async fn image(ctx: ProxyContext, req: Request, query: HashMap<String, String>) 
     }
     let stream = upstream.bytes_stream().map(|chunk| chunk.map_err(std::io::Error::other));
     builder.body(Body::from_stream(stream)).unwrap()
+}
+
+fn short_url(url: &str) -> &str {
+    url.split('?').next().unwrap_or(url)
 }
 
 async fn proxy(ctx: ProxyContext, req: Request, query: HashMap<String, String>) -> Response {
@@ -547,19 +587,32 @@ mod tests {
     async fn image_route_adds_auth_headers() {
         use axum::routing::get;
         // fake api.aliyundrive.com: echoes the headers it cares about, 401 without a token
-        let upstream_app = Router::new().route(
-            "/v2/file/download",
-            get(|req: Request| async move {
-                let h = req.headers();
-                let auth = h.get(header::AUTHORIZATION).and_then(|v| v.to_str().ok()).unwrap_or("");
-                if auth != "Bearer tok-1" {
-                    return Response::builder().status(StatusCode::UNAUTHORIZED).body(Body::from("nope")).unwrap();
-                }
-                let referer = h.get(header::REFERER).and_then(|v| v.to_str().ok()).unwrap_or("").to_string();
-                let q = req.uri().query().unwrap_or("").to_string();
-                Response::builder().status(200).header(header::CONTENT_TYPE, "image/jpeg").body(Body::from(format!("{referer}|{q}"))).unwrap()
-            }),
-        );
+        let upstream_app = Router::new()
+            .route(
+                "/v2/file/download",
+                get(|req: Request| async move {
+                    let h = req.headers();
+                    let auth = h.get(header::AUTHORIZATION).and_then(|v| v.to_str().ok()).unwrap_or("");
+                    if auth != "Bearer tok-1" {
+                        return Response::builder().status(StatusCode::UNAUTHORIZED).body(Body::from("nope")).unwrap();
+                    }
+                    let q = req.uri().query().unwrap_or("").to_string();
+                    Response::builder().status(StatusCode::FOUND).header(header::LOCATION, format!("/cdn/img?{q}")).body(Body::empty()).unwrap()
+                }),
+            )
+            .route(
+                "/cdn/img",
+                get(|req: Request| async move {
+                    let h = req.headers();
+                    // the CDN must see the site referer and no credentials (reqwest's own redirect handling breaks both)
+                    let referer = h.get(header::REFERER).and_then(|v| v.to_str().ok()).unwrap_or("").to_string();
+                    if referer != "https://www.aliyundrive.com/" || h.contains_key(header::AUTHORIZATION) || h.contains_key(header::ORIGIN) {
+                        return Response::builder().status(StatusCode::FORBIDDEN).body(Body::from("bad referer")).unwrap();
+                    }
+                    let q = req.uri().query().unwrap_or("").to_string();
+                    Response::builder().status(200).header(header::CONTENT_TYPE, "image/jpeg").body(Body::from(format!("{referer}|{q}"))).unwrap()
+                }),
+            );
         let upstream_listener = tokio::net::TcpListener::bind(("127.0.0.1", 0)).await.unwrap();
         let upstream_port = upstream_listener.local_addr().unwrap().port();
         tokio::spawn(async move { axum::serve(upstream_listener, upstream_app).await.unwrap() });
