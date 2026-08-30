@@ -23,17 +23,45 @@ interface HttpResponseOut {
   bodyUrl?: string | null
 }
 
-/** Large bodies are parked in the Rust loopback bridge; fetch them natively, fall back to IPC. */
+const BODY_CHUNK = 512 * 1024
+
+/** IPC fallback: the parked body in ≤512 KB base64 pieces (one huge IPC reply was unreliable on WebKitGTK). */
+async function readBodyChunked(id: number): Promise<Uint8Array> {
+  const parts: Uint8Array[] = []
+  let offset = 0
+  let total = -1
+  while (total < 0 || offset < total) {
+    const chunk = await invoke<{ data: string; total: number }>('http_body_chunk', { id, offset, len: BODY_CHUNK })
+    total = chunk.total
+    const bytes = fromBase64(chunk.data)
+    if (bytes.length === 0 && offset < total) throw new Error('empty chunk at ' + offset + '/' + total)
+    parts.push(bytes)
+    offset += bytes.length
+  }
+  const out = new Uint8Array(offset)
+  let pos = 0
+  for (const part of parts) {
+    out.set(part, pos)
+    pos += part.length
+  }
+  return out
+}
+
+/** Large bodies are parked in the Rust loopback bridge; fetch them natively, fall back to chunked IPC. */
 async function readBody(out: HttpResponseOut): Promise<Uint8Array> {
   if (out.bodyUrl && out.bodyId != null) {
+    const id = out.bodyId
+    let bytes: Uint8Array
     try {
       const res = await fetch(out.bodyUrl, { cache: 'no-store' })
       if (!res.ok) throw new Error('bridge status ' + res.status)
-      return new Uint8Array(await res.arrayBuffer())
+      bytes = new Uint8Array(await res.arrayBuffer())
     } catch (err: any) {
-      console.warn('[http] loopback body fetch failed, using IPC fallback', err?.message || err)
-      return fromBase64(await invoke<string>('http_body', { id: out.bodyId }))
+      console.warn('[http] loopback body fetch failed, using chunked IPC fallback', err?.message || err)
+      bytes = await readBodyChunked(id)
     }
+    invoke('http_body_release', { id }).catch(() => {})
+    return bytes
   }
   return out.bodyBase64 ? fromBase64(out.bodyBase64) : new Uint8Array(0)
 }
@@ -124,7 +152,14 @@ export const tauriAxiosAdapter: AxiosAdapter = async (config: InternalAxiosReque
     throw new AxiosError(message, AxiosError.ERR_NETWORK, config, { url })
   }
 
-  const bytes = await readBody(out)
+  let bytes: Uint8Array
+  try {
+    bytes = await readBody(out)
+  } catch (err: any) {
+    const message: string = err?.message || String(err)
+    console.warn('[http] body transfer failed', (config.method || 'get').toUpperCase(), url, message)
+    throw new AxiosError('body transfer failed: ' + message, AxiosError.ERR_NETWORK, config, { url })
+  }
   const responseType = config.responseType || 'json'
   let data: any
   if (responseType === 'arraybuffer') {

@@ -4,7 +4,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use boxcore::proxy::{ProxyContext, ProxyServer, ResolveRequest, UrlResolver};
+use boxcore::proxy::{ProxyContext, ProxyServer, ResolveRequest, TokenLookup, UrlResolver};
 use serde::Serialize;
 use serde_json::json;
 use tauri::{AppHandle, Emitter, Manager};
@@ -43,7 +43,9 @@ pub fn build_context(app: &AppHandle) -> ProxyContext {
         builder = builder.no_proxy();
     }
     let client = builder.build().unwrap_or_else(|_| reqwest::Client::new());
-    ProxyContext::new(client, build_resolver(app.clone()))
+    let tokens = app.state::<AppState>().user_tokens.clone();
+    let lookup: TokenLookup = Arc::new(move |user_id: &str| tokens.lock().get(user_id).cloned());
+    ProxyContext::new(client, build_resolver(app.clone())).with_tokens(lookup)
 }
 
 pub async fn start_server(app: &AppHandle, port: u16) -> Result<u16, String> {
@@ -104,6 +106,15 @@ pub fn proxy_provide_url(app: AppHandle, id: String, url: String) {
     if let Some(tx) = app.state::<AppState>().pending_urls.lock().remove(&id) {
         let _ = tx.send(url);
     }
+}
+
+/// Renderer pushes the web-API access token of each account (login / refresh) so `/image` can authenticate.
+#[tauri::command]
+pub fn proxy_set_token(app: AppHandle, user_id: String, access_token: String) {
+    if user_id.is_empty() || access_token.is_empty() {
+        return;
+    }
+    app.state::<AppState>().user_tokens.lock().insert(user_id, access_token);
 }
 
 #[tauri::command]

@@ -97,8 +97,10 @@ pub fn run() {
             commands::proxy::proxy_provide_url,
             commands::proxy::get_local_ip,
             commands::proxy::find_free_port,
+            commands::proxy::proxy_set_token,
             commands::http::http_request,
-            commands::http::http_body
+            commands::http::http_body_chunk,
+            commands::http::http_body_release
         ])
         .setup(|app| {
             let handle = app.handle().clone();

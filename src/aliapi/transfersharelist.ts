@@ -1,4 +1,5 @@
 import DebugLog from '../utils/debuglog'
+import { getImageProxyBase } from '../utils/imageproxy'
 import { humanDateTime, humanExpiration } from '../utils/format'
 import message from '../utils/message'
 import AliHttp, { IUrlRespData } from './alihttp'
@@ -48,13 +49,13 @@ export default class AliTransferShareList {
     try {
       if (AliHttp.IsSuccess(resp.code)) {
         const timeNow = new Date().getTime()
-        const downUrl = 'https://api.aliyundrive.com/v2/file/download?t=' + Date.now().toString()
+        const downUrl = getImageProxyBase(dir.m_user_id)
         for (let i = 0, maxi = resp.body.items.length; i < maxi; i++) {
           const item = resp.body.items[i] as IAliShareItem
           if (dir.itemsKey.has(item.share_id)) continue
           let icon = 'iconwenjian'
           let first_file: any = item.share_id && await AliTransferShareList.ApiTransferShareFileStatus(user_id, item.share_id)
-          if (first_file && first_file.drive_files) {
+          if (first_file && first_file.drive_files && first_file.drive_files[0]) {
             let info = AliDirFileList.getFileInfo(dir.m_user_id, first_file.drive_files[0], downUrl)
             icon = info.icon || 'iconwenjian'
           }

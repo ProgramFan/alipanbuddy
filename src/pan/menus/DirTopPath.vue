@@ -73,15 +73,17 @@ const selectDir = (drive_id: string, file_id: string, album_id: string) => {
   border-radius: 4px;
 }
 
+/* separator: Lucide chevron-right drawn through a mask so it follows the text colour (no icon font needed) */
 .toppannavitem::before {
-  color: var(--color-text-3);
-  font-size: 16px;
-  font-family: 'iconfont' !important;
-  font-style: normal;
-  vertical-align: bottom;
-  content: '\e660';
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  content: '';
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin: 0 2px 0 0;
+  vertical-align: -2px;
+  background-color: var(--color-text-3);
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m9 18 6-6-6-6'/></svg>") center / contain no-repeat;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m9 18 6-6-6-6'/></svg>") center / contain no-repeat;
 }
 
 .toppannavitem:first-child,
@@ -90,7 +92,7 @@ const selectDir = (drive_id: string, file_id: string, album_id: string) => {
 }
 
 .toppannavitem:first-child::before {
-  content: '';
+  display: none;
 }
 
 .toppannavitem:last-child {

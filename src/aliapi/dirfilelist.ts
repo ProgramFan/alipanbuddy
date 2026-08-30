@@ -1,4 +1,5 @@
 import { usePanFileStore, useSettingStore } from '../store'
+import { getImageProxyBase } from '../utils/imageproxy'
 import TreeStore from '../store/treestore'
 import DebugLog from '../utils/debuglog'
 import { OrderDir, OrderFile } from '../utils/filenameorder'
@@ -905,7 +906,7 @@ export default class AliDirFileList {
         const isDirFile = dir.dirID.includes('root') || (dir.dirID.length == 40 && !dir.dirID.startsWith('search'))
         const isVideo = dir.dirID.startsWith('video')
         const isPic = dir.dirID.includes('pic')
-        const downUrl = isRecover ? '' : 'https://api.aliyundrive.com/v2/file/download?t=' + Date.now().toString()
+        const downUrl = isRecover ? '' : getImageProxyBase(dir.m_user_id)
 
         if (resp.body.items) {
           let settingStore = useSettingStore()

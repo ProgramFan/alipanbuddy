@@ -7,6 +7,7 @@ import 'viewerjs/dist/viewer.css'
 import axios from 'axios'
 import message from '../utils/message'
 import { getEncType, getProxyUrl } from '../utils/proxyhelper'
+import { getImageProxyBase } from '../utils/imageproxy'
 import { TestAlt, TestKey } from '../utils/keyboardhelper'
 import { t } from '../i18n'
 
@@ -287,7 +288,7 @@ function _imageUrlSmall(item: OneImageModel) {
       password: pageImage.password
     })
   }
-  return 'https://api.aliyundrive.com/v2/file/download?t=' + Date.now().toString() + '&drive_id=' + item.drive_id + '&file_id=' + item.file_id + '&image_thumbnail_process=image%2Fresize%2Cl_60%2Fformat%2Cjpg%2Fauto-orient%2C1'
+  return getImageProxyBase(pageImage.user_id) + '&drive_id=' + item.drive_id + '&file_id=' + item.file_id + '&image_thumbnail_process=image%2Fresize%2Cl_60%2Fformat%2Cjpg%2Fauto-orient%2C1'
 }
 
 function _imageUrlBig(item: OneImageModel) {
@@ -301,7 +302,7 @@ function _imageUrlBig(item: OneImageModel) {
       password: pageImage.password
     })
   }
-  return 'https://api.aliyundrive.com/v2/file/download?t=' + Date.now().toString() + '&drive_id=' + item.drive_id + '&file_id=' + item.file_id + '&image_thumbnail_process=image%2Fresize%2Cl_1920%2Fformat%2Cwebp%2Fauto-orient%2C1'
+  return getImageProxyBase(pageImage.user_id) + '&drive_id=' + item.drive_id + '&file_id=' + item.file_id + '&image_thumbnail_process=image%2Fresize%2Cl_1920%2Fformat%2Cwebp%2Fauto-orient%2C1'
 }
 
 function _imageUrlRaw(item: OneImageModel) {
@@ -315,7 +316,7 @@ function _imageUrlRaw(item: OneImageModel) {
       password: pageImage.password
     })
   }
-  return 'https://api.aliyundrive.com/v2/file/download?t=' + Date.now().toString() + '&drive_id=' + item.drive_id + '&file_id=' + item.file_id
+  return getImageProxyBase(pageImage.user_id) + '&drive_id=' + item.drive_id + '&file_id=' + item.file_id
 }
 
 function getImageUrl(item: OneImageModel) {

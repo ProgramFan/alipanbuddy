@@ -51,6 +51,8 @@ pub struct AppState {
     /// loopback body server (crate::bridge)
     pub bridge_port: Mutex<u16>,
     pub body_store: Arc<crate::bridge::BodyStore>,
+    /// `user_id -> access_token`, pushed by the renderer (`proxy_set_token`) for the image proxy route.
+    pub user_tokens: Arc<Mutex<HashMap<String, String>>>,
 }
 
 impl AppState {
@@ -77,6 +79,7 @@ impl AppState {
             rpc_client: reqwest::Client::builder().no_proxy().timeout(std::time::Duration::from_secs(3)).build().unwrap_or_default(),
             bridge_port: Mutex::new(0),
             body_store: Arc::new(crate::bridge::BodyStore::default()),
+            user_tokens: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 

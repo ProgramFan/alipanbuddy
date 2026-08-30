@@ -1,4 +1,5 @@
 import DebugLog from '../utils/debuglog'
+import { getImageProxyBase } from '../utils/imageproxy'
 import AliHttp, { IUrlRespData } from './alihttp'
 import { IAliFileItem } from './alimodels'
 import AliDirFileList, { IAliFileResp } from './dirfilelist'
@@ -76,7 +77,7 @@ export default class AliFileWalk {
       if (AliHttp.IsSuccess(resp.code)) {
         dir.next_marker = resp.body.next_marker
         const isRecover = dir.dirID == 'recover'
-        const downUrl = isRecover ? '' : 'https://api.aliyundrive.com/v2/file/download?t=' + Date.now().toString()
+        const downUrl = isRecover ? '' : getImageProxyBase(dir.m_user_id)
 
         for (let i = 0, maxi = resp.body.items.length; i < maxi; i++) {
           const item = resp.body.items[i] as IAliFileItem

@@ -17,7 +17,7 @@ use parking_lot::Mutex;
 
 /// Bodies smaller than this are inlined (base64) in the IPC reply.
 pub const INLINE_LIMIT: usize = 128 * 1024;
-const TTL: Duration = Duration::from_secs(120);
+const TTL: Duration = Duration::from_secs(90);
 
 #[derive(Default)]
 pub struct BodyStore {
@@ -35,8 +35,23 @@ impl BodyStore {
         id
     }
 
-    pub fn take(&self, id: u64) -> Option<(String, Vec<u8>)> {
-        self.items.lock().remove(&id).map(|(_, ct, b)| (ct, b))
+    /// Copy of the body; it stays stored (until `release` or the TTL) so the IPC fallback can still
+    /// read it when the loopback fetch failed half way.
+    pub fn get(&self, id: u64) -> Option<(String, Vec<u8>)> {
+        self.items.lock().get(&id).map(|(_, ct, b)| (ct.clone(), b.clone()))
+    }
+
+    /// `(chunk, total length)` for the chunked IPC fallback.
+    pub fn chunk(&self, id: u64, offset: usize, len: usize) -> Option<(Vec<u8>, usize)> {
+        let items = self.items.lock();
+        let (_, _, body) = items.get(&id)?;
+        let start = offset.min(body.len());
+        let end = start.saturating_add(len).min(body.len());
+        Some((body[start..end].to_vec(), body.len()))
+    }
+
+    pub fn release(&self, id: u64) {
+        self.items.lock().remove(&id);
     }
 }
 
@@ -46,7 +61,7 @@ struct BridgeState {
 }
 
 async fn serve_body(State(state): State<BridgeState>, Path(id): Path<u64>) -> Response {
-    match state.store.take(id) {
+    match state.store.get(id) {
         Some((content_type, body)) => Response::builder()
             .status(StatusCode::OK)
             .header(header::CONTENT_TYPE, if content_type.is_empty() { "application/octet-stream".to_string() } else { content_type })

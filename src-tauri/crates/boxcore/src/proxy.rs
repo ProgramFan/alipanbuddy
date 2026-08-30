@@ -48,6 +48,13 @@ pub struct ResolveRequest {
 pub type UrlResolverFuture = Pin<Box<dyn Future<Output = Option<String>> + Send>>;
 /// Asks the renderer for a fresh download url (it owns the account tokens).
 pub type UrlResolver = Arc<dyn Fn(ResolveRequest) -> UrlResolverFuture + Send + Sync>;
+/// `user_id -> access_token` lookup used by the `/image` route.
+pub type TokenLookup = Arc<dyn Fn(&str) -> Option<String> + Send + Sync>;
+
+pub const ALIYUN_UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0";
+const DEFAULT_API_BASE: &str = "https://api.aliyundrive.com";
+/// Query keys forwarded verbatim to `/v2/file/download` (thumbnail / preview processing).
+const IMAGE_PROCESS_KEYS: &[&str] = &["image_thumbnail_process", "image_url_process", "video_thumbnail_process", "office_thumbnail_process"];
 
 #[derive(Debug, Clone)]
 struct CachedUrl {
@@ -60,13 +67,41 @@ struct CachedUrl {
 pub struct ProxyContext {
     pub client: reqwest::Client,
     pub resolver: UrlResolver,
+    pub tokens: TokenLookup,
+    pub api_base: String,
     cache: Arc<Mutex<Option<CachedUrl>>>,
 }
 
 impl ProxyContext {
     pub fn new(client: reqwest::Client, resolver: UrlResolver) -> Self {
-        ProxyContext { client, resolver, cache: Arc::new(Mutex::new(None)) }
+        ProxyContext { client, resolver, tokens: Arc::new(|_| None), api_base: DEFAULT_API_BASE.to_string(), cache: Arc::new(Mutex::new(None)) }
     }
+
+    pub fn with_tokens(mut self, tokens: TokenLookup) -> Self {
+        self.tokens = tokens;
+        self
+    }
+
+    pub fn with_api_base(mut self, api_base: impl Into<String>) -> Self {
+        self.api_base = api_base.into();
+        self
+    }
+}
+
+/// `/image?drive_id&file_id[&image_thumbnail_process=..]` -> `{api_base}/v2/file/download?drive_id&file_id[&..]`
+pub fn image_upstream_url(api_base: &str, query: &HashMap<String, String>) -> Option<String> {
+    let drive_id = query.get("drive_id").filter(|v| !v.is_empty())?;
+    let file_id = query.get("file_id").filter(|v| !v.is_empty())?;
+    let mut url = format!("{}/v2/file/download?drive_id={}&file_id={}", api_base.trim_end_matches('/'), encode_uri_component(drive_id), encode_uri_component(file_id));
+    for key in IMAGE_PROCESS_KEYS {
+        if let Some(v) = query.get(*key).filter(|v| !v.is_empty()) {
+            url.push('&');
+            url.push_str(key);
+            url.push('=');
+            url.push_str(&encode_uri_component(v));
+        }
+    }
+    Some(url)
 }
 
 pub struct ProxyServer {
@@ -264,12 +299,66 @@ async fn handle(State(ctx): State<ProxyContext>, req: Request) -> Response {
     let query = parse_query(req.uri().query());
     match path.as_str() {
         "/proxy" => proxy(ctx, req, query).await,
+        "/image" => image(ctx, req, query).await,
         "/redirect" => match query.get("proxy_url") {
             Some(url) if !url.is_empty() => redirect_response(url),
             _ => text_response(StatusCode::NOT_FOUND, "missing proxy_url"),
         },
         _ => text_response(StatusCode::NOT_FOUND, "not found"),
     }
+}
+
+/// Thumbnails / image previews. Electron injected `Authorization` + `Referer` into the webview's
+/// `<img src="https://api.aliyundrive.com/v2/file/download?...">` requests; a Tauri webview cannot,
+/// so the renderer points those `<img>` tags at this route instead.
+async fn image(ctx: ProxyContext, req: Request, query: HashMap<String, String>) -> Response {
+    let user_id = query.get("user_id").cloned().unwrap_or_default();
+    let Some(url) = image_upstream_url(&ctx.api_base, &query) else {
+        return text_response(StatusCode::BAD_REQUEST, "missing drive_id/file_id");
+    };
+    let Some(token) = (ctx.tokens)(&user_id).filter(|t| !t.is_empty()) else {
+        log::warn!("image proxy: no access token for user {user_id}");
+        return text_response(StatusCode::UNAUTHORIZED, "no access token for user");
+    };
+    let auth = if token.starts_with("Bearer ") { token } else { format!("Bearer {token}") };
+    let mut headers = HeaderMap::new();
+    if let Ok(v) = HeaderValue::from_str(&auth) {
+        headers.insert(header::AUTHORIZATION, v);
+    }
+    headers.insert(header::REFERER, HeaderValue::from_static("https://www.aliyundrive.com/"));
+    headers.insert(header::ORIGIN, HeaderValue::from_static("https://www.aliyundrive.com"));
+    headers.insert(header::USER_AGENT, HeaderValue::from_static(ALIYUN_UA));
+    headers.insert(header::ACCEPT, HeaderValue::from_static("image/avif,image/webp,image/apng,image/*,*/*;q=0.8"));
+    headers.insert("x-canary", HeaderValue::from_static("client=windows,app=adrive,version=v4.12.0"));
+    if let Some(range) = req.headers().get(header::RANGE) {
+        headers.insert(header::RANGE, range.clone());
+    }
+    let method = if req.method() == Method::HEAD { Method::HEAD } else { Method::GET };
+    let is_get = method == Method::GET;
+    // reqwest drops `Authorization` when the 302 to the CDN changes host; `Referer` is kept.
+    let upstream = match ctx.client.request(method, &url).headers(headers).send().await {
+        Ok(r) => r,
+        Err(err) => {
+            log::warn!("image proxy upstream error: {err}");
+            return text_response(StatusCode::BAD_GATEWAY, "upstream error");
+        }
+    };
+    let status = upstream.status();
+    if !status.is_success() {
+        log::warn!("image proxy: upstream {} for {}", status.as_u16(), url.split('?').next().unwrap_or(""));
+    }
+    let mut builder = Response::builder().status(status.as_u16());
+    for (name, value) in upstream.headers().iter() {
+        if matches!(name.as_str(), "content-type" | "content-length" | "content-range" | "accept-ranges" | "last-modified" | "etag" | "content-disposition") {
+            builder = builder.header(name, value);
+        }
+    }
+    builder = builder.header(header::CACHE_CONTROL, "private, max-age=600");
+    if !is_get {
+        return builder.body(Body::empty()).unwrap();
+    }
+    let stream = upstream.bytes_stream().map(|chunk| chunk.map_err(std::io::Error::other));
+    builder.body(Body::from_stream(stream)).unwrap()
 }
 
 async fn proxy(ctx: ProxyContext, req: Request, query: HashMap<String, String>) -> Response {
@@ -442,6 +531,55 @@ mod tests {
     #[test]
     fn uri_component() {
         assert_eq!(encode_uri_component("a b/中.txt"), "a%20b%2F%E4%B8%AD.txt");
+    }
+
+    #[test]
+    fn image_url_builder() {
+        let q = parse_query(Some("user_id=u&t=1&drive_id=d1&file_id=f1&image_thumbnail_process=image%2Fresize%2Cl_260%2Fformat%2Cjpg&bogus=x"));
+        assert_eq!(
+            image_upstream_url("https://api.aliyundrive.com/", &q).unwrap(),
+            "https://api.aliyundrive.com/v2/file/download?drive_id=d1&file_id=f1&image_thumbnail_process=image%2Fresize%2Cl_260%2Fformat%2Cjpg"
+        );
+        assert!(image_upstream_url("https://x", &parse_query(Some("drive_id=d1"))).is_none());
+    }
+
+    #[tokio::test]
+    async fn image_route_adds_auth_headers() {
+        use axum::routing::get;
+        // fake api.aliyundrive.com: echoes the headers it cares about, 401 without a token
+        let upstream_app = Router::new().route(
+            "/v2/file/download",
+            get(|req: Request| async move {
+                let h = req.headers();
+                let auth = h.get(header::AUTHORIZATION).and_then(|v| v.to_str().ok()).unwrap_or("");
+                if auth != "Bearer tok-1" {
+                    return Response::builder().status(StatusCode::UNAUTHORIZED).body(Body::from("nope")).unwrap();
+                }
+                let referer = h.get(header::REFERER).and_then(|v| v.to_str().ok()).unwrap_or("").to_string();
+                let q = req.uri().query().unwrap_or("").to_string();
+                Response::builder().status(200).header(header::CONTENT_TYPE, "image/jpeg").body(Body::from(format!("{referer}|{q}"))).unwrap()
+            }),
+        );
+        let upstream_listener = tokio::net::TcpListener::bind(("127.0.0.1", 0)).await.unwrap();
+        let upstream_port = upstream_listener.local_addr().unwrap().port();
+        tokio::spawn(async move { axum::serve(upstream_listener, upstream_app).await.unwrap() });
+
+        let resolver: UrlResolver = Arc::new(|_| Box::pin(async { None }));
+        let tokens: TokenLookup = Arc::new(|user: &str| if user == "u1" { Some("tok-1".to_string()) } else { None });
+        let ctx = ProxyContext::new(reqwest::Client::new(), resolver).with_tokens(tokens).with_api_base(format!("http://127.0.0.1:{upstream_port}"));
+        let server = ProxyServer::start(0, ctx).await.unwrap();
+        let base = format!("http://127.0.0.1:{}/image", server.port);
+
+        let ok = reqwest::get(format!("{base}?user_id=u1&t=1&drive_id=d&file_id=f&image_thumbnail_process=image%2Fresize%2Cw_400")).await.unwrap();
+        assert_eq!(ok.status(), 200);
+        assert_eq!(ok.headers().get(header::CONTENT_TYPE).unwrap(), "image/jpeg");
+        assert_eq!(ok.text().await.unwrap(), "https://www.aliyundrive.com/|drive_id=d&file_id=f&image_thumbnail_process=image%2Fresize%2Cw_400");
+
+        let no_token = reqwest::get(format!("{base}?user_id=nobody&drive_id=d&file_id=f")).await.unwrap();
+        assert_eq!(no_token.status(), 401);
+        let bad = reqwest::get(format!("{base}?user_id=u1&drive_id=d")).await.unwrap();
+        assert_eq!(bad.status(), 400);
+        server.stop();
     }
 
     #[tokio::test]

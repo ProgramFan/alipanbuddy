@@ -4,6 +4,7 @@
  * (main ↔ upload/download workers) over Tauri events and exposes platform information.
  */
 import { emitTo, listen, type UnlistenFn } from '@tauri-apps/api/event'
+import { decodeWinMsg, encodeWinMsg } from './winmsg'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { invoke, isTauri } from './invoke'
 import { rememberUserToken, setHttpProxyUrl } from './state'
@@ -70,7 +71,7 @@ const workerPending: Record<WorkerKind, any[]> = { upload: [], download: [] }
 
 function sendToWorker(kind: WorkerKind, event: any) {
   if (workerReady[kind]) {
-    emitTo(kind, 'WinMsg', event).catch(() => {})
+    emitTo(kind, 'WinMsg', encodeWinMsg(event)).catch(() => {})
     return
   }
   workerPending[kind].push(event)
@@ -80,7 +81,7 @@ function sendToWorker(kind: WorkerKind, event: any) {
 function flushWorker(kind: WorkerKind) {
   workerReady[kind] = true
   const queue = workerPending[kind]
-  while (queue.length) emitTo(kind, 'WinMsg', queue.shift()).catch(() => {})
+  while (queue.length) emitTo(kind, 'WinMsg', encodeWinMsg(queue.shift())).catch(() => {})
 }
 
 /** Called by the upload/download worker window once `window.WinMsg` is installed. */
@@ -92,7 +93,7 @@ export async function markWorkerReady(kind: WorkerKind) {
 function installWindowApi() {
   window.platform = platformInfo.platform
   window.WinMsgToMain = (event: any) => {
-    emitTo('main', 'WinMsg', event).catch(() => {})
+    emitTo('main', 'WinMsg', encodeWinMsg(event)).catch(() => {})
   }
   window.WinMsgToUpload = (event: any) => sendToWorker('upload', event)
   window.WinMsgToDownload = (event: any) => sendToWorker('download', event)
@@ -152,6 +153,8 @@ function installWindowApi() {
   window.WebGetCookies = (data: any) => invoke<any[]>('get_cookies', { url: data?.url || '' }).catch(() => [])
   window.WebUserToken = (data: any) => {
     rememberUserToken(data)
+    // the Rust image proxy (`/image`) authenticates thumbnail requests with this token
+    if (data?.user_id && data?.access_token) invoke('proxy_set_token', { userId: data.user_id, accessToken: data.access_token }).catch(() => {})
   }
   window.WebSaveTheme = (data: any) => invoke('save_theme', { theme: data?.theme || '' }).catch(() => {})
   window.WebReload = () => location.reload()
@@ -230,6 +233,35 @@ function installDomIntegrations() {
       invoke('toggle_devtools').catch(() => {})
     }
   })
+  const NO_DRAG_SELECTOR = [
+    '.q-electron-drag--exception',
+    '.no-drag',
+    'button',
+    'a',
+    'input',
+    'textarea',
+    'select',
+    'label',
+    'ul',
+    'li',
+    '[role="menu"]',
+    '[role="menuitem"]',
+    '[role="button"]',
+    '.arco-btn',
+    '.arco-input',
+    '.arco-input-wrapper',
+    '.arco-select',
+    '.arco-dropdown',
+    '.arco-trigger',
+    '.arco-menu',
+    '.arco-menu-item',
+    '.arco-menu-pop',
+    '.arco-menu-pop-header',
+    '.arco-menu-overflow-wrap',
+    '.arco-avatar',
+    '.arco-badge',
+    '.arco-tag'
+  ].join(', ')
   // Custom title bars: Electron used `-webkit-app-region: drag`; Tauri needs an explicit drag start.
   document.addEventListener('mousedown', (e) => {
     if (e.button !== 0) return
@@ -237,7 +269,9 @@ function installDomIntegrations() {
     if (!target || !target.closest) return
     const region = target.closest('.q-electron-drag, [data-tauri-drag-region]')
     if (!region) return
-    if (target.closest('button, a, input, textarea, select, .arco-btn, .arco-input, .arco-dropdown, .no-drag')) return
+    // Same elements Electron marked `-webkit-app-region: no-drag` (see global.css) plus anything interactive,
+    // otherwise the mousedown starts a window drag and the click (e.g. the 网盘/传输/插件 menu) never fires.
+    if (target.closest(NO_DRAG_SELECTOR)) return
     const win = getCurrentWindow()
     if (e.detail >= 2) {
       win.toggleMaximize().catch(() => {})
@@ -251,7 +285,7 @@ async function installListeners() {
   await listen('WinMsg', (event) => {
     Promise.resolve().then(() => {
       try {
-        if (window.WinMsg) window.WinMsg(event.payload)
+        if (window.WinMsg) window.WinMsg(decodeWinMsg(event.payload))
       } catch {}
     })
   })

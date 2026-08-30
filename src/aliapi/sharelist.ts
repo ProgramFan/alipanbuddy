@@ -1,4 +1,5 @@
 import DebugLog from '../utils/debuglog'
+import { getImageProxyBase } from '../utils/imageproxy'
 import { humanDateTime, humanExpiration } from '../utils/format'
 import message from '../utils/message'
 import AliHttp, { IUrlRespData } from './alihttp'
@@ -71,7 +72,7 @@ export default class AliShareList {
     try {
       if (AliHttp.IsSuccess(resp.code)) {
         dir.next_marker = resp.body.next_marker
-        const downUrl = 'https://api.aliyundrive.com/v2/file/download?t=' + Date.now().toString()
+        const downUrl = getImageProxyBase(dir.m_user_id)
         const timeNow = new Date().getTime()
         for (let i = 0, maxi = resp.body.items.length; i < maxi; i++) {
           const item = resp.body.items[i] as IAliShareItem
