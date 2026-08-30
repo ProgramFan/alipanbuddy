@@ -1,7 +1,7 @@
 {
   "name": "alipanbuddy",
   "description": "AlipanBuddy (神行云盘助手) - Aliyun Drive desktop client",
-  "version": "5.0.25",
+  "version": "1.0.0",
   "private": true,
   "packageManager": "pnpm@10.32.1",
   "author": {
@@ -35,7 +35,7 @@
     "typecheck:rust": "cargo check --manifest-path src-tauri/Cargo.toml",
     "pretest": "node scripts/generate-secrets.mjs --mode=local",
     "test": "vitest run",
-    "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml -p boxcore"
+    "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml -p alipancore"
   },
   "engines": {
     "node": ">=22.12.0"

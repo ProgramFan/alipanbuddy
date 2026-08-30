@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use base64::Engine;
-use boxcore::fsx::{self, DirEntryInfo, FsError, StatInfo};
+use alipancore::fsx::{self, DirEntryInfo, FsError, StatInfo};
 
 async fn blocking<T: Send + 'static>(f: impl FnOnce() -> Result<T, FsError> + Send + 'static) -> Result<T, FsError> {
     tauri::async_runtime::spawn_blocking(f).await.map_err(|e| FsError::new("EIO", e.to_string()))?

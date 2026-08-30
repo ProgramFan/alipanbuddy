@@ -14,7 +14,6 @@ describe('hidden top tabs setting', () => {
     expect(pageMainSource).toContain('-webkit-app-region: drag')
     expect(pageMainSource).toContain('#xbyhead2 .arco-menu-horizontal .arco-menu-item *')
     expect(pageMainSource).toContain('-webkit-app-region: no-drag')
-    expect(pageMainSource).not.toContain("<div class='title'>BoxPlayer</div>")
   })
 
   it('shows a correctly directed shared sidebar toggle for every tab with a sidebar', () => {

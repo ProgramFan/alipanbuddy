@@ -34,7 +34,7 @@ onMounted(() => {
 const getAppVersion = computed(() => installedAppVersion.value)
 
 function openSupport() {
-  openExternal('https://xbyvideohub.com/support/')
+  openExternal('https://github.com/ProgramFan/alipanbuddy/issues')
 }
 
 </script>

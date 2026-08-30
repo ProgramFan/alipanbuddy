@@ -66,7 +66,7 @@ pnpm dev                            # Vite hot reload + Tauri (Rust) app
 pnpm run typecheck                  # renderer type check (vue-tsc)
 pnpm run typecheck:rust             # cargo check
 pnpm run test                       # Vitest
-pnpm run test:rust                  # cargo test -p boxcore
+pnpm run test:rust                  # cargo test -p alipancore
 pnpm run build                      # bump version → type check → vite build → tauri build (installers)
 pnpm run build:mac | build:linux | build:windows | build:windows:arm64
 ```

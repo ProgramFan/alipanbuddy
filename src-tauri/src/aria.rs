@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 
-use boxcore::aria::{self, AriaLaunchConfig, DEFAULT_RPC_PORT, DEFAULT_RPC_SECRET};
+use alipancore::aria::{self, AriaLaunchConfig, DEFAULT_RPC_PORT, DEFAULT_RPC_SECRET};
 use tauri::{AppHandle, Manager};
 
 use crate::state::AppState;

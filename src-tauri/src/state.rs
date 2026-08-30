@@ -3,8 +3,8 @@ use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
-use boxcore::proxy::ProxyServer;
-use boxcore::speed::SpeedLimiter;
+use alipancore::proxy::ProxyServer;
+use alipancore::speed::SpeedLimiter;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use tokio::sync::oneshot;
@@ -64,7 +64,7 @@ impl AppState {
             pending_urls: Mutex::new(HashMap::new()),
             next_id: Mutex::new(1),
             page_contexts: Mutex::new(HashMap::new()),
-            upload_client: Mutex::new(boxcore::upload::build_client(None)),
+            upload_client: Mutex::new(alipancore::upload::build_client(None)),
             http_clients: Mutex::new((crate::commands::http::build_client("", true), crate::commands::http::build_client("", false))),
             upload_limiter: Arc::new(SpeedLimiter::new(0)),
             upload_cancels: Mutex::new(HashMap::new()),

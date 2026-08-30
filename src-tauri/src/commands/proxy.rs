@@ -1,10 +1,10 @@
-//! Local decrypting proxy server (boxcore::proxy) lifecycle + the renderer callback that supplies
+//! Local decrypting proxy server (alipancore::proxy) lifecycle + the renderer callback that supplies
 //! fresh download urls.
 
 use std::sync::Arc;
 use std::time::Duration;
 
-use boxcore::proxy::{ProxyContext, ProxyServer, ResolveRequest, TokenLookup, UrlResolver};
+use alipancore::proxy::{ProxyContext, ProxyServer, ResolveRequest, TokenLookup, UrlResolver};
 use serde::Serialize;
 use serde_json::json;
 use tauri::{AppHandle, Emitter, Manager};
@@ -67,7 +67,7 @@ pub async fn start_server(app: &AppHandle, port: u16) -> Result<u16, String> {
         Ok(s) => s,
         Err(err) => {
             log::warn!("proxy port {port} unavailable ({err}), picking a free one");
-            let fallback = boxcore::aria::find_free_port(18888);
+            let fallback = alipancore::aria::find_free_port(18888);
             ProxyServer::start(fallback, build_context(app)).await.map_err(|e| e.to_string())?
         }
     };
@@ -132,5 +132,5 @@ pub fn get_local_ip() -> String {
 
 #[tauri::command]
 pub fn find_free_port(port: u16) -> u16 {
-    boxcore::aria::find_free_port(port)
+    alipancore::aria::find_free_port(port)
 }

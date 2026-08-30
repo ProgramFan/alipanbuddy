@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: '要转为正式 Release 的 tag，例如 v5.0.1'
+        description: '要转为正式 Release 的 tag，例如 v1.0.0'
         required: true
         type: string
 

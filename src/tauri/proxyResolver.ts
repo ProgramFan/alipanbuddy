@@ -1,5 +1,5 @@
 /**
- * The Rust proxy server (boxcore::proxy) asks the renderer for a fresh download url when the cached
+ * The Rust proxy server (alipancore::proxy) asks the renderer for a fresh download url when the cached
  * one is missing or expired - the renderer owns the account tokens and signatures.
  */
 import AliFile from '../aliapi/file'

@@ -30,11 +30,11 @@ dependencies = [
 
 [[package]]
 name = "alipanbuddy"
-version = "0.0.0"
+version = "1.0.0"
 dependencies = [
+ "alipancore",
  "axum",
  "base64 0.22.1",
- "boxcore",
  "dirs 6.0.0",
  "env_logger",
  "futures-util",
@@ -54,6 +54,37 @@ dependencies = [
  "tauri-plugin-opener",
  "tauri-plugin-os",
  "tauri-plugin-single-instance",
+ "tokio",
+ "url",
+]
+
+[[package]]
+name = "alipancore"
+version = "1.0.0"
+dependencies = [
+ "aes",
+ "axum",
+ "base64 0.22.1",
+ "bytes",
+ "cipher",
+ "ctr",
+ "futures-util",
+ "hex",
+ "hmac",
+ "http-body-util",
+ "log",
+ "md-5",
+ "once_cell",
+ "parking_lot",
+ "pbkdf2",
+ "percent-encoding",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "sha1",
+ "sha2",
+ "tempfile",
+ "thiserror 2.0.20",
  "tokio",
  "url",
 ]
@@ -595,37 +626,6 @@ dependencies = [
  "futures-io",
  "futures-lite 2.6.1",
  "piper",
-]
-
-[[package]]
-name = "boxcore"
-version = "0.1.0"
-dependencies = [
- "aes",
- "axum",
- "base64 0.22.1",
- "bytes",
- "cipher",
- "ctr",
- "futures-util",
- "hex",
- "hmac",
- "http-body-util",
- "log",
- "md-5",
- "once_cell",
- "parking_lot",
- "pbkdf2",
- "percent-encoding",
- "reqwest 0.12.28",
- "serde",
- "serde_json",
- "sha1",
- "sha2",
- "tempfile",
- "thiserror 2.0.20",
- "tokio",
- "url",
 ]
 
 [[package]]

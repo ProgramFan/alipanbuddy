@@ -1,7 +1,7 @@
 //! Platform independent core of AlipanBuddy.
 //!
 //! Everything in this crate is free of Tauri/GTK dependencies so it can be unit tested on any
-//! machine with `cargo test -p boxcore`. The Tauri application (`src-tauri/src`) is a thin glue
+//! machine with `cargo test -p alipancore`. The Tauri application (`src-tauri/src`) is a thin glue
 //! layer over these modules.
 
 pub mod aria;

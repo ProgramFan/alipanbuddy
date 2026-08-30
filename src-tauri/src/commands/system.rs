@@ -307,7 +307,7 @@ pub async fn set_proxy(app: AppHandle, proxy_url: Option<String>) -> Result<(), 
     let state = app.state::<AppState>();
     let changed = *state.http_proxy.lock() != url;
     *state.http_proxy.lock() = url.clone();
-    *state.upload_client.lock() = boxcore::upload::build_client(Some(url.as_str()).filter(|u| !u.is_empty()));
+    *state.upload_client.lock() = alipancore::upload::build_client(Some(url.as_str()).filter(|u| !u.is_empty()));
     *state.http_clients.lock() = (proxy_cmd_client(&url, true), proxy_cmd_client(&url, false));
     if changed {
         let port = *state.proxy_port.lock();

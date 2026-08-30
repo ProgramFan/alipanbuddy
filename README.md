@@ -87,7 +87,7 @@ pnpm dev                           # 本地开发（Vite 热重载 + Tauri/Rust�
 pnpm run typecheck                 # 渲染端类型检查（vue-tsc）
 pnpm run typecheck:rust            # Rust 类型检查（cargo check）
 pnpm run test                      # Vitest
-pnpm run test:rust                 # Rust 核心库单元测试（cargo test -p boxcore）
+pnpm run test:rust                 # Rust 核心库单元测试（cargo test -p alipancore）
 pnpm run build                     # 递增版本号 → 类型检查 → Vite 打包 → tauri build 生成安装包
 pnpm run build:mac | build:linux | build:windows | build:windows:arm64
 ```
@@ -110,7 +110,7 @@ pnpm run secrets:generate   # 生成 src/secrets.generated.ts（已 ignore，已
 
 ```text
 src-tauri/            Tauri（Rust）应用：窗口、托盘、命令、自动更新、aria2c 引擎、本地解密代理
-src-tauri/crates/boxcore/  与 GTK 无关的核心库（加密流、文件名编码、代理、上传、哈希），含单元测试
+src-tauri/crates/alipancore/  与 GTK 无关的核心库（加密流、文件名编码、代理、上传、哈希），含单元测试
 src/tauri/            渲染端 ↔ Rust 桥（window.WebXxx API、axios 适配器、fs/hash/upload 封装）
 src/aliapi/           阿里云盘 API：文件、目录、分享、上传、相册、回收站
 src/pan/              文件管理器 UI（目录树、列表、菜单、弹窗）

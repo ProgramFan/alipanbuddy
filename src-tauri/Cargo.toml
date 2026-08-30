@@ -1,6 +1,6 @@
 [package]
 name = "alipanbuddy"
-version = "0.0.0"
+version = "1.0.0"
 description = "AlipanBuddy (神行云盘助手) - Aliyun Drive desktop client"
 authors = ["programfan"]
 repository = "https://github.com/programfan/alipanbuddy"
@@ -9,7 +9,7 @@ edition = "2021"
 rust-version = "1.77"
 
 [workspace]
-members = ["crates/boxcore"]
+members = ["crates/alipancore"]
 
 [lib]
 name = "alipanbuddy_lib"
@@ -19,7 +19,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-boxcore = { path = "crates/boxcore" }
+alipancore = { path = "crates/alipancore" }
 tauri = { version = "2", features = ["tray-icon", "devtools", "image-png"] }
 tauri-plugin-dialog = "2"
 tauri-plugin-notification = "2"

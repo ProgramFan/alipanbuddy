@@ -487,7 +487,7 @@ export async function AriaAddUrl(file: IStateDownFile): Promise<string> {
       let resolvedDownloadHeaders: Record<string, string> = {}
       // Album (pic drive) files: the CDN refuses aria2c's request for the web-API download url (403),
       // while the same account fetches them fine through the local /image route (API download endpoint
-      // + redirect, see boxcore::proxy). Use that route for album files, and as a one-time fallback for
+      // + redirect, see alipancore::proxy). Use that route for album files, and as a one-time fallback for
       // any file whose previous attempt was rejected with 403. Local aria2c only, plain files only.
       const isPicDrive = !!accountToken.pic_drive_id && accountToken.pic_drive_id === info.drive_id
       const lastWas403 = String(file.Down.FailedCode) === '22' && /403/.test(file.Down.FailedMessage || '')
