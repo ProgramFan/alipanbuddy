@@ -13,13 +13,13 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/gaozhangmin/aliyunpan/releases">下载</a>
+  <a href="https://github.com/programfan/alipanbuddy/releases">下载</a>
   ·
   <a href="#开发">开发</a>
 </p>
 
 <p align="center">
-  <img alt="License" src="https://img.shields.io/github/license/gaozhangmin/aliyunpan?style=flat-square">
+  <img alt="License" src="https://img.shields.io/github/license/programfan/alipanbuddy?style=flat-square">
   <img alt="Vue" src="https://img.shields.io/badge/Vue-3-42b883?style=flat-square&logo=vuedotjs&logoColor=white">
   <img alt="Tauri" src="https://img.shields.io/badge/Tauri-2-24c8db?style=flat-square&logo=tauri&logoColor=white">
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-ESNext-3178c6?style=flat-square&logo=typescript&logoColor=white">
@@ -49,7 +49,7 @@
 
 在 GitHub Releases 下载对应平台安装包：
 
-[https://github.com/gaozhangmin/aliyunpan/releases](https://github.com/gaozhangmin/aliyunpan/releases)
+[https://github.com/programfan/alipanbuddy/releases](https://github.com/programfan/alipanbuddy/releases)
 
 | 平台 | 推荐文件 |
 |---|---|

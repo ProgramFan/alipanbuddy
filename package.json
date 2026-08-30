@@ -5,10 +5,14 @@
   "private": true,
   "packageManager": "pnpm@10.32.1",
   "author": {
-    "name": "gaozhangmin",
-    "email": "gaozhangmin@gmail.com"
+    "name": "programfan",
+    "email": "zyang1984@gmail.com"
   },
-  "homepage": "https://github.com/gaozhangmin/aliyunpan",
+  "homepage": "https://github.com/programfan/alipanbuddy",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/programfan/alipanbuddy.git"
+  },
   "license": "GPL-3.0",
   "scripts": {
     "secrets:generate": "node scripts/generate-secrets.mjs --mode=local",

@@ -10,7 +10,7 @@ use tauri_plugin_updater::UpdaterExt;
 use crate::paths;
 use crate::state::AppState;
 
-const GITHUB_UPDATE_FEED_URL: &str = "https://github.com/gaozhangmin/boxplayer/releases/latest/download/latest.json";
+const GITHUB_UPDATE_FEED_URL: &str = "https://github.com/programfan/alipanbuddy/releases/latest/download/latest.json";
 const EVENT: &str = "AutoUpdate:StateChanged";
 
 #[derive(Debug, Clone, Serialize, Default)]

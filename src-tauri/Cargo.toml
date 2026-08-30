@@ -2,7 +2,8 @@
 name = "alipanbuddy"
 version = "0.0.0"
 description = "AlipanBuddy (神行云盘助手) - Aliyun Drive desktop client"
-authors = ["gaozhangmin"]
+authors = ["programfan"]
+repository = "https://github.com/programfan/alipanbuddy"
 license = "GPL-3.0"
 edition = "2021"
 rust-version = "1.77"

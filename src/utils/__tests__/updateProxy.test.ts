@@ -3,7 +3,7 @@ import { buildUpdateProxyUrl } from '../updateProxy'
 
 describe('buildUpdateProxyUrl', () => {
   it('prefixes a complete GitHub asset URL using gh-proxy format', () => {
-    expect(buildUpdateProxyUrl('https://gh-proxy.com/', 'https://github.com/gaozhangmin/boxplayer/releases/download/v5.0.8/BoxPlayer.exe')).toBe('https://gh-proxy.com/https://github.com/gaozhangmin/boxplayer/releases/download/v5.0.8/BoxPlayer.exe')
+    expect(buildUpdateProxyUrl('https://gh-proxy.com/', 'https://github.com/programfan/alipanbuddy/releases/download/v5.0.8/BoxPlayer.exe')).toBe('https://gh-proxy.com/https://github.com/programfan/alipanbuddy/releases/download/v5.0.8/BoxPlayer.exe')
   })
 
   it('does not proxy a non-GitHub URL', () => {
@@ -11,7 +11,7 @@ describe('buildUpdateProxyUrl', () => {
   })
 
   it('does not proxy the GitHub releases API', () => {
-    const apiUrl = 'https://api.github.com/repos/gaozhangmin/boxplayer/releases/latest'
+    const apiUrl = 'https://api.github.com/repos/programfan/alipanbuddy/releases/latest'
     expect(buildUpdateProxyUrl('https://gh-proxy.com', apiUrl)).toBe(apiUrl)
   })
 })

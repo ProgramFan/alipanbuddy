@@ -35,7 +35,7 @@ AlipanBuddy (神行云盘助手) is a fork of BoxPlayer / "aliyunpan (小白羊)
 
 Download the installer for your platform from GitHub Releases:
 
-[https://github.com/gaozhangmin/aliyunpan/releases](https://github.com/gaozhangmin/aliyunpan/releases)
+[https://github.com/programfan/alipanbuddy/releases](https://github.com/programfan/alipanbuddy/releases)
 
 | Platform | File |
 |---|---|

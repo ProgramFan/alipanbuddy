@@ -30,7 +30,7 @@ export interface IServerVerData {
 export default class ServerHttp {
   static baseApi = b64decode('aHR0cDovLzEyMS41LjE0NC44NDo1MjgyLw==')
   static configUrl = b64decode('aHR0cHM6Ly9naXRlZS5jb20vYXBpL3Y1L3JlcG9zL3poYW5uYW8vcmVzb3VyY2UvY29udGVudHMvc2hhcmVTaXRlQ29uZmlnLmpzb24=')
-  static updateUrl = b64decode('aHR0cHM6Ly9hcGkuZ2l0aHViLmNvbS9yZXBvcy9nYW96aGFuZ21pbi9ib3hwbGF5ZXIvcmVsZWFzZXMvbGF0ZXN0')
+  static updateUrl = 'https://api.github.com/repos/programfan/alipanbuddy/releases/latest'
 
   static compareVer(version1: string, version2: string): number {
     // Split version strings into arrays of numbers
