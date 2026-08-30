@@ -11,10 +11,6 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  linux-mpv-test:
-    name: Verify Linux MPV
-    uses: ./.github/workflows/mpv-linux.yml
-
   create-release:
     name: Create Release Draft
     runs-on: ubuntu-latest
@@ -32,7 +28,7 @@ jobs:
 
   release:
     name: Build Release
-    needs: [linux-mpv-test, create-release]
+    needs: [create-release]
     strategy:
       fail-fast: false
       matrix:
@@ -110,35 +106,6 @@ jobs:
           REQUIRED_RELEASE_SECRETS: ALIYUN_APP_ID,ALIYUN_APP_SECRET,BAIDU_APP_ID,BAIDU_APP_SECRET,CLOUD123_APP_ID,CLOUD123_APP_SECRET,DRIVE115_APP_ID,DRIVE115_APP_SECRET,DROPBOX_APP_KEY,ONEDRIVE_CLIENT_ID,BOX_CLIENT_ID,GOOGLE_CLIENT_ID,GOOGLE_CLIENT_SECRET,PIKPAK_CLIENT_ID,PIKPAK_CLIENT_SECRET,GUANGYA_CLIENT_ID,CLOUD189_APP_ID,BOXPLAYER_AI_API_URL,BOXPLAYER_API_URL,BOXPLAYER_SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,BOXPLAYER_SITE_URL,POSTHOG_PROJECT_API_KEY,POSTHOG_HOST
           ALIYUN_APP_ID: ${{ secrets.ALIYUN_APP_ID }}
           ALIYUN_APP_SECRET: ${{ secrets.ALIYUN_APP_SECRET }}
-          BAIDU_APP_ID: ${{ secrets.BAIDU_APP_ID }}
-          BAIDU_APP_SECRET: ${{ secrets.BAIDU_APP_SECRET }}
-          BAIDU_PCS_APP_ID: ${{ secrets.BAIDU_PCS_APP_ID }}
-          CLOUD123_APP_ID: ${{ secrets.CLOUD123_APP_ID }}
-          CLOUD123_APP_SECRET: ${{ secrets.CLOUD123_APP_SECRET }}
-          DRIVE115_APP_ID: ${{ secrets.DRIVE115_APP_ID }}
-          DRIVE115_APP_SECRET: ${{ secrets.DRIVE115_APP_SECRET }}
-          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
-          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
-          ONEDRIVE_CLIENT_ID: ${{ secrets.ONEDRIVE_CLIENT_ID }}
-          ONEDRIVE_CLIENT_SECRET: ${{ secrets.ONEDRIVE_CLIENT_SECRET }}
-          BOX_CLIENT_ID: ${{ secrets.BOX_CLIENT_ID }}
-          BOX_CLIENT_SECRET: ${{ secrets.BOX_CLIENT_SECRET }}
-          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-          PIKPAK_CLIENT_ID: ${{ secrets.PIKPAK_CLIENT_ID }}
-          PIKPAK_CLIENT_SECRET: ${{ secrets.PIKPAK_CLIENT_SECRET }}
-          GUANGYA_CLIENT_ID: ${{ secrets.GUANGYA_CLIENT_ID }}
-          CLOUD189_APP_ID: ${{ secrets.CLOUD189_APP_ID }}
-          SUBTITLE_SEARCH_API_KEY: ${{ secrets.SUBTITLE_SEARCH_API_KEY }}
-          SUBTITLE_DOWNLOAD_API_KEY: ${{ secrets.SUBTITLE_DOWNLOAD_API_KEY }}
-          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
-          BOXPLAYER_AI_API_URL: ${{ secrets.BOXPLAYER_AI_API_URL }}
-          BOXPLAYER_API_URL: ${{ secrets.BOXPLAYER_API_URL }}
-          BOXPLAYER_SUPABASE_URL: ${{ secrets.BOXPLAYER_SUPABASE_URL }}
-          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
-          BOXPLAYER_SITE_URL: ${{ secrets.BOXPLAYER_SITE_URL }}
-          POSTHOG_PROJECT_API_KEY: ${{ secrets.POSTHOG_PROJECT_API_KEY }}
-          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
@@ -161,35 +128,6 @@ jobs:
         env:
           ALIYUN_APP_ID: ${{ secrets.ALIYUN_APP_ID }}
           ALIYUN_APP_SECRET: ${{ secrets.ALIYUN_APP_SECRET }}
-          BAIDU_APP_ID: ${{ secrets.BAIDU_APP_ID }}
-          BAIDU_APP_SECRET: ${{ secrets.BAIDU_APP_SECRET }}
-          BAIDU_PCS_APP_ID: ${{ secrets.BAIDU_PCS_APP_ID }}
-          CLOUD123_APP_ID: ${{ secrets.CLOUD123_APP_ID }}
-          CLOUD123_APP_SECRET: ${{ secrets.CLOUD123_APP_SECRET }}
-          DRIVE115_APP_ID: ${{ secrets.DRIVE115_APP_ID }}
-          DRIVE115_APP_SECRET: ${{ secrets.DRIVE115_APP_SECRET }}
-          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
-          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
-          ONEDRIVE_CLIENT_ID: ${{ secrets.ONEDRIVE_CLIENT_ID }}
-          ONEDRIVE_CLIENT_SECRET: ${{ secrets.ONEDRIVE_CLIENT_SECRET }}
-          BOX_CLIENT_ID: ${{ secrets.BOX_CLIENT_ID }}
-          BOX_CLIENT_SECRET: ${{ secrets.BOX_CLIENT_SECRET }}
-          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-          PIKPAK_CLIENT_ID: ${{ secrets.PIKPAK_CLIENT_ID }}
-          PIKPAK_CLIENT_SECRET: ${{ secrets.PIKPAK_CLIENT_SECRET }}
-          GUANGYA_CLIENT_ID: ${{ secrets.GUANGYA_CLIENT_ID }}
-          CLOUD189_APP_ID: ${{ secrets.CLOUD189_APP_ID }}
-          SUBTITLE_SEARCH_API_KEY: ${{ secrets.SUBTITLE_SEARCH_API_KEY }}
-          SUBTITLE_DOWNLOAD_API_KEY: ${{ secrets.SUBTITLE_DOWNLOAD_API_KEY }}
-          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
-          BOXPLAYER_AI_API_URL: ${{ secrets.BOXPLAYER_AI_API_URL }}
-          BOXPLAYER_API_URL: ${{ secrets.BOXPLAYER_API_URL }}
-          BOXPLAYER_SUPABASE_URL: ${{ secrets.BOXPLAYER_SUPABASE_URL }}
-          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
-          BOXPLAYER_SITE_URL: ${{ secrets.BOXPLAYER_SITE_URL }}
-          POSTHOG_PROJECT_API_KEY: ${{ secrets.POSTHOG_PROJECT_API_KEY }}
-          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
           APPLE_ID: ${{ secrets.APPLE_ID }}

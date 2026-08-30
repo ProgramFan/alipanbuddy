@@ -5,7 +5,6 @@ import DownDowning from './DownDowning.vue'
 import DownDowned from './DownDowned.vue'
 import DownUploading from './DownUploading.vue'
 import DownUploaded from './DownUploaded.vue'
-import DownM3U8 from './DownM3U8.vue'
 import { t } from '../i18n'
 
 const appStore = useAppStore()
@@ -37,10 +36,6 @@ withDefaults(defineProps<{ sidebarVisible?: boolean }>(), { sidebarVisible: true
 <!--          <template #icon><IconFont name="iconcloud-sync" /></template>-->
 <!--          文件夹同步 x-->
 <!--        </a-menu-item>-->
-<!--        <a-menu-item key="M3U8Right">-->
-<!--          <template #icon><IconFont name="iconluxiang" /></template>-->
-<!--          M3U8视频 x-->
-<!--        </a-menu-item>-->
       </a-menu>
     </a-layout-sider>
     <a-layout-content class="xbyright">
@@ -50,7 +45,6 @@ withDefaults(defineProps<{ sidebarVisible?: boolean }>(), { sidebarVisible: true
         <a-tab-pane key="UploadingRight" title="3"><DownUploading /></a-tab-pane>
         <a-tab-pane key="UploadedRight" title="4"><DownUploaded /></a-tab-pane>
         <a-tab-pane key="SyncRight" title="5"><DownSync /></a-tab-pane>
-        <a-tab-pane key="M3U8Right" title="5"><DownM3U8 /></a-tab-pane>
       </a-tabs>
     </a-layout-content>
   </a-layout>

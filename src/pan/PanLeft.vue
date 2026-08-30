@@ -9,15 +9,12 @@ import PanDAL from './pandal'
 import UserDAL from '../user/userdal'
 import { onHideRightMenuScroll, onShowRightMenu, TestCtrl } from '../utils/keyboardhelper'
 import DirLeftMenu from './menus/DirLeftMenu.vue'
-import FolderPreviewPopover from './menus/FolderPreviewPopover.vue'
 import TreeStore, { TreeNodeData } from '../store/treestore'
 import { dropMoveSelectedFile } from './topbtns/topbtn'
 import message from '../utils/message'
 import { modalUpload } from '../utils/modal'
 import { getDriveType as GetDriveType } from '../drive/context'
-import { isAliyunUser, isBaiduUser, isBoxUser, isCloud123User, isCloud139User, isCloud189User, isDrive115User, isDropboxUser, isGoogleUser, isGuangyaUser, isOneDriveUser, isPikPakUser, isQuarkUser, isRemoteDriveUser } from '../utils/driveIdentity'
 import { t } from '../i18n'
-import { supportsLocalUpload, supportsMove, supportsSearch } from '../drive/providerFeatures'
 import { quickFileId, type QuickFileEntry } from './quickFiles'
 
 const treeref = ref()
@@ -28,8 +25,6 @@ const quickHeight = computed(() => winStore.height - 42 - 56 - 24 - 4 - 280 - 28
 const appStore = useAppStore()
 const pantreeStore = usePanTreeStore()
 const settingStore = useSettingStore()
-const isCloudUser = computed(() => isCloud123User(pantreeStore.user_id || ''))
-const isAliyunAccount = computed(() => isAliyunUser(pantreeStore.user_id || UserDAL.GetUserToken(pantreeStore.user_id || '')))
 
 const keyboardStore = useKeyboardStore()
 keyboardStore.$subscribe((_m: any, state: KeyboardState) => {
@@ -55,7 +50,6 @@ pantreeStore.$subscribe((_m: any, state: PanTreeState) => {
   if (state.drive_id != DriveID) {
     DriveID = state.drive_id
     inputselectType.value = GetDriveType(state.user_id, state.drive_id).name
-    folderPreviewRef.value?.cancel()
   }
 })
 
@@ -86,14 +80,12 @@ watchEffect(() => {
 const handleTreeRightClick = (e: { event: MouseEvent; node: any }) => {
   const { parent = undefined, key } = e.node
   if (key.startsWith('search')) return
-  const isSingleRootDrive = isCloud123User(pantreeStore.user_id || '') || isDrive115User(pantreeStore.user_id || '') || isBaiduUser(pantreeStore.user_id || '') || isPikPakUser(pantreeStore.user_id || '') || isDropboxUser(pantreeStore.user_id || '') || isOneDriveUser(pantreeStore.user_id || '') || isBoxUser(pantreeStore.user_id || '') || isGoogleUser(pantreeStore.user_id || '') || isRemoteDriveUser(pantreeStore.user_id || '')
-  if (!isSingleRootDrive && key.length < 40) return
+  if (key.length < 40) return
   pantreeStore.mTreeSelected(e)
   onShowRightMenu('leftpanmenu', e.event.clientX, e.event.clientY)
 }
 
 const onRowItemDragEnter = (ev: any) => {
-  if (!supportsMove(pantreeStore.user_id || '', pantreeStore.drive_id || '') && !supportsLocalUpload(pantreeStore.user_id || '', pantreeStore.drive_id || '')) return
   ev.stopPropagation()
   ev.preventDefault()
   ev.target.style.outline = '2px dotted #637dff'
@@ -107,7 +99,6 @@ const onRowItemDragLeave = (ev: any) => {
   ev.target.style.background = ''
 }
 const onRowItemDragOver = (ev: any) => {
-  if (!supportsMove(pantreeStore.user_id || '', pantreeStore.drive_id || '') && !supportsLocalUpload(pantreeStore.user_id || '', pantreeStore.drive_id || '')) return
   ev.stopPropagation()
   ev.preventDefault()
 }
@@ -133,10 +124,6 @@ const onRowItemDrop = (ev: any, data: any) => {
   ev.target.style.background = ''
   const filesList = ev.dataTransfer.files
   if (filesList && filesList.length > 0) {
-    if (!supportsLocalUpload(pantreeStore.user_id || '', data.drive_id || pantreeStore.drive_id || '')) {
-      message.warning(t('pan.readOnlyNoUpload'))
-      return
-    }
     const files: string[] = []
     for (let i = 0, maxi = filesList.length; i < maxi; i++) {
       const path = filesList[i].path
@@ -144,10 +131,6 @@ const onRowItemDrop = (ev: any, data: any) => {
     }
     modalUpload(data.key, files)
   } else {
-    if (!supportsMove(pantreeStore.user_id || '', pantreeStore.drive_id || '')) {
-      message.warning(t('pan.readOnlyNoMove'))
-      return
-    }
     dropMoveSelectedFile(data.drive_id, data.key, true)
   }
 }
@@ -223,95 +206,18 @@ const quickSelectedKeys = computed(() => {
   return item ? [item.id] : []
 })
 const filterTreeData = computed(() => {
-  const userId = pantreeStore.user_id || ''
-  const isRemoteDrive = isRemoteDriveUser(userId)
-  const isCloudUser = isCloud123User(userId) || isPikPakUser(userId) || isDropboxUser(userId) || isOneDriveUser(userId) || isBoxUser(userId) || isRemoteDrive
-  const providerTreeData = pantreeStore.treeData.filter((item) => item.key !== 'recent' || isBoxUser(userId))
-  const baseList = isCloudUser
-    ? providerTreeData.filter((item) => {
-      if (item.key === 'search' && !supportsSearch(userId, pantreeStore.drive_id)) return false
-      if (item.key === 'backup_root') return false
-      if (item.key === 'resource_root') return false
-      if (item.key === 'pic_root') return false
-      if ((isPikPakUser(pantreeStore.user_id || '') || isDropboxUser(pantreeStore.user_id || '') || isOneDriveUser(pantreeStore.user_id || '') || isRemoteDrive) && (item.key === 'video' || item.key === 'recover' || item.key === 'favorite')) return false
-      if (isRemoteDrive && (item.key === 'trash' || item.key === 'search')) return false
-      return true
-    })
-    : providerTreeData.filter((item) => {
-      if (item.key === 'search' && !supportsSearch(userId, pantreeStore.drive_id)) return false
-      if (!isAliyunAccount.value && (item.key === 'backup_root' || item.key === 'resource_root')) {
-        return false
-      }
-      if (isBaiduUser(pantreeStore.user_id || '') && item.key === 'trash') {
-        return false
-      }
-      if (!isAliyunAccount.value && (item.key === 'pic_root' || item.key === 'video' || item.key === 'favorite' || item.key === 'recover')) {
-        return false
-      }
-      if (useSettingStore().securityHideBackupDrive && item.key === 'backup_root') {
-        return false
-      }
-      if (useSettingStore().securityHideResourceDrive && item.key === 'resource_root') {
-        return false
-      }
-      if (useSettingStore().securityHidePicDrive && item.key === 'pic_root') {
-        return false
-      }
-      if (!usePanTreeStore().resource_drive_id && item.key === 'resource_root') {
-        return false
-      }
-      return true
-    })
-
-  return baseList
-})
-
-const folderPreviewRef = ref<{ open: (target: HTMLElement, params: any) => void; leave: () => void; cancel: () => void } | null>(null)
-
-const SPECIAL_KEYS = new Set([
-  'trash', 'recover', 'favorite', 'video', 'pic_root',
-  'backup_root', 'resource_root'
-])
-
-const isPreviewableNode = (data: TreeNodeData | undefined): boolean => {
-  if (!settingStore.uiFolderPreviewEnabled) return false
-  if (!data) return false
-  const key = String(data.key || '')
-  if (!key) return false
-  if (SPECIAL_KEYS.has(key)) return false
-  if (key.startsWith('search') || key.startsWith('color')) return false
-  if (data.isLeaf === true) {
-    // leaf placeholder, but still might be a real folder; only block if no drive_id
-  }
-  const userId = (data as any).user_id || pantreeStore.user_id || ''
-  const isSingleRootDrive = isCloud123User(userId) || isDrive115User(userId) || isBaiduUser(userId) || isPikPakUser(userId) || isDropboxUser(userId) || isOneDriveUser(userId) || isBoxUser(userId) || isGoogleUser(userId) || isQuarkUser(userId) || isCloud139User(userId) || isCloud189User(userId) || isGuangyaUser(userId) || isRemoteDriveUser(userId)
-  if (!isSingleRootDrive && key.length < 40) return false
-  return true
-}
-
-const onTreeNodeEnter = (ev: MouseEvent, data: TreeNodeData) => {
-  if (!isPreviewableNode(data)) return
-  const target = ev.currentTarget as HTMLElement
-  if (!target) return
-  const driveId = data.drive_id || pantreeStore.drive_id
-  const userId = (data as any).user_id || pantreeStore.user_id || ''
-  if (!userId || !driveId) return
-  folderPreviewRef.value?.open(target, {
-    user_id: userId,
-    drive_id: driveId,
-    file_id: (data as any).file_id || data.key,
-    name: data.title,
-    path: (data as any).path || ''
+  return pantreeStore.treeData.filter((item) => {
+    if (item.key === 'recent') return false
+    if (useSettingStore().securityHideBackupDrive && item.key === 'backup_root') return false
+    if (useSettingStore().securityHideResourceDrive && item.key === 'resource_root') return false
+    if (useSettingStore().securityHidePicDrive && item.key === 'pic_root') return false
+    if (!usePanTreeStore().resource_drive_id && item.key === 'resource_root') return false
+    return true
   })
-}
-
-const onTreeNodeLeave = () => {
-  folderPreviewRef.value?.leave()
-}
+})
 
 const onTreeScroll = () => {
   onHideRightMenuScroll()
-  folderPreviewRef.value?.cancel()
 }
 </script>
 
@@ -362,15 +268,11 @@ const onTreeScroll = () => {
                     @drop='onRowItemDrop($event, dataRef)'
                     @dragover='onRowItemDragOver'
                     @dragenter='onRowItemDragEnter'
-                    @dragleave='onRowItemDragLeave'
-                    @mouseenter='(ev:MouseEvent)=>onTreeNodeEnter(ev, dataRef)'
-                    @mouseleave='onTreeNodeLeave'>
+                    @dragleave='onRowItemDragLeave'>
                 {{ dataRef.title }}
               </span>
               <span v-else
-                    class='dirtitle'
-                    @mouseenter='(ev:MouseEvent)=>onTreeNodeEnter(ev, dataRef)'
-                    @mouseleave='onTreeNodeLeave'>
+                    class='dirtitle'>
                 {{ dataRef.title }}
               </span>
             </template>
@@ -427,9 +329,7 @@ const onTreeScroll = () => {
               <IconFont name="iconfile-folder" />
             </template>
             <template #title='{ dataRef }'>
-              <div class="quickitem"
-                   @mouseenter='(ev:MouseEvent)=>onTreeNodeEnter(ev, dataRef)'
-                   @mouseleave='onTreeNodeLeave'>
+              <div class="quickitem">
                  <span class='quicktitle' :title='dataRef.title + " · " + (dataRef.user_name || dataRef.user_id) + " · " + dataRef.drive_name'>
                 {{ dataRef.title }}
                 <small class="quicksource">{{ dataRef.user_name || dataRef.user_id }} · {{ dataRef.drive_name }}</small>
@@ -446,7 +346,6 @@ const onTreeScroll = () => {
       </a-tabs>
     </div>
     <DirLeftMenu :inputselectType='inputselectType' />
-    <FolderPreviewPopover ref='folderPreviewRef' />
   </div>
 </template>
 

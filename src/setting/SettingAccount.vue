@@ -1,7 +1,7 @@
 <script setup lang='ts'>
 import message from '../utils/message'
 import UserDAL, { UserTokenMap } from '../user/userdal'
-import { ITokenInfo, useSettingStore, useUserStore } from '../store'
+import { ITokenInfo, useSettingStore } from '../store'
 import { copyToClipboard, openExternal } from '../utils/electronhelper'
 import Db from '../utils/db'
 import fs from 'node:fs'
@@ -116,14 +116,6 @@ const handlerAccountExport = () => {
   }
 }
 
-const handlerExportCliTokens = async () => {
-  const result = await UserDAL.SyncCliAccountsToCli()
-  if (result?.ok) {
-    message.success(`${t('settings.account.exportCliSuccessPrefix')} ${result.exported} ${t('settings.account.exportCliSuccessSuffix')} ${result.path}`)
-  } else {
-    message.error(`${t('settings.account.exportFailed')}: ${result?.error || t('media.unknownError')}`)
-  }
-}
 </script>
 
 <template>
@@ -155,10 +147,6 @@ const handlerExportCliTokens = async () => {
       </a-button>
       <a-button type='outline' size='small' status="success" tabindex='-1' @click='handlerAccountImport'>
         {{ t('settings.account.import') }}
-      </a-button>
-      <a-button type='outline' size='small' tabindex='-1'
-                @click='handlerExportCliTokens'>
-        {{ t('settings.account.exportCli') }}
       </a-button>
     </div>
   </div>

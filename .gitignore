@@ -29,9 +29,6 @@ config/keys.json
 scripts/
 !scripts/
 scripts/*
-!scripts/clouddrive-cli.mjs
-!scripts/clouddrive-mcp.mjs
-!scripts/koodo-reader-smoke.mjs
 !scripts/generate-secrets.mjs
 !scripts/version-utils.mjs
 
@@ -51,23 +48,12 @@ docs/promotion/*
 docs/superpowers/*
 !docs/superpowers/plans/
 docs/superpowers/plans/*
-!docs/superpowers/plans/fixtures/
-!docs/superpowers/plans/fixtures/koodo-smoke-book.md
 plans/
 !docs/superpowers/plans/
-!docs/superpowers/plans/fixtures/
-!docs/superpowers/plans/fixtures/koodo-smoke-book.md
 *.swift
 AGENT.md
 SKILL_ITERATION_LOG.md
 node_modules/
-jellyfin-sdk/
-boxplayer-site/
-boxplayer-ai-api/
-boxplayer-api/
-OpenList/
-tmp_video_frames/
-tmp_video_xhs/
 
 # stale tsc compile output for ts source files (must be regenerated only via vite-plugin-electron)
 electron/**/*.js

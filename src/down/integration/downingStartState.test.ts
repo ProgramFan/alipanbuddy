@@ -47,20 +47,19 @@ describe('DowningStore start state', () => {
       DownID: 'task-1',
       Info: {
         GID: 'gid-1',
-        user_id: 'external',
+        user_id: 'aliyun_u1',
         DownSavePath: '/tmp',
         ariaRemote: false,
         file_id: 'file-1',
-        drive_id: 'external',
-        name: 'movie.torrent',
+        drive_id: 'drive-1',
+        name: 'movie.mkv',
         size: 0,
         sizestr: '',
-        icon: 'iconfile-bt',
+        icon: 'iconfile-video',
         isDir: false,
         encType: '',
         sha1: '',
-        crc64: '',
-        sourceType: 'torrent'
+        crc64: ''
       },
       Down: {
         DownState: '已暂停',
@@ -93,14 +92,14 @@ describe('DowningStore start state', () => {
     const task: any = {
       DownID: 'task-2',
       Info: {
-        GID: 'metadata-gid', user_id: 'external', DownSavePath: '/tmp', ariaRemote: false,
-        file_id: 'file-2', drive_id: 'external', name: 'BT 磁力任务', size: 0, sizestr: '',
-        icon: 'iconfile-bt', isDir: false, encType: '', sha1: '', crc64: '', sourceType: 'magnet'
+        GID: 'metadata-gid', user_id: 'aliyun_u1', DownSavePath: '/tmp', ariaRemote: false,
+        file_id: 'file-2', drive_id: 'drive-1', name: 'movie.mkv', size: 0, sizestr: '',
+        icon: 'iconfile-video', isDir: false, encType: '', sha1: '', crc64: ''
       },
       Down: {
         DownState: '队列中', DownTime: 1, DownSize: 0, DownSpeed: 0, DownSpeedStr: '',
         DownProcess: 0, IsStop: false, IsDowning: false, IsCompleted: false, IsFailed: false,
-        FailedCode: 0, FailedMessage: '', AutoTry: 0, DownUrl: 'magnet:?xt=urn:btih:abc'
+        FailedCode: 0, FailedMessage: '', AutoTry: 0, DownUrl: ''
       }
     }
 

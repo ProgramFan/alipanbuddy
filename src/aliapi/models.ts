@@ -8,62 +8,7 @@ export interface IDownloadUrl {
 }
 
 
-export interface IVideoPreviewUrl {
-  drive_id: string
-  file_id: string
-  size: number
-  duration: number
-  expire_time: number
-  width: number
-  height: number
-  headers?: Record<string, string>
-  qualities: {
-    html: string
-    quality: string
-    height: number
-    width: number
-    label: string
-    value: string
-    url: string
-    type?: string
-    headers?: Record<string, string>
-  }[]
-  subtitles: {
-    language: string
-    url: string
-    headers?: Record<string, string>
-  }[]
-}
 
-export interface ICompilationList {
-  name: string
-  type: string
-  width: number
-  height: number
-  duration: number
-  category: string
-  drive_id: string
-  file_id: string
-  file_extension: string
-  url: string
-  expire_time: number
-  play_cursor: number
-  compilation_id: string
-}
-
-
-export interface IOfficePreViewUrl {
-  drive_id: string
-  file_id: string
-  access_token: string
-  preview_url: string
-}
-
-
-export interface IVideoXBTUrl {
-  time: string
-  url: string
-}
 
 
 export interface IUploadCreat {

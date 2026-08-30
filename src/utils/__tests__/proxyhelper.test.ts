@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { buildUpstreamProxyHeaders, ensureInlinePreviewRange, normalizeProxyRangeHeaders, normalizeProxyStatusCode } from '../proxyHeaders'
-import { shouldRefreshProxyUrl } from '../proxyCache'
 
 describe('buildUpstreamProxyHeaders', () => {
   it('keeps range and media auth headers while dropping conditional and hop-by-hop headers', () => {
@@ -60,22 +59,6 @@ describe('normalizeProxyRangeHeaders', () => {
 
   it('does not rewrite unrelated range capabilities', () => {
     expect(normalizeProxyRangeHeaders({ 'content-range': 'bytes 0-65535/36240717', 'accept-ranges': ['bytes', 'none'] })['accept-ranges']).toEqual(['bytes', 'none'])
-  })
-})
-
-describe('shouldRefreshProxyUrl', () => {
-  it('does not refresh media server proxy urls through cloud drive APIs', () => {
-    expect(shouldRefreshProxyUrl({
-      driveId: 'media_server',
-      proxyUrl: 'https://emby.example/Videos/1555651/stream',
-      proxyInfo: {
-        file_id: '1555651',
-        expires_time: 1,
-        videoQuality: 'Origin'
-      },
-      fileId: '1555651',
-      selectQuality: 'FHD'
-    })).toBe(false)
   })
 })
 

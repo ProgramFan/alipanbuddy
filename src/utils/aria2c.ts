@@ -12,12 +12,9 @@ import AliTrash from '../aliapi/trash'
 
 import path from 'path'
 import fs from 'fs'
-import { getProxyUrl, getRawUrl } from './proxyhelper'
-import { isBaiduUser, isDrive115User, isQuarkUser } from '../aliapi/utils'
+import { getRawUrl } from './proxyhelper'
 import { callAriaClient, getAriaAddUriGid, isAriaDuplicateGidError } from './aria2Rpc'
-import { buildAriaAddOptions, resolveProviderDownloadSplit, shouldCheckExistingDownloadTarget } from '../down/integration/aria2AddOptions'
-import { DRIVE115_DOWN_AGENT } from '../cloud115/constants'
-import { QUARK_DOWNLOAD_AGENT } from '../quark/auth'
+import { buildAriaAddOptions } from '../down/integration/aria2AddOptions'
 
 export const localPwd = 'S4znWTaZYQi3cpRNb'
 
@@ -314,7 +311,7 @@ export async function AriaConnect() {
 
 
 export async function AriaGetDowningList() {
-  const fields = ['gid', 'status', 'totalLength', 'completedLength', 'downloadSpeed', 'errorCode', 'errorMessage', 'dir', 'files', 'bittorrent', 'followedBy']
+  const fields = ['gid', 'status', 'totalLength', 'completedLength', 'downloadSpeed', 'errorCode', 'errorMessage', 'dir', 'files']
   const multicall = [
     ['aria2.tellActive', fields],
     ['aria2.tellWaiting', 0, 1000, fields],
@@ -406,12 +403,7 @@ export async function AriaAddUrl(file: IStateDownFile): Promise<string> {
 
     const info = file.Info
     const accountToken = UserDAL.GetUserToken(info.user_id)
-    const sourceType = info.sourceType || ''
-    const isExternalSource = sourceType === 'url' || sourceType === 'magnet' || sourceType === 'torrent' || sourceType === 'torrent-url'
-    const isBtSource = sourceType === 'magnet' || sourceType === 'torrent' || sourceType === 'torrent-url'
-    const presetSource = typeof file.Down.DownUrl === 'string' ? file.Down.DownUrl.trim() : ''
-    const hasPresetDownloadUrl = /^https?:\/\//i.test(presetSource) || /^magnet:\?/i.test(presetSource) || sourceType === 'torrent'
-    if ((!accountToken || !accountToken.access_token) && !isExternalSource && !(info.drive_id === 'media_server' && hasPresetDownloadUrl)) return '账号失效，操作取消'
+    if (!accountToken || !accountToken.access_token) return '账号失效，操作取消'
     if (info.isDir) {
       const dirFull = path.join(info.DownSavePath, info.name)
       if (!info.ariaRemote) {
@@ -456,7 +448,7 @@ export async function AriaAddUrl(file: IStateDownFile): Promise<string> {
       const dirPath = info.DownSavePath
       const outFileName = info.ariaRemote ? info.name : info.name + '.td'
       const fileFull = path.join(dirPath, info.name)
-      if (!info.ariaRemote && shouldCheckExistingDownloadTarget(sourceType)) {
+      if (!info.ariaRemote) {
         try {
           const fileStat = await fs.promises.stat(fileFull)
           if (fileStat && fileStat.size == info.size) return 'downed'
@@ -476,7 +468,7 @@ export async function AriaAddUrl(file: IStateDownFile): Promise<string> {
             )
             return errorMessage
           }
-          if (info.size == 0 && !isExternalSource) {
+          if (info.size == 0) {
             try {
               await (await fs.promises.open(fileFull, 'w')).close()
               return 'downed'
@@ -489,7 +481,7 @@ export async function AriaAddUrl(file: IStateDownFile): Promise<string> {
       let downloadUrl = typeof file.Down.DownUrl === 'string' ? file.Down.DownUrl : ''
       downloadUrl = downloadUrl.trim()
       let resolvedDownloadHeaders: Record<string, string> = {}
-      if (downloadUrl && !isBtSource && downloadUrl.includes('x-oss-expires=')) {
+      if (downloadUrl && downloadUrl.includes('x-oss-expires=')) {
         const expires = downloadUrl.split('x-oss-expires=')[1].split('&')[0]
         const lastTime = parseInt(expires) - Date.now() / 1000
         const needTime = (info.size + 1) / 1024 / 1024
@@ -497,26 +489,23 @@ export async function AriaAddUrl(file: IStateDownFile): Promise<string> {
           downloadUrl = ''
         }
       }
-      if (!downloadUrl && !isExternalSource) {
+      if (!downloadUrl) {
         const durl = await getRawUrl(info.user_id, info.drive_id, info.file_id, info.encType)
         if (typeof durl == 'string') {
           console.warn('[aria2] getRawUrl failed', info.drive_id, info.file_id, durl)
           return `生成下载链接失败, ${durl}`
-        } else if (!durl.url && !durl.qualities?.length) {
+        } else if (!durl.url) {
           console.warn('[aria2] getRawUrl empty url', info.drive_id, info.file_id, durl)
           DebugLog.mSaveLog('danger', `${info.file_id} 生成下载链接失败, ${JSON.stringify(durl)}`, null)
           return `生成下载链接失败,${JSON.stringify(durl)}`
         }
-        downloadUrl = durl.url || durl.qualities?.[0]?.url || ''
+        downloadUrl = durl.url
         if (durl.headers) {
           resolvedDownloadHeaders = durl.headers
         }
         file.Down.DownUrl = downloadUrl
       }
-      if (sourceType === 'torrent') {
-        downloadUrl = ''
-        if (!info.torrentBase64) return '种子内容为空'
-      } else if (!downloadUrl) {
+      if (!downloadUrl) {
         console.warn('[aria2] no downloadUrl before addUri', info.drive_id, info.file_id)
         return '生成下载链接失败, 下载地址为空'
       }
@@ -525,90 +514,20 @@ export async function AriaAddUrl(file: IStateDownFile): Promise<string> {
         console.warn('[aria2] normalize url', info.drive_id, info.file_id)
         downloadUrl = safeUrl
       }
-      const isLocalQuarkDownload = !info.ariaRemote && (info.drive_id === 'quark' || isQuarkUser(accountToken || ''))
-      if (isLocalQuarkDownload && /^https?:\/\//i.test(downloadUrl) && !downloadUrl.includes('/proxy?')) {
-        downloadUrl = getProxyUrl({
-          user_id: info.user_id,
-          drive_id: info.drive_id,
-          file_id: info.file_id,
-          file_size: info.size,
-          proxy_url: downloadUrl,
-          proxy_headers: JSON.stringify({ ...resolvedDownloadHeaders, ...(info.downloadHeaders || {}) }),
-          proxy_kind: 'quark-download'
-        })
-        resolvedDownloadHeaders = {}
-        file.Down.DownUrl = ''
-      }
-      if (sourceType === 'magnet' && !/^magnet:\?/i.test(downloadUrl)) {
-        console.warn('[aria2] invalid magnet', info.drive_id, info.file_id, downloadUrl)
-        return '磁力链接无效'
-      }
-      if ((sourceType !== 'magnet' && sourceType !== 'torrent') && !/^https?:\/\//i.test(downloadUrl)) {
+      if (!/^https?:\/\//i.test(downloadUrl)) {
         console.warn('[aria2] invalid downloadUrl', info.drive_id, info.file_id, downloadUrl)
         return '生成下载链接失败, 下载地址无效'
       }
-      console.log('[aria2] addUri', info.drive_id, info.file_id, { url: downloadUrl, sourceType })
+      console.log('[aria2] addUri', info.drive_id, info.file_id, { url: downloadUrl })
       if (file.Down.IsStop) return '已暂停'
-      const token = UserDAL.GetUserToken(info.user_id)
-      const isBaiduDownload = isBaiduUser(token || '') || info.drive_id === 'baidu'
-      const isDrive115Download = isDrive115User(token || '') || info.drive_id === 'drive115'
-      const isQuarkDownload = isQuarkUser(token || '') || info.drive_id === 'quark'
-      const split = resolveProviderDownloadSplit(
-        isDrive115Download ? 'drive115' : (isQuarkDownload ? 'quark' : info.drive_id),
-        info.split || useSettingStore().downThreadMax
-      )
-      const referer = info.referer || (isBaiduDownload ? 'https://pan.baidu.com/' : isQuarkDownload ? 'https://pan.quark.cn/' : isDrive115Download ? '' : Config.referer)
-      const userAgent = isBaiduDownload ? 'pan.baidu.com' : isQuarkDownload ? QUARK_DOWNLOAD_AGENT : isDrive115Download ? DRIVE115_DOWN_AGENT : (info.userAgent || useSettingStore().ariaUserAgent || Config.downAgent)
+      const split = useSettingStore().downThreadMax
+      const referer = Config.referer
+      const userAgent = useSettingStore().ariaUserAgent || Config.downAgent
       const headers: string[] = []
-      const downloadHeaders = {
-        ...(info.downloadHeaders || {}),
-        ...resolvedDownloadHeaders
-      }
-      for (const [key, value] of Object.entries(downloadHeaders)) {
+      for (const [key, value] of Object.entries(resolvedDownloadHeaders)) {
         if (key && value) headers.push(`${key}: ${value}`)
       }
-      headers.push(...(info.externalHeaders || []))
-      const hasAuthorizationHeader = headers.some((header) => /^authorization\s*:/i.test(header))
-      if (!hasAuthorizationHeader && token?.access_token && (isDrive115User(token) || isBaiduUser(token))) {
-        headers.push(`Authorization: Bearer ${token.access_token}`)
-      }
-      if (info.drive_id === 'baidu') {
-        headers.push(`User-Agent: pan.baidu.com`)
-      } else {
-        if (userAgent) {
-          headers.push(`User-Agent: ${userAgent}`)
-        }
-      }
-      if (isDrive115Download) {
-        try {
-          const url = new URL(downloadUrl)
-          const sanitizedHeaders = headers.map((header) => {
-            const index = header.indexOf(':')
-            const key = index >= 0 ? header.slice(0, index).trim() : header
-            const value = index >= 0 ? header.slice(index + 1).trim() : ''
-            if (/^authorization$/i.test(key)) return `${key}: ${value ? 'Bearer ***' : ''}`
-            if (/^cookie$/i.test(key)) return `${key}: ***`
-            return `${key}: ${value}`
-          })
-          console.log('[drive115] aria2 addUri options', {
-            host: url.host,
-            pathname: url.pathname,
-            hasQuery: !!url.search,
-            split,
-            referer,
-            userAgent,
-            headers: sanitizedHeaders
-          })
-        } catch {
-          console.log('[drive115] aria2 addUri options', {
-            urlValid: false,
-            split,
-            referer,
-            userAgent,
-            headers: headers.map((header) => header.replace(/Authorization:\\s*Bearer\\s+.+/i, 'Authorization: Bearer ***'))
-          })
-        }
-      }
+      if (userAgent) headers.push(`User-Agent: ${userAgent}`)
       const addOptions: any = buildAriaAddOptions({
         gid: info.GID,
         dir: dirPath,
@@ -616,36 +535,10 @@ export async function AriaAddUrl(file: IStateDownFile): Promise<string> {
         referer,
         userAgent,
         headers,
-        outFileName,
-        sourceType,
-        selectFile: info.selectFile,
-        allProxy: info.allProxy
+        outFileName
       })
       const client = GetAria()
       if (!client) return 'Aria2未连接，请检查本地或远程Aria连接状态'
-      if (sourceType === 'torrent') {
-        let torrentError: any = undefined
-        const torrentResult: any = await callAriaClient(client, 'aria2.addTorrent', info.torrentBase64, [], addOptions, (error: unknown) => {
-          torrentError = error
-        })
-        const torrentGid = getAriaAddUriGid(torrentResult)
-        if (torrentGid) {
-          info.GID = torrentGid
-          return 'success'
-        }
-        if (isAriaDuplicateGidError(torrentResult) || isAriaDuplicateGidError(torrentError)) return 'success'
-        delete addOptions.gid
-        torrentError = undefined
-        const fallbackTorrentResult: any = await callAriaClient(client, 'aria2.addTorrent', info.torrentBase64, [], addOptions, (error: unknown) => {
-          torrentError = error
-        })
-        const fallbackTorrentGid = getAriaAddUriGid(fallbackTorrentResult)
-        if (fallbackTorrentGid) {
-          info.GID = fallbackTorrentGid
-          return 'success'
-        }
-        return '创建BT任务失败，稍后自动重试' + ((fallbackTorrentResult && fallbackTorrentResult.message) || (torrentError && torrentError.message) || (torrentResult && torrentResult.message) || '')
-      }
       const multicall = [
         ['aria2.forceRemove', info.GID],
         ['aria2.removeDownloadResult', info.GID],
@@ -714,10 +607,6 @@ export async function AriaAddUrl(file: IStateDownFile): Promise<string> {
 
 export function AriaHashFile(downitem: IStateDownFile): { DownID: string; Check: boolean } {
   const DownID = downitem.DownID
-  const sourceType = downitem.Info.sourceType || ''
-  if (sourceType === 'magnet' || sourceType === 'torrent' || sourceType === 'torrent-url') {
-    return { DownID, Check: true }
-  }
   const dir = downitem.Info.DownSavePath
   const out = downitem.Info.ariaRemote ? downitem.Info.name : downitem.Info.name + '.td'
   const sha1 = downitem.Info.sha1

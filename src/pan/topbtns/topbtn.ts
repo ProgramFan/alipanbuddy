@@ -1,18 +1,14 @@
 import { IAliGetFileModel } from '../../aliapi/alimodels'
 import AliFile from '../../aliapi/file'
 import AliFileCmd from '../../aliapi/filecmd'
-import { handleFilesDeleted } from '../../utils/libraryDeleteHooks'
 import { IAliFileResp, NewIAliFileResp } from '../../aliapi/dirfilelist'
 import AliTrash from '../../aliapi/trash'
-import { IPageVideoXBT } from '../../store/appstore'
 import DebugLog from '../../utils/debuglog'
 import message from '../../utils/message'
 import {
   modalCopyFileTree,
   modalCreatNewShareLink,
-  modalDLNAPlayer,
   modalDownload,
-  modalM3U8Download,
   modalMoveToAlbum,
   modalPassword,
   modalSearchPan,
@@ -29,23 +25,12 @@ import TreeStore from '../../store/treestore'
 import { copyToClipboard } from '../../utils/electronhelper'
 import DownDAL from '../../down/DownDAL'
 import { isEmpty } from 'lodash'
-import { GetDriveID, isAliyunUser, isBoxUser, isCloud123User, isDrive115User, isDropboxUser, isPikPakUser } from '../../aliapi/utils'
+import { GetDriveID } from '../../aliapi/utils'
 import AliAlbum from '../../aliapi/album'
 import { getEncType } from '../../utils/proxyhelper'
-import { supportsCopy, supportsCreateShare, supportsLocalUpload, supportsMove, supportsSearch, supportsTrashMove, supportsTrashPermanentDelete } from '../../drive/providerFeatures'
-import { getDriveProviderLabel } from '../../utils/driveProvider'
-import UserDAL from '../../user/userdal'
 import { t } from '../../i18n'
 import { Modal, Option, Select } from '@arco-design/web-vue'
 import { h } from 'vue'
-import { apiCloud123TrashDeleteAll } from '../../cloud123/filecmd'
-import { apiDrive115TrashClear } from '../../cloud115/trash'
-import { apiDrive115VideoPush, getDrive115PickCode } from '../../cloud115/video'
-import { apiPikPakFileList } from '../../pikpak/dirfilelist'
-import { apiPikPakTrashDelete } from '../../pikpak/filecmd'
-import { apiBoxTrashListPage, apiBoxTrashPurge } from '../../box/filecmd'
-import { apiBoxCreateZip, apiBoxWaitZip } from '../../box/zip'
-import { apiDropboxZipDownload } from '../../dropbox/zip'
 
 const topbtnLock = new Set()
 
@@ -56,10 +41,6 @@ export function handleUpload(uploadType: string, encType: string = '') {
   const currentDirId = panfileStore.DirID || pantreeStore.selectDir.file_id
   if (!pantreeStore.user_id || !pantreeStore.drive_id || !currentDirId) {
     message.error('上传操作失败 父文件夹错误')
-    return
-  }
-  if (!supportsLocalUpload(pantreeStore.user_id, pantreeStore.drive_id)) {
-    message.warning('当前网盘为只读，不能上传文件')
     return
   }
   if (encType == 'xbyEncrypt1') {
@@ -150,21 +131,7 @@ export async function menuDownload(istree: boolean, tips: boolean = true) {
   }
   try {
     if (downSavePathDefault || !tips) {
-      if ((isBoxUser(selectedData.user_id) || selectedData.drive_id === 'box') && (files.length > 1 || files.some(file => file.isDir))) {
-        const zipItems = files.map(file => ({ id: file.file_id, type: file.isDir ? 'folder' as const : 'file' as const }))
-        const zipName = (files.length === 1 ? files[0].name : 'Box 下载') || 'Box 下载'
-        const created = await apiBoxCreateZip(selectedData.user_id, zipItems, zipName)
-        if (created.error || !created.data) throw new Error(created.error || '创建 Box ZIP 下载失败')
-        const ready = await apiBoxWaitZip(selectedData.user_id, created.data)
-        if (ready.error || !ready.url) throw new Error(ready.error || 'Box ZIP 下载失败')
-        DownDAL.aAddUrlDownload({ user_id: selectedData.user_id, drive_id: 'box', file_id: `zip:${Date.now()}`, url: ready.url, headers: ready.headers, savePath, fileName: `${zipName}.zip`, icon: 'iconfile-zip' })
-      } else if ((isDropboxUser(selectedData.user_id) || selectedData.drive_id === 'dropbox') && files.length === 1 && files[0].isDir) {
-        const zip = await apiDropboxZipDownload(selectedData.user_id, files[0].file_id)
-        if (zip.error) throw new Error(zip.error)
-        DownDAL.aAddUrlDownload({ user_id: selectedData.user_id, drive_id: 'dropbox', file_id: `zip:${files[0].file_id}`, url: zip.url, headers: zip.headers, savePath, fileName: `${files[0].name || 'Dropbox'}.zip`, icon: 'iconfile-zip' })
-      } else {
       DownDAL.aAddDownload(files, savePath, savePathFull)
-      }
       if (useDowningStore().ListDataRaw.length > 0) {
         message.success(`成功创建下载任务`)
       }
@@ -226,10 +193,6 @@ export async function menuTrashSelectFile(istree: boolean, isDelete: boolean, is
     message.error('没有可以删除的文件')
     return
   }
-  if (!ispic && !(isDelete ? supportsTrashPermanentDelete(selectedData.user_id, selectedData.drive_id) : supportsTrashMove(selectedData.user_id, selectedData.drive_id))) {
-    message.warning('当前网盘为只读，不能删除文件')
-    return
-  }
   if (selectedData.dirID.startsWith('video')) {
     message.error('请不要在放映室里删除文件')
     return
@@ -282,9 +245,6 @@ export async function menuTrashSelectFile(istree: boolean, isDelete: boolean, is
         await PanDAL.aReLoadOneDirToRefreshTree(selectedData.user_id, selectedData.drive_id, selectedData.dirID, selectedData.albumId)
         TreeStore.ClearDirSize(selectedData.drive_id, selectedData.selectedParentKeys)
       }
-    }
-    if (!ispic && successList && successList.length > 0) {
-      handleFilesDeleted(selectedData.user_id, selectedData.drive_id, successList).catch(() => { /* ignore */ })
     }
   } catch (err: any) {
     message.error(err.message)
@@ -362,13 +322,6 @@ export function menuCopySelectedFile(istree: boolean, copyby: string) {
   const selectedData = PanDAL.GetPanSelectedData(istree)
   if (selectedData.isError) {
     message.error('复制移动操作失败 父文件夹错误')
-    return
-  }
-  const isSupported = copyby === 'copy'
-    ? supportsCopy(selectedData.user_id, selectedData.drive_id)
-    : supportsMove(selectedData.user_id, selectedData.drive_id)
-  if (!isSupported) {
-    message.warning(`当前网盘为只读，不能${copyby === 'copy' ? '复制' : '移动'}文件`)
     return
   }
   if (selectedData.dirID.startsWith('video')) {
@@ -455,11 +408,6 @@ export function dropMoveSelectedFile(drive_id: string, movetodirid: string, istr
     message.error('复制移动操作失败 父文件夹错误！')
     return
   }
-  if (!supportsMove(selectedData.user_id, selectedData.drive_id)) {
-    message.warning('当前网盘为只读，不能移动文件')
-    return
-  }
-
   if (selectedData.dirID == 'trash') {
     message.error('回收站内文件不支持移动！')
     return
@@ -603,10 +551,6 @@ export function menuCreatShare(istree: boolean, shareby: string, driveType: stri
     message.error('创建分享操作失败 父文件夹错误')
     return
   }
-  if (!supportsCreateShare(selectedData.user_id, selectedData.drive_id)) {
-    message.warning('当前网盘为只读，不能创建分享')
-    return
-  }
 
   let list: IAliGetFileModel[] = []
   if (istree) {
@@ -697,18 +641,10 @@ export async function topFavorDeleteAll() {
 }
 
 
-export function canClearTrash(user_id: string, drive_id: string): boolean {
-  return isAliyunUser(user_id) || isCloud123User(user_id) || drive_id === 'cloud123' || isDrive115User(user_id) || drive_id === 'drive115' || isPikPakUser(user_id) || drive_id === 'pikpak'
-}
-
 export async function topTrashDeleteAll() {
   const selectedData = PanDAL.GetPanSelectedData(false)
   if (selectedData.isError) {
     message.error('清空回收站操作失败 父文件夹错误')
-    return
-  }
-  if (!canClearTrash(selectedData.user_id, selectedData.drive_id)) {
-    message.error('当前网盘暂不支持清空回收站')
     return
   }
 
@@ -718,55 +654,6 @@ export async function topTrashDeleteAll() {
   try {
     message.loading('清空回收站执行中...', 60, loadingKey)
     let count = 0
-    if (isCloud123User(selectedData.user_id) || selectedData.drive_id === 'cloud123') {
-      if (!await apiCloud123TrashDeleteAll(selectedData.user_id)) throw new Error('清空 123 云盘回收站失败')
-      message.success('清空回收站 成功!', 3, loadingKey)
-      if (usePanTreeStore().selectDir.file_id == 'trash') PanDAL.aReLoadOneDirToShow('', 'refresh', false)
-      return
-    }
-    if (isDrive115User(selectedData.user_id) || selectedData.drive_id === 'drive115') {
-      if (!await apiDrive115TrashClear(selectedData.user_id)) throw new Error('清空 115 网盘回收站失败')
-      message.success('清空回收站 成功!', 3, loadingKey)
-      if (usePanTreeStore().selectDir.file_id == 'trash') PanDAL.aReLoadOneDirToShow('', 'refresh', false)
-      return
-    }
-    if (isPikPakUser(selectedData.user_id) || selectedData.drive_id === 'pikpak') {
-      let pageToken = ''
-      const trashIds: string[] = []
-      do {
-        const page = await apiPikPakFileList(selectedData.user_id, 'pikpak_root', 100, pageToken, true)
-        trashIds.push(...page.items.map(item => item.id).filter(Boolean))
-        pageToken = page.nextPageToken
-      } while (pageToken)
-      for (let offset = 0; offset < trashIds.length; offset += 100) {
-        const ids = trashIds.slice(offset, offset + 100)
-        if (ids.length > 0) {
-          const deleted = await apiPikPakTrashDelete(selectedData.user_id, ids)
-          if (deleted.length !== ids.length) throw new Error('部分 PikPak 回收站文件删除失败')
-          count += deleted.length
-          message.loading('清空回收站执行中...(' + count.toString() + ')', 0, loadingKey)
-        }
-      }
-      message.success('清空回收站 成功!', 3, loadingKey)
-      if (usePanTreeStore().selectDir.file_id == 'trash') PanDAL.aReLoadOneDirToShow('', 'refresh', false)
-      return
-    }
-    if (isBoxUser(selectedData.user_id) || selectedData.drive_id === 'box') {
-      let marker = ''
-      do {
-        const page = await apiBoxTrashListPage(selectedData.user_id, marker)
-        for (const item of page.items) {
-          if (!item.id || (item.type !== 'file' && item.type !== 'folder')) continue
-          if (!await apiBoxTrashPurge(selectedData.user_id, item.id, item.type)) throw new Error(`彻底删除 Box 回收站项目失败：${item.name || item.id}`)
-          count++
-        }
-        marker = page.nextMarker
-        message.loading('清空回收站执行中...(' + count.toString() + ')', 0, loadingKey)
-      } while (marker)
-      message.success('清空回收站 成功!', 3, loadingKey)
-      if (usePanTreeStore().selectDir.file_id == 'trash') PanDAL.aReLoadOneDirToShow('', 'refresh', false)
-      return
-    }
     while (true) {
 
       const resp: IAliFileResp = NewIAliFileResp(selectedData.user_id, selectedData.drive_id, 'trash', '回收站')
@@ -882,21 +769,6 @@ export async function topSearchAll(word: string, inputsearchType: string[]) {
     message.error('搜索失败 父文件夹错误')
     return
   }
-  if (!supportsSearch(pantreeStore.user_id, pantreeStore.drive_id)) {
-    const provider = getDriveProviderLabel(UserDAL.GetUserToken(pantreeStore.user_id)?.tokenfrom)
-    message.warning(t('pan.unsupportedFeature', { provider }))
-    return
-  }
-  if (!isAliyunUser(pantreeStore.user_id)) {
-    const keyword = word.trim()
-    if (!keyword) {
-      message.error('搜索失败 搜索关键字不能为空')
-      return
-    }
-    const searchid = 'search' + keyword
-    await PanDAL.aReLoadOneDirToShow('', searchid, false)
-    return
-  }
   if (inputsearchType.length > 0) {
     if (useSettingStore().securityHideBackupDrive) {
       inputsearchType = inputsearchType.filter((t) => t != 'backup')
@@ -931,67 +803,6 @@ export async function menuJumpToDir() {
     usePanFileStore().mKeyboardSelect(first!.file_id, false, false)
     usePanFileStore().mSaveFileScrollTo(first!.file_id)
   })
-}
-
-export function menuVideoXBT() {
-  const first = usePanFileStore().GetSelectedFirst()
-  if (!first) {
-    message.error('没有选中任何文件')
-    return
-  }
-  if (first.description && first.description.includes('xbyEncrypt')) {
-    message.error('加密视频无法获取雪碧图')
-    return
-  }
-  if (first.icon == 'iconweifa') {
-    message.error('违规视频无法预览')
-    return
-  }
-  const pageVideoXBT: IPageVideoXBT = {
-    user_id: usePanTreeStore().user_id,
-    drive_id: first.drive_id,
-    file_id: first.file_id,
-    file_name: first.name
-  }
-  window.WebOpenWindow({ page: 'PageVideoXBT', data: pageVideoXBT, theme: 'dark' })
-}
-
-export function menuDLNA() {
-  const first = usePanFileStore().GetSelectedFirst()
-  if (!first) {
-    message.error('没有选中任何文件')
-    return
-  }
-  modalDLNAPlayer()
-}
-
-export function menuM3U8Download() {
-  const first = usePanFileStore().GetSelectedFirst()
-  if (!first) {
-    message.error('没有选中任何文件')
-    return
-  }
-  modalM3U8Download()
-}
-
-export async function menuDrive115VideoPush(op: 'vip_push' | 'pay_push') {
-  const selected = usePanFileStore().GetSelected()
-  const first = selected[0]
-  if (selected.length !== 1 || !first || first.isDir) {
-    message.warning('请选择一个 115 视频文件')
-    return
-  }
-  const userId = (first as any).user_id || usePanTreeStore().user_id
-  if (!isDrive115User(userId) && first.drive_id !== 'drive115') return
-
-  const meta = await getDrive115PickCode(userId, first.file_id)
-  if (!meta?.pick_code) {
-    message.error(meta?.error || '获取 115 视频提取码失败')
-    return
-  }
-  const result = await apiDrive115VideoPush(userId, meta.pick_code, op)
-  if (result.success) message.success(result.message)
-  else message.error(result.message)
 }
 
 export function menuCopyFileName() {

@@ -7,32 +7,17 @@ import { GetExpiresTime } from './utils'
 import { decodeName } from '../module/flow-enc/utils'
 import { IAliFileItem, IAliGetFileModel } from '../aliapi/alimodels'
 import AliFile from '../aliapi/file'
-import DriveFile from '../drive/file'
 import path from 'path'
 import { localPwd } from './aria2c'
 import os from 'os'
 import DebugLog from './debuglog'
 import message from './message'
-import UserDAL, { UserTokenMap } from '../user/userdal'
 import { buildUpstreamProxyHeaders, ensureInlinePreviewRange, normalizeProxyRangeHeaders, normalizeProxyStatusCode, type ProxyResponseHeaders } from './proxyHeaders'
-import { MEDIA_SERVER_DRIVE_ID, shouldRefreshProxyUrl } from './proxyCache'
-import { isAliyunUser, isQuarkUser } from '../aliapi/utils'
-import { isWebDavDrive } from './webdavClient'
-import { QUARK_DOWNLOAD_AGENT, readQuarkCookieStringFromElectron } from '../quark/auth'
-import { DRIVE115_DOWN_AGENT } from '@shared/drive115'
-import { createMpvProxyContext, isM3u8Response, resolveMpvProxyUri, rewriteMpvProxyPlaylist } from './proxyMediaRewrite'
+import { shouldRefreshProxyUrl } from './proxyCache'
 
 // 默认maxFreeSockets=256
 const httpsAgent = new HttpsAgent({ keepAlive: true })
 const httpAgent = new HttpAgent({ keepAlive: true })
-
-const detectProxyVideoType = (url: string) => {
-  const lower = String(url || '').split('?')[0].split('#')[0].toLowerCase()
-  if (lower.endsWith('.m3u8')) return 'm3u8'
-  if (lower.endsWith('.mpd')) return 'mpd'
-  if (lower.endsWith('.ts')) return 'ts'
-  return ''
-}
 
 export interface IRawUrl {
   drive_id: string
@@ -40,22 +25,6 @@ export interface IRawUrl {
   url: string
   size: number
   headers?: Record<string, string>
-  qualities: {
-    html: string
-    quality: string
-    height: number
-    width: number
-    label: string
-    value: string
-    url: string
-    type?: string
-    headers?: Record<string, string>
-  }[]
-  subtitles: {
-    language: string
-    url: string
-    headers?: Record<string, string>
-  }[]
 }
 
 interface FileInfo {
@@ -67,68 +36,6 @@ interface FileInfo {
   proxy_headers?: string
 
   [key: string]: string | number | undefined
-}
-
-const hasQuarkLoginCookie = (cookie = '') => /(?:^|;\s*)__pus=/.test(cookie) && /(?:^|;\s*)(?:__uid|__kps)=/.test(cookie)
-
-const isUsableQuarkToken = (token: any) => token?.tokenfrom === 'quark' && hasQuarkLoginCookie(token.access_token || '')
-
-async function getQuarkProxyToken(userId: string) {
-  const directToken = UserDAL.GetUserToken(userId)
-  if (isUsableQuarkToken(directToken)) return directToken
-
-  const quarkUserId = userId && !userId.startsWith('quark_') ? `quark_${userId}` : ''
-  if (quarkUserId) {
-    const prefixedToken = UserDAL.GetUserToken(quarkUserId)
-    if (isUsableQuarkToken(prefixedToken)) return prefixedToken
-  }
-
-  if (userId) {
-    const dbDirectToken = await UserDAL.GetUserTokenFromDB(userId)
-    if (isUsableQuarkToken(dbDirectToken)) return dbDirectToken
-  }
-  if (quarkUserId) {
-    const dbPrefixedToken = await UserDAL.GetUserTokenFromDB(quarkUserId)
-    if (isUsableQuarkToken(dbPrefixedToken)) return dbPrefixedToken
-  }
-
-  for (const [storedUserId, token] of UserTokenMap) {
-    if (!isUsableQuarkToken(token)) continue
-    if (!userId || storedUserId === userId || storedUserId === quarkUserId || storedUserId.endsWith(userId)) {
-      return token
-    }
-  }
-
-  const dbTokens = await Db.getUserAll().catch(() => [])
-  for (const token of dbTokens) {
-    if (!isUsableQuarkToken(token)) continue
-    const storedUserId = token.user_id || ''
-    if (!userId || storedUserId === userId || storedUserId === quarkUserId || storedUserId.endsWith(userId)) {
-      UserTokenMap.set(storedUserId, token)
-      return token
-    }
-  }
-  const fallback = dbTokens.find(isUsableQuarkToken)
-  if (fallback?.user_id) {
-    UserTokenMap.set(fallback.user_id, fallback)
-    return fallback
-  }
-  return undefined
-}
-
-function getQuarkProxyCookieKeys(cookie = '') {
-  return cookie
-    .split(';')
-    .map((item) => item.trim().split('=')[0])
-    .filter(Boolean)
-}
-
-function getQuarkUrlPath(proxyUrl: string) {
-  try {
-    return new URL(proxyUrl).pathname
-  } catch {
-    return ''
-  }
 }
 
 export function getIPAddress() {
@@ -206,94 +113,14 @@ export function getRedirectUrl(info: FileInfo) {
   return `${redirectUrl}?${params.join('&')}`
 }
 
-export async function getRawUrl(
-  user_id: string,
-  drive_id: string,
-  file_id: string,
-  encType: string = '',
-  password: string = '',
-  weifa: boolean = false,
-  preview_type: string = '',
-  quality: string = '',
-  promotionSkuCode = '',
-  tokenfrom = ''
-): Promise<string | IRawUrl> {
-  let data: any = {
-    drive_id: drive_id,
-    file_id: file_id,
-    url: '',
-    size: 0,
-    qualities: [],
-    subtitles: []
-  }
-  if (drive_id === MEDIA_SERVER_DRIVE_ID) return data
-  let { uiVideoQuality, uiVideoPlayer, securityPreviewAutoDecrypt } = useSettingStore()
-  // 违规视频也使用转码播放
-  if (!encType && preview_type) {
-    if (weifa || preview_type === 'video' || (preview_type === 'other' && quality != 'Origin')) {
-      let proxyInfo = await Db.getValueObject('ProxyInfo') as any
-      if (proxyInfo && proxyInfo.encType && proxyInfo.file_id === file_id) {
-        // 加密视频通过下载链接播放
-      } else {
-        let previewData = await AliFile.ApiVideoPreviewUrl(user_id, drive_id, file_id, promotionSkuCode)
-        if (typeof previewData != 'string') {
-          Object.assign(data, previewData)
-          if (quality && quality != 'Origin') {
-            const selectedQuality = data.qualities.find((q: any) => q.quality === quality) || data.qualities[0]
-            data.url = selectedQuality?.url || ''
-            if (selectedQuality?.headers) data.headers = selectedQuality.headers
-            if (selectedQuality?.type) data.type = selectedQuality.type
-          } else if (data.qualities.length > 0 && (drive_id === 'drive115' || drive_id === 'cloud123')) {
-            data.url = data.qualities[0].url
-            if (data.qualities[0].headers) data.headers = data.qualities[0].headers
-            if (data.qualities[0].type) data.type = data.qualities[0].type
-          } else if (data.qualities.length > 0 && !data.url) {
-            data.url = data.qualities[0].url
-            if (data.qualities[0].headers) data.headers = data.qualities[0].headers
-            if (data.qualities[0].type) data.type = data.qualities[0].type
-          }
-        } else if (drive_id === 'drive115') {
-          return previewData
-        }
-      }
-    } else if (preview_type === 'audio') {
-      // 仅阿里云盘有音频转码接口，其他网盘（115/百度/123/PikPak/Dropbox/OneDrive/Box/WebDAV 等）直接走原始下载链接
-      if (isAliyunUser(user_id) && !isWebDavDrive(drive_id)) {
-        let audioData = await AliFile.ApiAudioPreviewUrl(user_id, drive_id, file_id)
-        if (typeof audioData != 'string') {
-          data.url = audioData.url
-        }
-      }
-    }
-  }
-  // 违规文件无法获取地址
-  const needOriginQuality = !encType && preview_type === 'video' && !data.qualities.some((q: any) => q.quality === 'Origin')
-  if ((!weifa && !data.url) || uiVideoPlayer == 'web' || needOriginQuality) {
-    let downUrl = await DriveFile.ApiFileDownloadUrl(user_id, drive_id, file_id, 14400, tokenfrom)
-    if (typeof downUrl != 'string') {
-      if (!encType && preview_type && !data.qualities.some((q: any) => q.quality === 'Origin')) {
-        data.qualities.unshift({ quality: 'Origin', html: '原画', label: '原画', value: '', url: downUrl.url, type: detectProxyVideoType(downUrl.url) })
-      }
-      if (!data.url || quality === 'Origin' || uiVideoQuality === 'Origin') {
-        data.url = downUrl.url
-      }
-      data.size = downUrl.size
-      const useQuarkSessionInterceptor = (preview_type === 'video' || preview_type === 'audio') && uiVideoPlayer === 'web' && !encType && (drive_id === 'quark' || isQuarkUser(user_id))
-      if (downUrl.headers && !useQuarkSessionInterceptor) data.headers = downUrl.headers
-    } else {
-      return downUrl as string
-    }
-  }
-  if (preview_type == 'other') {
-    return data
-  }  else if (encType && securityPreviewAutoDecrypt) {
-    // 代理播放
-    data.url = getProxyUrl({
-      user_id, drive_id, file_id, encType, password,
-      file_size: data.size, quality: quality || uiVideoQuality,
-      proxy_url: data.url
-    })
-    data.qualities.unshift({ quality: 'Origin', html: '原画', label: '原画', value: '', url: data.url })
+export async function getRawUrl(user_id: string, drive_id: string, file_id: string, encType: string = '', password: string = ''): Promise<string | IRawUrl> {
+  const downUrl = await AliFile.ApiFileDownloadUrl(user_id, drive_id, file_id, 14400)
+  if (typeof downUrl == 'string') return downUrl
+  const data: IRawUrl = { drive_id, file_id, url: downUrl.url, size: downUrl.size }
+  if (downUrl.headers) data.headers = downUrl.headers
+  if (encType && useSettingStore().securityPreviewAutoDecrypt) {
+    // 代理解密
+    data.url = getProxyUrl({ user_id, drive_id, file_id, encType, password, file_size: data.size, proxy_url: downUrl.url })
   }
   return data
 }
@@ -310,44 +137,19 @@ export async function createProxyServer(port: number) {
   const url = require('url')
   const proxyServer: Server = http.createServer(async (clientReq: IncomingMessage, clientRes: ServerResponse) => {
     const { pathname, query } = url.parse(clientReq.url, true)
-    const { user_id, drive_id, file_id, file_size, encType, password, weifa, quality, proxy_url, proxy_headers, proxy_kind, content_disposition, file_name } = query
+    const { user_id, drive_id, file_id, file_size, encType, password, proxy_url, proxy_headers, proxy_kind, content_disposition, file_name } = query
     console.info('proxy query: ', query)
     if (pathname === '/proxy') {
       const driveId = String(drive_id || '')
       const fileId = String(file_id || '')
-      const isAuthenticatedMpvProxy = String(proxy_kind || '') === 'mpv'
-      const mpvProxyContext = createMpvProxyContext({ user_id, drive_id, file_id, file_size, quality, proxy_headers, proxy_kind })
-      const buildMpvProxyUrl = (target: string) => getProxyUrl({
-        user_id: mpvProxyContext.user_id,
-        drive_id: mpvProxyContext.drive_id,
-        file_id: mpvProxyContext.file_id,
-        file_size: Number(mpvProxyContext.file_size) || undefined,
-        quality: mpvProxyContext.quality,
-        proxy_headers: mpvProxyContext.proxy_headers,
-        proxy_kind: mpvProxyContext.proxy_kind,
-        proxy_url: target
-      })
-      const isMediaServerProxy = driveId === MEDIA_SERVER_DRIVE_ID
-      let proxyInfo: any = isMediaServerProxy ? undefined : await Db.getValueObject('ProxyInfo')
+      let proxyInfo: any = await Db.getValueObject('ProxyInfo')
       let proxyUrl = proxy_url || (proxyInfo && proxyInfo.proxy_url || '') || ''
-      let { uiVideoQuality, securityEncType, securityFileNameAutoDecrypt } = useSettingStore()
-      let selectQuality = quality || uiVideoQuality
-      let subtitle_url = ''
-      if (proxy_kind !== 'mpv' && proxy_kind !== 'quark-download' && shouldRefreshProxyUrl({
-        driveId,
-        fileId,
-        proxyUrl: String(proxyUrl || ''),
-        selectQuality: String(selectQuality || ''),
-        proxyInfo
-      })) {
+      let { securityEncType, securityFileNameAutoDecrypt } = useSettingStore()
+      if (shouldRefreshProxyUrl({ driveId, fileId, proxyUrl: String(proxyUrl || ''), proxyInfo })) {
         // 获取地址
-        const refreshQuality = content_disposition === 'inline' ? 'Origin' : selectQuality
-        let data = await getRawUrl(user_id, drive_id, file_id, encType, '', weifa, 'other', refreshQuality)
-        console.error('proxy getRawUrl', data)
-        if (typeof data != 'string' && data.url) {
-          let subtitleData = data.subtitles.find((sub: any) => sub.language === 'chi') || data.subtitles[0]
-          subtitle_url = subtitleData && subtitleData.url || ''
-          proxyUrl = data.url
+        const downUrl = await AliFile.ApiFileDownloadUrl(user_id, drive_id, file_id, 14400)
+        if (typeof downUrl != 'string' && downUrl.url) {
+          proxyUrl = downUrl.url
           proxyInfo = undefined
         }
       }
@@ -357,13 +159,11 @@ export async function createProxyServer(port: number) {
         clientRes.end()
         await Db.deleteValueObject('ProxyInfo')
         return
-      } else if (!proxyInfo && !isMediaServerProxy && proxy_kind !== 'subtitle' && proxy_kind !== 'mpv' && proxy_kind !== 'quark-download') {
+      } else if (!proxyInfo && proxy_kind !== 'subtitle') {
         let info: FileInfo = {
           user_id, drive_id, file_id, file_size, encType,
-          videoQuality: selectQuality,
           expires_time: GetExpiresTime(proxyUrl),
-          proxy_url: proxyUrl,
-          subtitle_url: subtitle_url
+          proxy_url: proxyUrl
         }
         await Db.saveValueObject('ProxyInfo', info)
       }
@@ -390,67 +190,6 @@ export async function createProxyServer(port: number) {
         buildUpstreamProxyHeaders(clientReq.headers, String(proxy_headers || '')),
         content_disposition === 'inline'
       )
-      if (query.drive_id === 'baidu') {
-        upstreamHeaders['user-agent'] = 'pan.baidu.com'
-        upstreamHeaders['referer'] = 'https://pan.baidu.com/'
-        const token = UserDAL.GetUserToken(String(query.user_id || ''))
-        if (token?.access_token && !upstreamHeaders['authorization']) {
-          upstreamHeaders['authorization'] = `Bearer ${token.access_token}`
-        }
-      }
-      if (query.drive_id === 'drive115') {
-        const token = UserDAL.GetUserToken(String(query.user_id || ''))
-        if (token?.access_token) {
-          upstreamHeaders.authorization = `Bearer ${token.access_token}`
-        }
-        upstreamHeaders['user-agent'] = DRIVE115_DOWN_AGENT
-      }
-      if (query.drive_id === 'google') {
-        const token = await UserDAL.EnsureUserTokenReady(String(query.user_id || ''))
-        if (token?.tokenfrom === 'google' && token.access_token) {
-          upstreamHeaders.authorization = `Bearer ${token.access_token}`
-        }
-      }
-      if (query.drive_id === 'quark' || isQuarkUser(String(query.user_id || ''))) {
-        const token = await getQuarkProxyToken(String(query.user_id || ''))
-        const sessionCookie = await readQuarkCookieStringFromElectron().catch(() => '')
-        const quarkCookie = hasQuarkLoginCookie(token?.access_token || '')
-          ? token?.access_token || ''
-          : (hasQuarkLoginCookie(sessionCookie) ? sessionCookie : '')
-        if (quarkCookie) {
-          upstreamHeaders.cookie = quarkCookie
-        }
-        upstreamHeaders.accept = '*/*'
-        upstreamHeaders.origin = 'https://pan.quark.cn'
-        upstreamHeaders.referer = 'https://pan.quark.cn/'
-        upstreamHeaders['user-agent'] = QUARK_DOWNLOAD_AGENT
-        upstreamHeaders['accept-language'] = 'zh-CN,zh;q=0.9'
-        upstreamHeaders['sec-fetch-dest'] = 'video'
-        upstreamHeaders['sec-fetch-mode'] = 'no-cors'
-        upstreamHeaders['sec-fetch-site'] = 'cross-site'
-        upstreamHeaders['sec-ch-ua'] = '"Not;A=Brand";v="99", "Chromium";v="106"'
-        upstreamHeaders['sec-ch-ua-mobile'] = '?0'
-        upstreamHeaders['sec-ch-ua-platform'] = '"macOS"'
-        delete upstreamHeaders['content-type']
-        if (!upstreamHeaders.range) upstreamHeaders.range = 'bytes=0-'
-        const urlPath = getQuarkUrlPath(String(proxyUrl || ''))
-        if (urlPath) upstreamHeaders['x-urlp'] = urlPath
-        const cookieKeys = getQuarkProxyCookieKeys(quarkCookie)
-        clientRes.setHeader('x-quark-proxy-has-cookie', quarkCookie ? '1' : '0')
-        clientRes.setHeader('x-quark-proxy-has-session-cookie', sessionCookie ? '1' : '0')
-        clientRes.setHeader('x-quark-proxy-cookie-keys', cookieKeys.join(','))
-        clientRes.setHeader('x-quark-proxy-referer', String(upstreamHeaders.referer || ''))
-        clientRes.setHeader('x-quark-proxy-x-urlp', String(upstreamHeaders['x-urlp'] || ''))
-        console.warn('proxy.quark.upstreamHeaders', {
-          hasCookie: !!quarkCookie,
-          hasSessionCookie: !!sessionCookie,
-          cookieKeys,
-          origin: upstreamHeaders.origin,
-          referer: upstreamHeaders.referer,
-          userAgent: upstreamHeaders['user-agent'],
-          xUrlp: upstreamHeaders['x-urlp'] || ''
-        })
-      }
       await new Promise((resolve) => {
         let isFinished = false
         const finishResponse = (endClient = false) => {
@@ -468,40 +207,8 @@ export async function createProxyServer(port: number) {
           agent: ~proxyUrl.indexOf('https') ? httpsAgent : httpAgent
         }, (httpResp: any) => {
           console.error('httpResp.headers', httpResp.statusCode, httpResp.headers)
-          const quarkErrorChunks: Buffer[] = []
-          let quarkErrorLength = 0
-          const shouldReportQuarkError = (query.drive_id === 'quark' || isQuarkUser(String(query.user_id || ''))) && httpResp.statusCode >= 400
-          let didReportQuarkError = false
-          const reportQuarkError = () => {
-            if (didReportQuarkError || !quarkErrorChunks.length) return
-            didReportQuarkError = true
-            console.error('proxy.quark.upstreamError', Buffer.concat(quarkErrorChunks).toString('utf8'))
-          }
-          if (shouldReportQuarkError) {
-            httpResp.on('data', (chunk: Buffer) => {
-              if (quarkErrorLength >= 8192) return
-              const limitedChunk = chunk.subarray(0, 8192 - quarkErrorLength)
-              quarkErrorChunks.push(limitedChunk)
-              quarkErrorLength += limitedChunk.length
-            })
-          }
           const responseHeaders = normalizeProxyRangeHeaders({ ...httpResp.headers } as ProxyResponseHeaders)
           const statusCode = Number(httpResp.statusCode || 0)
-          const shouldRewritePlaylist = isAuthenticatedMpvProxy && statusCode >= 200 && statusCode < 300 && isM3u8Response(String(proxyUrl), String(responseHeaders['content-type'] || '')) && ['', 'identity'].includes(String(responseHeaders['content-encoding'] || '').toLowerCase())
-          if (isAuthenticatedMpvProxy && statusCode >= 300 && statusCode < 400 && typeof responseHeaders.location === 'string') {
-            responseHeaders.location = resolveMpvProxyUri(responseHeaders.location, String(proxyUrl), mpvProxyContext, target => buildMpvProxyUrl(target))
-          }
-          if (shouldRewritePlaylist) {
-            delete responseHeaders['content-length']
-            delete responseHeaders['transfer-encoding']
-            delete responseHeaders['content-range']
-            delete responseHeaders['accept-ranges']
-            delete responseHeaders.etag
-            delete responseHeaders['content-md5']
-            delete responseHeaders.digest
-            delete responseHeaders['last-modified']
-            responseHeaders['content-type'] = 'application/vnd.apple.mpegurl; charset=utf-8'
-          }
           clientRes.statusCode = normalizeProxyStatusCode(statusCode, responseHeaders['content-range'])
           for (const key in responseHeaders) {
             const value = responseHeaders[key]
@@ -517,8 +224,8 @@ export async function createProxyServer(port: number) {
             if (decryptTransform) {
               // Referer
               httpResp.headers.location = getProxyUrl({
-                user_id, drive_id, file_id, password, weifa,
-                file_size, encType, quality, proxy_url
+                user_id, drive_id, file_id, password,
+                file_size, encType, proxy_url
               })
             }
             console.log('302 redirectUrl:', redirectUrl)
@@ -533,52 +240,21 @@ export async function createProxyServer(port: number) {
               clientRes.setHeader('content-disposition', `attachment; filename*=UTF-8''${encodeURIComponent(decName + ext)};`)
             }
           }
-          if (shouldRewritePlaylist) {
-            const chunks: Buffer[] = []
-            const maxPlaylistBytes = 2 * 1024 * 1024
-            let playlistBytes = 0
-            let playlistAborted = false
-            httpResp.on('data', (chunk: Buffer | string) => {
-              if (playlistAborted) return
-              const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
-              playlistBytes += buffer.length
-              if (playlistBytes > maxPlaylistBytes) {
-                playlistAborted = true
-                httpResp.destroy()
-                clientRes.destroy(new Error('HLS playlist exceeds size limit'))
-                resolve(false)
-                return
-              }
-              chunks.push(buffer)
-            })
-            httpResp.on('end', () => {
-              if (playlistAborted) return
-              reportQuarkError()
-              const playlist = Buffer.concat(chunks).toString('utf8')
-              clientRes.end(rewriteMpvProxyPlaylist(playlist, String(proxyUrl), mpvProxyContext, target => buildMpvProxyUrl(target)))
-              finishResponse()
-            })
+          httpResp.on('end', () => {
+            finishResponse()
+          })
+          if (decryptTransform) {
+            httpResp.pipe(decryptTransform).pipe(clientRes)
           } else {
-            httpResp.on('end', () => {
-              reportQuarkError()
-              finishResponse()
-            })
-            if (decryptTransform) {
-              httpResp.pipe(decryptTransform).pipe(clientRes)
-            } else {
-              httpResp.pipe(clientRes)
-            }
+            httpResp.pipe(clientRes)
           }
           httpResp.on('aborted', () => {
-            reportQuarkError()
             finishResponse(true)
           })
           httpResp.on('error', () => {
-            reportQuarkError()
             finishResponse(true)
           })
           httpResp.on('close', () => {
-            reportQuarkError()
             if (!httpResp.complete) finishResponse(true)
           })
         })

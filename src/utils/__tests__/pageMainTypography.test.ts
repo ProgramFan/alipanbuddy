@@ -31,12 +31,6 @@ describe('PageMain typography contract', () => {
   it('normalizes every top-level sidebar navigation label', () => {
     expect(source).toContain('#xbybody .treeleft .arco-tree-node-title,')
     expect(source).toContain('#xbybody .xbyleftmenu .arco-menu-title,')
-    expect(source).toContain('#xbybody .book-sidebar .book-nav-item > span,')
-    expect(source).toContain('#xbybody .media-library-nav .nav-item > span:first-of-type,')
-    expect(source).toContain('#xbybody .media-server-nav .nav-item .server-name,')
-    expect(source).toContain('#xbybody .ai-task-rail .ai-new-task,')
-    expect(source).toContain('#xbybody .ai-task-rail .ai-rail-action,')
-    expect(source).toContain('#xbybody .ai-task-rail .ai-history-item')
     expect(source).toContain('font-size: var(--app-type-nav) !important')
   })
 })

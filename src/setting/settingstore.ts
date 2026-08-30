@@ -1,31 +1,12 @@
 import { defineStore } from 'pinia'
-import { normalizeAria2cEnabled } from '../utils/aria2EnginePolicy'
 import DebugLog from '../utils/debuglog'
 import { getUserDataPath } from '../utils/electronhelper'
 import { useAppStore } from '../store'
 import PanDAL from '../pan/pandal'
 import { existsSync, readFileSync, writeFileSync } from 'fs'
 import { detectSystemLocale } from '../i18n'
-import {
-  DEFAULT_MEDIA_SERVER_CUSTOM_DEVICE_PROFILE,
-  isMediaServerBitrateTestSize,
-  isMediaServerPlaybackCompatibility,
-  isMediaServerPlaybackQuality,
-  normalizeMediaServerCustomDeviceProfile,
-  type MediaServerBitrateTestSize,
-  type MediaServerCustomDeviceProfile,
-  type MediaServerPlaybackCompatibility,
-  type MediaServerPlaybackQuality
-} from '../media-server/playbackQuality'
 
 declare type ProxyType = 'none' | 'http' | 'https' | 'socks4' | 'socks4a' | 'socks5' | 'socks5h'
-declare type VideoQuality = 'Origin' | 'QHD' | 'FHD' | 'HD' | 'SD' | 'LD'
-export type DanmakuMode = 0 | 1 | 2
-export interface DanmakuApiSetting {
-  id: string
-  name: string
-  url: string
-}
 
 export interface SettingState {
   // 应用设置
@@ -61,64 +42,13 @@ export interface SettingState {
   securityHideResourceDrive: boolean
   securityHidePicDrive: boolean
 
-  // 在线预览
-  uiVideoQuality: VideoQuality
-  uiMediaServerVideoQuality: MediaServerPlaybackQuality
-  uiMediaServerBitrateTestSize: MediaServerBitrateTestSize
-  uiMediaServerCompatibilityMode: MediaServerPlaybackCompatibility
-  uiMediaServerCustomDeviceProfile: MediaServerCustomDeviceProfile
-  uiVideoQualityTips: boolean
-  uiVideoQualityLastSelect: boolean
-  uiVideoPlayer: string
-  uiVideoEnablePlayerList: boolean
-  uiVideoPlayerExit: boolean
-  uiVideoPlayerHistory: boolean
-  uiVideoPlayerParams: string
-  uiVideoSubtitleMode: string
-  mediaLibrarySubtitleScope: 'same-folder' | 'include-subfolders'
-  uiVideoPlayerPath: string
-
-  uiAutoColorVideo: boolean
-  uiAutoPlaycursorVideo: boolean
-
-  uiXBTNumber: number
-  uiXBTWidth: number
-
   // 弹幕库
-  danmakuApis: DanmakuApiSetting[]
-  danmakuSpeed: number
-  danmakuMarginTop: number
-  danmakuMarginBottom: string
-  danmakuOpacity: number
-  danmakuColor: string
-  danmakuMode: DanmakuMode
-  danmakuModes: DanmakuMode[]
-  danmakuFontSize: number
-  danmakuAntiOverlap: boolean
-  danmakuSynchronousPlayback: boolean
-  danmakuHeatmap: boolean
-  danmakuVisible: boolean
-  danmakuTheme: 'dark' | 'light'
-  danmakuFilterText: string
 
   // 网盘设置
   uiShowPanPath: boolean
   uiShowPanMedia: boolean
   uiShowPanRootFirst: string
   uiFolderSize: boolean
-  uiFolderPreviewEnabled: boolean
-  uiFolderPreviewAutoHide: number
-  uiLibraryAutoScanMusic: boolean
-  uiLibraryAutoScanVideo: boolean
-  uiLibraryAutoScanBook: boolean
-  uiLibraryIncrementalScan: boolean
-  uiLibraryScanIntervalHours: number
-  uiLibraryAutoScanPromptedUsers: string[]
-  uiLibraryAutoScanMusicDisabledUsers: string[]
-  uiLibraryAutoScanVideoDisabledUsers: string[]
-  uiLibraryAutoScanBookDisabledUsers: string[]
-  uiLibraryFollowManualScans: boolean
-  uiMusicAutoScanFolders: { user_id: string; drive_id: string; file_id: string; name: string; path?: string }[]
   uiFileOrderDuli: string
   uiTimeFolderFormate: string
   uiTimeFolderIndex: number
@@ -138,7 +68,6 @@ export interface SettingState {
   downThreadMax: number
   downGlobalSpeed: number
   downGlobalSpeedM: string
-  downUseAria2c: boolean
 
   // ↓ 新增：Download 迁移设置
   ariaMaxConnectionPerServer: number    // 每服务器最大连接数
@@ -171,22 +100,12 @@ export interface SettingState {
   downFinishAudio: boolean
   downAutoStart: boolean
 
-  // webdav
-  webDavEnable: boolean
-  webDavAutoEnable: boolean
-  webDavHost: string
-  webDavPort: number
-  webDavListCache: number
-  webDavStrategy: string
-
   // 高级选项
   debugDirSize: string
   debugCacheSize: string
   debugFileListMax: number
   debugFavorListMax: number
-  debugDowningListMax: number
   debugDownedListMax: number
-  debugFolderSizeCacheHour: number
   debugProxyHost: string
   debugProxyPort: string
   // 自动填写 分享链接提取码
@@ -219,29 +138,6 @@ export interface SettingState {
   ariaResumeAllWhenLaunched: boolean
 
   // API 密钥 (BYOK)
-  apiAIModelKey: string
-  apiAIModelProvider: string
-  apiAIModelId: string
-  apiAIBaseUrl: string
-  apiAIEmbeddingModelId: string
-  apiAIRagEnabled: boolean
-  apiAISpoilerProtection: boolean
-  apiAIMaxContextChunks: number
-  apiAIIndexingMode: 'on-demand' | 'background'
-  apiAIReedyEnabled: boolean
-  apiAIReedyRuntime: 'mvp' | 'agent'
-  mediaAcquisitionPreferredQuality: 'auto' | '2160p' | '1080p' | '720p' | '480p'
-  mediaAcquisitionFetchSubtitles: boolean
-  mediaAcquisitionSubtitleLanguage: 'zh-CN' | 'zh-Hant' | 'en' | 'ja' | 'ko' | 'auto'
-  mediaAcquisitionAssrtEnabled: boolean
-  mediaAcquisitionAssrtToken: string
-  mediaAcquisitionPatrolTimes: string
-  mediaAcquisitionAutoScanHistorical: boolean
-  mediaAcquisitionRememberTarget: boolean
-  mediaAcquisitionTargetUserId: string
-  mediaAcquisitionTargetDriveId: string
-  mediaAcquisitionTargetFolderId: string
-  mediaAcquisitionTargetFolderName: string
 }
 
 const setting: SettingState = {
@@ -278,64 +174,13 @@ const setting: SettingState = {
   securityHideResourceDrive: false,
   securityHidePicDrive: false,
 
-  // 在线预览
-  uiVideoQuality: 'Origin',
-  uiMediaServerVideoQuality: 'max',
-  uiMediaServerBitrateTestSize: '5000000',
-  uiMediaServerCompatibilityMode: 'auto',
-  uiMediaServerCustomDeviceProfile: DEFAULT_MEDIA_SERVER_CUSTOM_DEVICE_PROFILE,
-  uiVideoQualityTips: false,
-  uiVideoQualityLastSelect: true,
-  uiVideoPlayer: 'web',
-  uiVideoEnablePlayerList: false,
-  uiVideoPlayerExit: false,
-  uiVideoPlayerHistory: false,
-  uiVideoPlayerParams: '',
-  uiVideoSubtitleMode: 'auto',
-  mediaLibrarySubtitleScope: 'same-folder',
-  uiVideoPlayerPath: '',
-
-  uiAutoPlaycursorVideo: true,
-  uiAutoColorVideo: true,
-
-  uiXBTNumber: 36,
-  uiXBTWidth: 960,
-
   // 弹幕库
-  danmakuApis: [],
-  danmakuSpeed: 5,
-  danmakuMarginTop: 10,
-  danmakuMarginBottom: '25%',
-  danmakuOpacity: 1,
-  danmakuColor: '#FFFFFF',
-  danmakuMode: 0,
-  danmakuModes: [0, 1, 2],
-  danmakuFontSize: 25,
-  danmakuAntiOverlap: true,
-  danmakuSynchronousPlayback: false,
-  danmakuHeatmap: false,
-  danmakuVisible: false,
-  danmakuTheme: 'dark',
-  danmakuFilterText: '',
 
   // 网盘设置
   uiShowPanPath: true,
   uiShowPanMedia: false,
   uiShowPanRootFirst: 'all',
   uiFolderSize: true,
-  uiFolderPreviewEnabled: true,
-  uiFolderPreviewAutoHide: 6,
-  uiLibraryAutoScanMusic: false,
-  uiLibraryAutoScanVideo: false,
-  uiLibraryAutoScanBook: false,
-  uiLibraryIncrementalScan: true,
-  uiLibraryScanIntervalHours: 24,
-  uiLibraryAutoScanPromptedUsers: [],
-  uiLibraryAutoScanMusicDisabledUsers: [],
-  uiLibraryAutoScanVideoDisabledUsers: [],
-  uiLibraryAutoScanBookDisabledUsers: [],
-  uiLibraryFollowManualScans: true,
-  uiMusicAutoScanFolders: [],
   uiFileOrderDuli: 'null',
   uiTimeFolderFormate: 'yyyy-MM-dd HH-mm-ss',
   uiTimeFolderIndex: 1,
@@ -362,7 +207,6 @@ const setting: SettingState = {
   downThreadMax: 4,
   downGlobalSpeed: 0,
   downGlobalSpeedM: 'MB',
-  downUseAria2c: true,
 
   // ↓ 新增：Download 迁移设置 默认值
   ariaMaxConnectionPerServer: 16,
@@ -393,22 +237,12 @@ const setting: SettingState = {
   downFinishAudio: true,
   downAutoStart: true,
 
-  // webdav
-  webDavEnable: false,
-  webDavAutoEnable: false,
-  webDavHost: '127.0.0.1',
-  webDavPort: 8888,
-  webDavListCache: 10,
-  webDavStrategy: 'redirect',
-
   // 高级选项
   debugCacheSize: '',
   debugDirSize: '',
   debugFileListMax: 3000,
   debugFavorListMax: 500,
-  debugDowningListMax: 1000,
   debugDownedListMax: 5000,
-  debugFolderSizeCacheHour: 72,
   debugProxyHost: '127.0.0.1',
   debugProxyPort: '6666',
   // 自动填写 分享链接提取码
@@ -443,29 +277,6 @@ const setting: SettingState = {
   ariaSeedTime: 2880,
   ariaResumeAllWhenLaunched: false,
 
-  apiAIModelKey: '',
-  apiAIModelProvider: '',
-  apiAIModelId: '',
-  apiAIBaseUrl: '',
-  apiAIEmbeddingModelId: '',
-  apiAIRagEnabled: false,
-  apiAISpoilerProtection: true,
-  apiAIMaxContextChunks: 6,
-  apiAIIndexingMode: 'on-demand',
-  apiAIReedyEnabled: false,
-  apiAIReedyRuntime: 'mvp',
-  mediaAcquisitionPreferredQuality: 'auto',
-  mediaAcquisitionFetchSubtitles: true,
-  mediaAcquisitionSubtitleLanguage: 'zh-CN',
-  mediaAcquisitionAssrtEnabled: false,
-  mediaAcquisitionAssrtToken: '',
-  mediaAcquisitionPatrolTimes: '06:00,21:00',
-  mediaAcquisitionAutoScanHistorical: false,
-  mediaAcquisitionRememberTarget: false,
-  mediaAcquisitionTargetUserId: '',
-  mediaAcquisitionTargetDriveId: '',
-  mediaAcquisitionTargetFolderId: '',
-  mediaAcquisitionTargetFolderName: ''
 }
 
 function _loadSetting(val: any) {
@@ -473,8 +284,8 @@ function _loadSetting(val: any) {
   // 应用设置
   setting.uiLanguage = defaultValue(val.uiLanguage, ['zh-CN', 'en-US'], detectSystemLocale()) as SettingState['uiLanguage']
   setting.uiTheme = defaultValue(val.uiTheme, ['system', 'light', 'dark'])
-  setting.uiDefaultTab = defaultValue(val.uiDefaultTab, ['pan', 'media', 'media-server', 'music'])
-  setting.uiHiddenTopTabs = Array.isArray(val.uiHiddenTopTabs) ? val.uiHiddenTopTabs.filter((tab: unknown) => typeof tab === 'string' && ['pan', 'media-server', 'search', 'ai-workspace', 'media', 'music', 'book', 'share', 'rss'].includes(tab)) : []
+  setting.uiDefaultTab = defaultValue(val.uiDefaultTab, ['pan', 'share', 'rss'])
+  setting.uiHiddenTopTabs = Array.isArray(val.uiHiddenTopTabs) ? val.uiHiddenTopTabs.filter((tab: unknown) => typeof tab === 'string' && ['pan', 'share', 'rss'].includes(tab)) : []
   setting.uiImageMode = defaultValue(val.uiImageMode, ['fill', 'width', 'web'])
   setting.uiExitOnClose = defaultBool(val.uiExitOnClose, false)
   setting.uiLaunchAutoCheckUpdate = defaultBool(val.uiLaunchAutoCheckUpdate, false)
@@ -502,91 +313,11 @@ function _loadSetting(val: any) {
   setting.securityHideResourceDrive = defaultBool(val.securityHideResourceDrive, false)
   setting.securityHidePicDrive = defaultBool(val.securityHidePicDrive, false)
 
-  // 在线预览
-  setting.uiVideoQuality = defaultValue(val.uiVideoQuality, ['Origin', 'QHD', 'FHD', 'HD', 'SD', 'LD'])
-  setting.uiMediaServerVideoQuality = isMediaServerPlaybackQuality(val.uiMediaServerVideoQuality) ? val.uiMediaServerVideoQuality : 'max'
-  setting.uiMediaServerBitrateTestSize = isMediaServerBitrateTestSize(val.uiMediaServerBitrateTestSize) ? val.uiMediaServerBitrateTestSize : '5000000'
-  setting.uiMediaServerCompatibilityMode = isMediaServerPlaybackCompatibility(val.uiMediaServerCompatibilityMode) ? val.uiMediaServerCompatibilityMode : 'auto'
-  setting.uiMediaServerCustomDeviceProfile = normalizeMediaServerCustomDeviceProfile(val.uiMediaServerCustomDeviceProfile)
-  setting.uiVideoQualityTips = defaultBool(val.uiVideoQualityTips, false)
-  setting.uiVideoQualityLastSelect = defaultBool(val.uiVideoQualityLastSelect, true)
-  setting.uiVideoPlayer = defaultValue(val.uiVideoPlayer, ['web', 'mpv', 'other'])
-  setting.uiVideoEnablePlayerList = defaultBool(val.uiVideoEnablePlayerList, false)
-  setting.uiVideoPlayerExit = defaultBool(val.uiVideoPlayerExit, false)
-  setting.uiVideoPlayerHistory = defaultBool(val.uiVideoPlayerHistory, false)
-  setting.uiVideoPlayerParams = defaultString(val.uiVideoPlayerParams, '')
-  setting.uiVideoSubtitleMode = defaultValue(val.uiVideoSubtitleMode, ['close', 'auto', 'select'])
-  setting.mediaLibrarySubtitleScope = defaultValue(val.mediaLibrarySubtitleScope, ['same-folder', 'include-subfolders']) as SettingState['mediaLibrarySubtitleScope']
-  setting.uiVideoPlayerPath = defaultString(val.uiVideoPlayerPath, '')
-  setting.uiAutoPlaycursorVideo = defaultBool(val.uiAutoPlaycursorVideo, true)
-  setting.uiAutoColorVideo = defaultBool(val.uiAutoColorVideo, true)
-
-  setting.uiXBTNumber = defaultValue(val.uiXBTNumber, [36, 24, 36, 48, 60, 72])
-  setting.uiXBTWidth = defaultValue(val.uiXBTWidth, [960, 720, 960, 1080, 1280])
-
-  // 弹幕库
-  setting.danmakuApis = Array.isArray(val.danmakuApis)
-    ? val.danmakuApis
-      .filter((api: any) => api && typeof api.name === 'string' && typeof api.url === 'string')
-      .map((api: any, index: number) => ({
-        id: defaultString(api.id, `danmaku-api-${index}`),
-        name: defaultString(api.name, ''),
-        url: defaultString(api.url, '')
-      }))
-    : []
-  setting.danmakuSpeed = defaultNumberSub(val.danmakuSpeed, 5, 1, 10)
-  setting.danmakuMarginTop = defaultNumberSub(val.danmakuMarginTop, 10, 0, 200)
-  setting.danmakuMarginBottom = defaultString(val.danmakuMarginBottom, '25%')
-  setting.danmakuOpacity = defaultNumberSub(val.danmakuOpacity, 1, 0, 1)
-  setting.danmakuColor = defaultString(val.danmakuColor, '#FFFFFF')
-  setting.danmakuMode = defaultValue(val.danmakuMode, [0, 1, 2])
-  setting.danmakuModes = Array.isArray(val.danmakuModes) && val.danmakuModes.length > 0
-    ? val.danmakuModes.filter((mode: any) => [0, 1, 2].includes(mode))
-    : [0, 1, 2]
-  setting.danmakuFontSize = defaultNumberSub(val.danmakuFontSize, 25, 12, 80)
-  setting.danmakuAntiOverlap = defaultBool(val.danmakuAntiOverlap, true)
-  setting.danmakuSynchronousPlayback = defaultBool(val.danmakuSynchronousPlayback, false)
-  setting.danmakuHeatmap = defaultBool(val.danmakuHeatmap, false)
-  setting.danmakuVisible = defaultBool(val.danmakuVisible, false)
-  setting.danmakuTheme = defaultValue(val.danmakuTheme, ['dark', 'light'])
-  setting.danmakuFilterText = defaultString(val.danmakuFilterText, '')
-
   // 网盘设置
   setting.uiShowPanPath = defaultBool(val.uiShowPanPath, true)
   setting.uiShowPanMedia = defaultBool(val.uiShowPanMedia, false)
   setting.uiShowPanRootFirst = defaultValue(val.uiShowPanRootFirst, ['all', 'backup', 'resource'])
   setting.uiFolderSize = defaultBool(val.uiFolderSize, true)
-  setting.uiFolderPreviewEnabled = defaultBool(val.uiFolderPreviewEnabled, true)
-  setting.uiFolderPreviewAutoHide = defaultNumber(val.uiFolderPreviewAutoHide, 6)
-  setting.uiLibraryAutoScanMusic = defaultBool(val.uiLibraryAutoScanMusic, false)
-  setting.uiLibraryAutoScanVideo = defaultBool(val.uiLibraryAutoScanVideo, false)
-  setting.uiLibraryAutoScanBook = defaultBool(val.uiLibraryAutoScanBook, false)
-  setting.uiLibraryIncrementalScan = defaultBool(val.uiLibraryIncrementalScan, true)
-  setting.uiLibraryScanIntervalHours = defaultNumberSub(val.uiLibraryScanIntervalHours, 24, 1, 24 * 30)
-  setting.uiLibraryAutoScanPromptedUsers = Array.isArray(val.uiLibraryAutoScanPromptedUsers)
-    ? val.uiLibraryAutoScanPromptedUsers.filter((s: unknown) => typeof s === 'string')
-    : []
-  setting.uiLibraryAutoScanMusicDisabledUsers = Array.isArray(val.uiLibraryAutoScanMusicDisabledUsers)
-    ? val.uiLibraryAutoScanMusicDisabledUsers.filter((s: unknown) => typeof s === 'string')
-    : []
-  setting.uiLibraryAutoScanVideoDisabledUsers = Array.isArray(val.uiLibraryAutoScanVideoDisabledUsers)
-    ? val.uiLibraryAutoScanVideoDisabledUsers.filter((s: unknown) => typeof s === 'string')
-    : []
-  setting.uiLibraryAutoScanBookDisabledUsers = Array.isArray(val.uiLibraryAutoScanBookDisabledUsers)
-    ? val.uiLibraryAutoScanBookDisabledUsers.filter((s: unknown) => typeof s === 'string')
-    : []
-  setting.uiLibraryFollowManualScans = defaultBool(val.uiLibraryFollowManualScans, true)
-  setting.uiMusicAutoScanFolders = Array.isArray(val.uiMusicAutoScanFolders)
-    ? val.uiMusicAutoScanFolders
-        .filter((f: any) => f && typeof f.user_id === 'string' && typeof f.drive_id === 'string' && typeof f.file_id === 'string')
-        .map((f: any) => ({
-          user_id: String(f.user_id),
-          drive_id: String(f.drive_id),
-          file_id: String(f.file_id),
-          name: typeof f.name === 'string' ? f.name : '',
-          path: typeof f.path === 'string' ? f.path : ''
-        }))
-    : []
   setting.uiFileOrderDuli = defaultString(val.uiFileOrderDuli, 'null')
   setting.uiTimeFolderFormate = defaultString(val.uiTimeFolderFormate, 'yyyy-MM-dd HH-mm-ss').replace('mm-dd', 'MM-dd').replace('HH-MM', 'HH-mm')
   setting.uiTimeFolderIndex = defaultNumber(val.uiTimeFolderIndex, 1)
@@ -606,7 +337,6 @@ function _loadSetting(val: any) {
   setting.downThreadMax = defaultValue(val.downThreadMax, [4, 1, 2, 4, 8, 16, 24, 32])
   setting.downGlobalSpeed = defaultNumberSub(val.downGlobalSpeed, 0, 0, 999)
   setting.downGlobalSpeedM = defaultValue(val.downGlobalSpeedM, ['MB', 'KB'])
-  setting.downUseAria2c = normalizeAria2cEnabled(defaultBool(val.downUseAria2c, true))
 
   // 上传文件
   setting.uploadFileMax = defaultValue(val.uploadFileMax, [5, 1, 3, 5, 10, 20, 30, 50])
@@ -623,22 +353,12 @@ function _loadSetting(val: any) {
   setting.downFinishAudio = defaultBool(val.downFinishAudio, true)
   setting.downAutoStart = defaultBool(val.downAutoStart, true)
 
-  // webdav
-  setting.webDavEnable = defaultBool(val.webDavEnable, false)
-  setting.webDavAutoEnable = defaultBool(val.webDavAutoEnable, false)
-  setting.webDavHost = defaultString(val.webDavHost, '127.0.0.1')
-  setting.webDavPort = defaultNumber(val.webDavPort, 12000)
-  setting.webDavListCache = defaultNumber(val.webDavListCache, 10)
-  setting.webDavStrategy = defaultValue(val.webDavStrategy, ['redirect', 'proxy'])
-
   // 高级选项
   setting.debugDirSize = defaultString(val.debugDirSize, '')
   setting.debugCacheSize = defaultString(val.debugCacheSize, '')
   setting.debugFileListMax = defaultNumberSub(val.debugFileListMax, 3000, 3000, 10000)
   setting.debugFavorListMax = defaultNumberSub(val.debugFavorListMax, 500, 100, 3000)
-  setting.debugDowningListMax = 1000
   setting.debugDownedListMax = defaultNumberSub(val.debugDownedListMax, 5000, 1000, 50000)
-  setting.debugFolderSizeCacheHour = defaultValue(val.debugFolderSizeCacheHour, [72, 2, 8, 24, 48, 72])
   setting.debugProxyHost = defaultString(val.debugProxyHost, '127.0.0.1')
   // Chromium blocks a number of ports, including 6666 (ERR_UNSAFE_PORT).
   // Migrate the historical default so media playback can reach the local proxy.
@@ -682,29 +402,6 @@ function _loadSetting(val: any) {
   setting.ariaResumeAllWhenLaunched = defaultBool(val.ariaResumeAllWhenLaunched, false)
 
   // API 密钥
-  setting.apiAIModelKey = defaultString(val.apiAIModelKey, '')
-  setting.apiAIModelProvider = defaultString(val.apiAIModelProvider, '')
-  setting.apiAIModelId = defaultString(val.apiAIModelId, '')
-  setting.apiAIBaseUrl = defaultString(val.apiAIBaseUrl, '')
-  setting.apiAIEmbeddingModelId = defaultString(val.apiAIEmbeddingModelId, '')
-  setting.apiAIRagEnabled = defaultBool(val.apiAIRagEnabled, false)
-  setting.apiAISpoilerProtection = defaultBool(val.apiAISpoilerProtection, true)
-  setting.apiAIMaxContextChunks = defaultNumberSub(val.apiAIMaxContextChunks, 6, 1, 12)
-  setting.apiAIIndexingMode = defaultValue(val.apiAIIndexingMode, ['on-demand', 'background'])
-  setting.apiAIReedyEnabled = defaultBool(val.apiAIReedyEnabled, false)
-  setting.apiAIReedyRuntime = defaultValue(val.apiAIReedyRuntime, ['mvp', 'agent']) as 'mvp' | 'agent'
-  setting.mediaAcquisitionPreferredQuality = defaultValue(val.mediaAcquisitionPreferredQuality, ['auto', '2160p', '1080p', '720p', '480p']) as SettingState['mediaAcquisitionPreferredQuality']
-  setting.mediaAcquisitionFetchSubtitles = defaultBool(val.mediaAcquisitionFetchSubtitles, true)
-  setting.mediaAcquisitionSubtitleLanguage = defaultValue(val.mediaAcquisitionSubtitleLanguage, ['zh-CN', 'zh-Hant', 'en', 'ja', 'ko', 'auto']) as SettingState['mediaAcquisitionSubtitleLanguage']
-  setting.mediaAcquisitionAssrtEnabled = defaultBool(val.mediaAcquisitionAssrtEnabled, false)
-  setting.mediaAcquisitionAssrtToken = defaultString(val.mediaAcquisitionAssrtToken, '')
-  setting.mediaAcquisitionPatrolTimes = defaultString(val.mediaAcquisitionPatrolTimes, '06:00,21:00')
-  setting.mediaAcquisitionAutoScanHistorical = defaultBool(val.mediaAcquisitionAutoScanHistorical, false)
-  setting.mediaAcquisitionRememberTarget = defaultBool(val.mediaAcquisitionRememberTarget, false)
-  setting.mediaAcquisitionTargetUserId = defaultString(val.mediaAcquisitionTargetUserId, '')
-  setting.mediaAcquisitionTargetDriveId = defaultString(val.mediaAcquisitionTargetDriveId, '')
-  setting.mediaAcquisitionTargetFolderId = defaultString(val.mediaAcquisitionTargetFolderId, '')
-  setting.mediaAcquisitionTargetFolderName = defaultString(val.mediaAcquisitionTargetFolderName, '')
 }
 
 let settingstr = ''
@@ -784,9 +481,6 @@ const useSettingStore = defineStore('setting', {
   },
   actions: {
     async updateStore(partial: Partial<SettingState>) {
-      if (Object.hasOwn(partial, 'downUseAria2c')) {
-        partial.downUseAria2c = normalizeAria2cEnabled(partial.downUseAria2c)
-      }
       if (partial.uiTimeFolderFormate) {
         partial.uiTimeFolderFormate = partial.uiTimeFolderFormate
           .replace('mm-dd', 'MM-dd').replace('HH-MM', 'HH-mm')
@@ -845,20 +539,6 @@ const useSettingStore = defineStore('setting', {
         }
       }
       window.WebSetProxy({ proxyUrl: proxy })
-    },
-    async syncBtTrackers(): Promise<void> {
-      try {
-        await (window as any).TvBoxInvoke('motrix:sync-trackers')
-      } catch (e: any) {
-        console.warn('[settingStore] syncBtTrackers failed', e?.message)
-      }
-    },
-    async getBtTrackers(): Promise<string> {
-      try {
-        return await (window as any).TvBoxInvoke('motrix:get-trackers') || ''
-      } catch {
-        return ''
-      }
     }
   }
 })

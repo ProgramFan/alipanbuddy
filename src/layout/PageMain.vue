@@ -11,29 +11,19 @@ import {
   useUserStore,
   useWinStore
 } from '../store'
-import useMusicLibraryStore from '../store/musiclibrary'
-import useMusicPlayerStore from '../store/musicplayerstore'
-import useBookLibraryStore from '../store/booklibrary'
-import { useMediaLibraryStore } from '../store/medialibrary'
-import { BookOpen, Music, PanelLeftClose, PanelLeftOpen, Pause, Play, SkipBack, SkipForward, Video } from 'lucide-vue-next'
+import { PanelLeftClose, PanelLeftOpen } from 'lucide-vue-next'
 import { onHideRightMenu, TestAlt, TestCtrl, TestKey, TestShift } from '../utils/keyboardhelper'
 import { copyToClipboard, getFromClipboard, openExternal } from '../utils/electronhelper'
-import { bootstrapMusicLibrary, shutdownMusicLibrary } from '../utils/musicLibraryBootstrap'
-import { bootstrapMediaLibrary, shutdownMediaLibrary } from '../utils/mediaLibraryBootstrap'
-import { bootstrapBookLibrary, shutdownBookLibrary } from '../utils/bookLibraryBootstrap'
-import { QRCode as AntQRCode } from 'ant-design-vue'
 import { Modal } from '@arco-design/web-vue'
 import DebugLog from '../utils/debuglog'
 import message from '../utils/message'
 import { t } from '../i18n'
 
 import Pan from '../pan/index.vue'
-import DropOverlay from '../components/radio/DropOverlay.vue'
 
 import UserInfo from '../user/UserInfo.vue'
 import UserLogin from '../user/UserLogin.vue'
 import ShutDown from '../setting/ShutDown.vue'
-import LimitReachedModal from '../setting/LimitReachedModal.vue'
 
 import MyModal from './MyModal.vue'
 import { B64decode } from '../utils/format'
@@ -45,35 +35,17 @@ const Setting = defineAsyncComponent(() => import('../setting/index.vue'))
 const Rss = defineAsyncComponent(() => import('../rss/index.vue'))
 const Share = defineAsyncComponent(() => import('../share/index.vue'))
 const Down = defineAsyncComponent(() => import('../down/index.vue'))
-const MediaLibraryView = defineAsyncComponent(() => import('../views/MediaLibraryView.vue'))
-const MediaServerView = defineAsyncComponent(() => import('../views/MediaServerView.vue'))
-const PageMusicLibrary = defineAsyncComponent(() => import('./PageMusicLibrary.vue'))
-const PageBookLibrary = defineAsyncComponent(() => import('./PageBookLibrary.vue'))
-const PageGlobalSearch = defineAsyncComponent(() => import('./PageGlobalSearch.vue'))
-const PageAIWorkspace = defineAsyncComponent(() => import('./PageAIWorkspace.vue'))
 
 const wechatPayImage = 'images/wechat_pay.jpg'
 const alipayImage = 'images/alipay.jpg'
 const cryptoDonationAddress = '0xb0a3f7254e97a8bd398b1ab7f70eb48b0dc68eaf'
 const panVisible = ref(true)
-const mediaNavVisible = ref(true)
-const mediaServerNavVisible = ref(true)
-const sidebarVisibility = ref<Record<'down' | 'share' | 'rss' | 'setting' | 'music' | 'book' | 'ai-workspace', boolean>>({
+const sidebarVisibility = ref<Record<'down' | 'share' | 'rss' | 'setting', boolean>>({
   down: true,
   share: true,
   rss: true,
-  setting: true,
-  music: true,
-  book: true,
-  'ai-workspace': true
+  setting: true
 })
-const showLimitModal = ref(false)
-const pricingPollTimer = window.setInterval(() => {
-  if (localStorage.getItem('boxplayer_show_pricing') === '1') {
-    localStorage.removeItem('boxplayer_show_pricing')
-    showLimitModal.value = true
-  }
-}, 2000)
 const appStore = useAppStore()
 const settingStore = useSettingStore()
 const winStore = useWinStore()
@@ -84,10 +56,6 @@ let removeAutoUpdateStateListener: (() => void) | undefined
 let shareClipboardTimer: number | undefined
 let lastShareClipboardSignature = ''
 let shareClipboardPromptOpen = false
-const musicStore = useMusicLibraryStore()
-const musicPlayerStore = useMusicPlayerStore()
-const bookStore = useBookLibraryStore()
-const mediaStore = useMediaLibraryStore()
 
 function syncAutoUpdateState(state: { status?: string; percent?: number; version?: string }) {
   const status = state.status === 'downloading' || state.status === 'downloaded' || state.status === 'error' ? state.status : 'idle'
@@ -145,71 +113,14 @@ async function handleInstallUpdate() {
   if (!installed) message.warning('更新尚未下载完成')
 }
 
-const SYSTEM_VIDEO_EXTENSIONS = new Set(['mp4', 'mkv', 'avi', 'mov', 'webm', 'ts', 'm2ts', 'flv', 'wmv', 'mpg', 'mpeg'])
-const SYSTEM_AUDIO_EXTENSIONS = new Set(['mp3', 'flac', 'm4a', 'aac', 'wav', 'ogg', 'opus', 'wma', 'aiff', 'ape'])
-const SYSTEM_BOOK_EXTENSIONS = new Set(['epub', 'pdf', 'mobi', 'azw', 'azw3', 'fb2', 'txt', 'md', 'markdown', 'docx', 'html', 'htm', 'cbz', 'cbr', 'cbt', 'cb7'])
-
-function getSystemFileExtension(filePath: string): string {
-  const name = filePath.split(/[\\/]/).pop() || ''
-  return name.includes('.') ? name.slice(name.lastIndexOf('.') + 1).toLowerCase() : ''
-}
-
-function openSystemFile(payload: { filePath: string; fileUrl: string }) {
-  const filePath = payload?.filePath || ''
-  const fileUrl = payload?.fileUrl || ''
-  const fileName = filePath.split(/[\\/]/).pop() || filePath
-  const ext = getSystemFileExtension(filePath)
-  if (!filePath || !fileUrl || !fileName) return
-
-  if (SYSTEM_VIDEO_EXTENSIONS.has(ext)) {
-    window.WebOpenWindow?.({
-      page: 'PageVideo',
-      theme: appStore.appTheme,
-      data: { user_id: 'local', drive_id: 'local', file_id: filePath, parent_file_id: '', parent_file_name: '', file_name: fileName, html: '', encType: '', password: '', expire_time: 0, play_cursor: 0 }
-    })
-    return
-  }
-  if (SYSTEM_AUDIO_EXTENSIONS.has(ext)) {
-    const track = { user_id: 'local', drive_id: 'local', file_id: filePath, parent_file_id: '', file_name: fileName, ext, encType: '', password: '', local_url: fileUrl }
-    window.WebOpenWindow?.({ page: 'PageMusic', theme: appStore.appTheme, data: { ...track, parent_file_name: '', playlist: [track] } })
-    return
-  }
-  if (SYSTEM_BOOK_EXTENSIONS.has(ext)) {
-    const now = Date.now()
-    window.WebOpenWindow?.({
-      page: 'PageBookReader',
-      theme: 'dark',
-      data: { id: `system-${now}`, user_id: 'local', drive_id: 'local', file_id: filePath, parent_file_id: '', file_name: fileName, ext, size: 0, category: ['cbz', 'cbr', 'cbt', 'cb7'].includes(ext) ? 'comic' : 'book', title: fileName.replace(/\.[^.]+$/, ''), scanned_at: now, updated_at: now, sourceUrlOverride: fileUrl }
-    })
-    return
-  }
-  message.warning(`暂不支持打开 ${fileName}`)
-}
-
-const handleMusicLibraryClick = () => {
-  appStore.toggleTab('music')
-}
-
-const handleBookLibraryClick = () => {
-  appStore.toggleTab('book')
-}
-
-const handleMediaLibraryClick = () => {
-  appStore.toggleTab('media')
-}
-
-const sidebarTabs = new Set(['pan', 'down', 'share', 'rss', 'media', 'media-server', 'music', 'book', 'ai-workspace', 'setting'])
+const sidebarTabs = new Set(['pan', 'down', 'share', 'rss', 'setting'])
 const hasActiveSidebar = computed(() => sidebarTabs.has(appStore.appTab))
 const activeSidebarVisible = computed(() => {
   if (appStore.appTab === 'pan') return panVisible.value
-  if (appStore.appTab === 'media') return mediaNavVisible.value
-  if (appStore.appTab === 'media-server') return mediaServerNavVisible.value
   return sidebarVisibility.value[appStore.appTab as keyof typeof sidebarVisibility.value] ?? true
 })
 const handleToggleSidebar = () => {
   if (appStore.appTab === 'pan') panVisible.value = !panVisible.value
-  else if (appStore.appTab === 'media') mediaNavVisible.value = !mediaNavVisible.value
-  else if (appStore.appTab === 'media-server') mediaServerNavVisible.value = !mediaServerNavVisible.value
   else if (appStore.appTab in sidebarVisibility.value) {
     const tab = appStore.appTab as keyof typeof sidebarVisibility.value
     sidebarVisibility.value = { ...sidebarVisibility.value, [tab]: !sidebarVisibility.value[tab] }
@@ -245,13 +156,7 @@ const themeTitle = computed(() => {
 })
 
 const primaryTabDefinitions = [
-  { key: 'pan', title: 'Alt+1', labelKey: 'nav.pan' },
-  { key: 'media-server', title: 'Alt+6', labelKey: 'nav.mediaServer' },
-  { key: 'search', title: 'Ctrl+K', labelKey: 'nav.search' },
-  { key: 'ai-workspace', title: 'AI Workspace', labelKey: 'nav.aiWorkspace' },
-  { key: 'media', title: 'Alt+5', labelKey: 'nav.video' },
-  { key: 'music', title: 'Alt+8', labelKey: 'nav.music' },
-  { key: 'book', title: 'Alt+9', labelKey: 'nav.books' }
+  { key: 'pan', title: 'Alt+1', labelKey: 'nav.pan' }
 ]
 
 const orderedPrimaryTabs = computed(() => {
@@ -290,20 +195,13 @@ const handleHelpPage = () => {
   if (ourl) openExternal(ourl)
 }
 
-const handleGlobalSearch = () => {
-  appStore.toggleTab('search')
-}
 
 keyboardStore.$subscribe((_m: any, state: KeyboardState) => {
   if (TestAlt('1', state.KeyDownEvent, () => appStore.toggleTab('pan'))) return
   if (TestAlt('2', state.KeyDownEvent, () => appStore.toggleTab('down'))) return
   if (TestAlt('3', state.KeyDownEvent, () => appStore.toggleTab('share'))) return
   if (TestAlt('4', state.KeyDownEvent, () => appStore.toggleTab('rss'))) return
-  if (TestAlt('5', state.KeyDownEvent, () => appStore.toggleTab('media'))) return
-  if (TestAlt('6', state.KeyDownEvent, () => appStore.toggleTab('media-server'))) return
   if (TestAlt('7', state.KeyDownEvent, () => appStore.toggleTab('setting'))) return
-  if (TestAlt('8', state.KeyDownEvent, () => appStore.toggleTab('music'))) return
-  if (TestAlt('9', state.KeyDownEvent, () => appStore.toggleTab('book'))) return
   if (TestAlt('f4', state.KeyDownEvent, () => handleHideClick(undefined))) return
   if (TestAlt('m', state.KeyDownEvent, () => handleMinClick(undefined))) return
   if (TestAlt('enter', state.KeyDownEvent, () => handleMaxClick(undefined))) return
@@ -340,11 +238,6 @@ const onKeyDown = (event: KeyboardEvent) => {
     event.returnValue = false
     if (nodeName && !'BODY|DIV'.includes(nodeName)) ele.blur()
   }
-  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k' && !event.repeat) {
-    event.preventDefault()
-    appStore.toggleTab('search')
-    return
-  }
   if (document.body.getElementsByClassName('arco-modal-container').length) return
   if (event.key == 'Control' || event.key == 'Shift' || event.key == 'Alt' || event.key == 'Meta') return
   const isInput = nodeName == 'INPUT' || nodeName == 'TEXTAREA' || false
@@ -372,45 +265,6 @@ const handleAsyncClear = () => {
 const handleAsyncDelete = (key: string) => {
   footStore.mDeleteTask(key)
 }
-const handleAudioStop = () => {
-  footStore.mSaveAudioUrl('')
-}
-
-const formatFooterMusicTime = (sec: number): string => {
-  if (!isFinite(sec) || sec < 0) sec = 0
-  const total = Math.floor(sec)
-  const m = Math.floor(total / 60)
-  const s = total % 60
-  return `${m}:${String(s).padStart(2, '0')}`
-}
-
-const handleFooterMusicToggle = () => {
-  musicPlayerStore.sendCommand('toggle')
-}
-
-const handleFooterMusicPrev = () => {
-  musicPlayerStore.sendCommand('prev')
-}
-
-const handleFooterMusicNext = () => {
-  musicPlayerStore.sendCommand('next')
-}
-
-const handleMineradioFilesDropped = (files: File[]) => {
-  const audioCount = files.filter((file) => /^audio\//i.test(file.type) || /\.(mp3|flac|wav|ogg|m4a|aac)$/i.test(file.name)).length
-  const imageCount = files.filter((file) => /^image\//i.test(file.type) || /\.(jpg|jpeg|png|webp)$/i.test(file.name)).length
-  if (audioCount > 0) {
-    message.info(t('music.cloudOnlyInfo'))
-    appStore.toggleTab('music')
-    return
-  }
-  if (imageCount > 0) {
-    message.info(t('music.cropInVisualConsole'))
-    return
-  }
-  message.warning(t('music.dropUnsupported'))
-}
-
 // Apply saved default tab — watch ensures it fires after store + template are ready
 watch(() => settingStore.uiDefaultTab, (tab) => {
   if (tab && appStore.appTab !== tab) {
@@ -430,10 +284,6 @@ onMounted(() => {
     onHideRightMenu()
   }, 300)
   window.addEventListener('click', onHideRightMenu, { passive: true })
-  bootstrapMusicLibrary()
-  bootstrapBookLibrary()
-  bootstrapMediaLibrary()
-  window.onExternalFileOpen?.(openSystemFile)
   window.AutoUpdateGetState?.().then((state) => {
     syncAutoUpdateState(state)
   })
@@ -445,16 +295,12 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.clearTimeout(shareClipboardTimer)
-  window.clearInterval(pricingPollTimer)
   window.removeEventListener('resize', onResize)
   window.removeEventListener('keydown', onKeyDown)
   window.removeEventListener('mousedown', onMouseDown)
   window.removeEventListener('focus', scheduleClipboardShareCheck)
   document.removeEventListener('visibilitychange', handleDocumentVisibilityChange)
   window.removeEventListener('click', onHideRightMenu)
-  shutdownMusicLibrary()
-  shutdownMediaLibrary()
-  shutdownBookLibrary()
   removeAutoUpdateStateListener?.()
 })
 </script>
@@ -513,24 +359,6 @@ onUnmounted(() => {
         <a-tab-pane key='rss' title='4'>
           <Rss :sidebar-visible="sidebarVisibility.rss" />
         </a-tab-pane>
-        <a-tab-pane key='media' title='5'>
-          <MediaLibraryView :navVisible="mediaNavVisible" />
-        </a-tab-pane>
-        <a-tab-pane key='media-server' title='6'>
-          <MediaServerView :navVisible="mediaServerNavVisible" />
-        </a-tab-pane>
-        <a-tab-pane key='music' title='8'>
-          <PageMusicLibrary :sidebar-visible="sidebarVisibility.music" />
-        </a-tab-pane>
-        <a-tab-pane key='book' title='9'>
-          <PageBookLibrary :sidebar-visible="sidebarVisibility.book" />
-        </a-tab-pane>
-        <a-tab-pane key='search' title='0'>
-          <PageGlobalSearch />
-        </a-tab-pane>
-        <a-tab-pane key='ai-workspace' :title="t('ai.workspace')">
-          <PageAIWorkspace :sidebar-visible="sidebarVisibility['ai-workspace']" />
-        </a-tab-pane>
         <a-tab-pane key='setting' title='7'>
           <Setting :sidebar-visible="sidebarVisibility.setting" />
         </a-tab-pane>
@@ -553,90 +381,12 @@ onUnmounted(() => {
         <div class='footinfo'>
           {{ footStore.GetSpaceInfo }}
         </div>
-        <div
-          v-if="musicPlayerStore.state.hasTrack"
-          class='footer-music-player'
-          :title="musicPlayerStore.state.title || t('music.player')"
-        >
-          <div class='footer-music-cover' @click='musicPlayerStore.togglePanel()'>
-            <img v-if='musicPlayerStore.state.coverUrl' :src='musicPlayerStore.state.coverUrl' alt='' />
-            <Music v-else :size='14' :stroke-width='1.8' />
-          </div>
-          <div class='footer-music-meta' @click='musicPlayerStore.togglePanel()'>
-            <div class='footer-music-title'>{{ musicPlayerStore.state.title || t('music.player') }}</div>
-            <div class='footer-music-bar'>
-              <div class='footer-music-bar-fill' :style="{ width: musicPlayerStore.state.progressPercent + '%' }"></div>
-            </div>
-          </div>
-          <span class='footer-music-time'>
-            {{ formatFooterMusicTime(musicPlayerStore.state.currentTime) }}
-          </span>
-          <button class='footer-music-btn' :title="t('music.previousTrack')" @click.stop='handleFooterMusicPrev'>
-            <SkipBack :size='13' :stroke-width='2' />
-          </button>
-          <button class='footer-music-btn primary' :title="musicPlayerStore.state.isPlaying ? t('music.pause') : t('music.play')" @click.stop='handleFooterMusicToggle'>
-            <Pause v-if='musicPlayerStore.state.isPlaying' :size='13' :stroke-width='2' :fill="'currentColor'" />
-            <Play v-else :size='13' :stroke-width='2' :fill="'currentColor'" />
-          </button>
-          <button class='footer-music-btn' :title="t('music.nextTrack')" @click.stop='handleFooterMusicNext'>
-            <SkipForward :size='13' :stroke-width='2' />
-          </button>
-          <button class='footer-music-toggle' :title="musicPlayerStore.panelVisible ? t('music.collapse') : t('music.expand')" @click.stop='musicPlayerStore.togglePanel()'>
-            {{ musicPlayerStore.panelVisible ? t('music.collapse') : t('music.expand') }}
-          </button>
-        </div>
-        <div
-          v-if="musicStore.isScanning && appStore.appTab !== 'music'"
-          class='footerBar fix music-scan-foot'
-          style='cursor: pointer; gap: 6px'
-          :title="musicStore.scanLabel || t('music.scanningLibrary')"
-          @click='handleMusicLibraryClick'
-        >
-          <Music :size="14" :stroke-width="1.8" class="music-scan-spin" />
-          <span class='music-scan-text'>
-            {{ musicStore.scanLabel || t('music.scanningLibrary') }} · {{ musicStore.scanFound }} {{ t('music.songsUnit') }}
-          </span>
-        </div>
-        <div
-          v-if="mediaStore.isScanning && appStore.appTab !== 'media'"
-          class='footerBar fix music-scan-foot'
-          style='cursor: pointer; gap: 6px'
-          :title="`${t('footer.scanningMedia')} ${mediaStore.scanProgress}/${mediaStore.scanTotal}`"
-          @click='handleMediaLibraryClick'
-        >
-          <Video :size="14" :stroke-width="1.8" class="music-scan-spin" />
-          <span class='music-scan-text'>
-            {{ t('footer.scanningMedia') }} {{ mediaStore.scanProgress }}/{{ mediaStore.scanTotal }}
-          </span>
-        </div>
-        <div
-          v-if="bookStore.isScanning && appStore.appTab !== 'book'"
-          class='footerBar fix music-scan-foot'
-          style='cursor: pointer; gap: 6px'
-          :title="bookStore.scanLabel || t('footer.scanningBooks')"
-          @click='handleBookLibraryClick'
-        >
-          <BookOpen :size="14" :stroke-width="1.8" class="music-scan-spin" />
-          <span class='music-scan-text'>
-            {{ bookStore.scanLabel || t('footer.scanningBooks') }} · {{ bookStore.scanFound }} {{ t('file.book') }}
-          </span>
-        </div>
         <div class='flexauto' />
         <div :style="{ display: 'flex', paddingRight: '16px', flexShrink: 0, flexGrow: 0 }">
           <div class='flexauto'></div>
           <div class='footinfo'>
             {{ footStore.GetInfo }}
           </div>
-          <div v-if='footStore.audioUrl' style='width: 300px; display: flex; overflow: hidden'>
-            <audio controls autoplay style='width: 360px; height: 24px; margin: 0 -50px 0 -12px'
-                   :src='footStore.audioUrl'>no audio
-            </audio>
-          </div>
-          <div v-if='footStore.audioUrl' class='footerBar fix' :title="t('footer.audioPreviewClose')" style='cursor: pointer'
-               @click.stop='handleAudioStop()'>
-            <IconFont name="iconclose" />
-          </div>
-
           <div class='footerBar fix' v-show='footStore.uploadTotalSpeed'>
             <IconFont name="iconshangchuansudu" />
             <span id='footUploadSpeed' class='footspeedstr'>
@@ -754,10 +504,7 @@ onUnmounted(() => {
       <MyModal />
     </a-layout-footer>
   </a-layout>
-
-    <DropOverlay v-if="appStore.appTab === 'music'" @files-dropped="handleMineradioFilesDropped" />
-    <LimitReachedModal :visible="showLimitModal" @update:visible="showLimitModal = $event" />
-  </template>
+</template>
 
 <style>
 body {
@@ -1081,18 +828,9 @@ body {
 }
 
 #xbybody .gs-page,
-#xbybody .book-library,
-#xbybody .media-library-view,
-#xbybody .media-server-view,
-#xbybody .media-server-sidebar,
-#xbybody .media-server-content,
-#xbybody .media-server-workspace,
 #xbybody .settings-shell,
 #xbybody .settings-sider,
 #xbybody .settings-content,
-#xbybody .ai-chat,
-#xbybody .ai-bottom,
-#xbybody .ai-footer,
 #xbybody .arco-layout,
 #xbybody .arco-layout-content {
   background: transparent !important;
@@ -1101,10 +839,7 @@ body {
 
 #xbybody .xbyleft,
 #xbybody .settings-sider,
-#xbybody .book-sidebar,
-#xbybody .media-server-sidebar,
-#xbybody .rss-sider,
-#xbybody .library-sidebar {
+#xbybody .rss-sider {
   position: relative;
   flex: 0 0 218px !important;
   width: 218px !important;
@@ -1124,10 +859,7 @@ body {
 
 #xbybody .xbyleft::before,
 #xbybody .settings-sider::before,
-#xbybody .book-sidebar::before,
-#xbybody .media-server-sidebar::before,
-#xbybody .rss-sider::before,
-#xbybody .library-sidebar::before {
+#xbybody .rss-sider::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -1143,41 +875,13 @@ body {
 
 #xbybody .xbyleft > *,
 #xbybody .settings-sider > *,
-#xbybody .book-sidebar > *,
-#xbybody .media-server-sidebar > *,
-#xbybody .rss-sider > *,
-#xbybody .library-sidebar > * {
+#xbybody .rss-sider > * {
   position: relative;
   z-index: 1;
 }
 
-#xbybody .library-sidebar > .media-library-nav {
-  flex: 1 1 auto !important;
-  width: 100% !important;
-  min-width: 0 !important;
-  max-width: none !important;
-  height: 100% !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  color: inherit;
-  border: 0 !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-}
-
-#xbybody .library-sidebar > .media-library-nav::before {
-  display: none !important;
-}
-
 #xbybody .xbyright,
 #xbybody .settings-content,
-#xbybody .media-library-pane,
-#xbybody .media-server-content,
-#xbybody .media-server-workspace,
-#xbybody .book-main,
-#xbybody .book-content,
 #xbybody .rightbg {
   min-width: 0;
 }
@@ -1257,11 +961,7 @@ body {
 }
 
 #xbybody .xbyleftmenu .arco-menu-item,
-#xbybody .rss-leftmenu .arco-menu-item,
-#xbybody .book-nav-item,
-#xbybody .media-server-title,
-#xbybody .workspace-tab,
-#xbybody .media-library-nav button {
+#xbybody .rss-leftmenu .arco-menu-item {
   min-height: 46px;
   border: 1px solid transparent !important;
   border-radius: 999px;
@@ -1284,34 +984,20 @@ body {
 #xbybody .xbyleftmenu .arco-menu-item:hover,
 #xbybody .xbyleftmenu .arco-menu-selected,
 #xbybody .rss-leftmenu .arco-menu-item:hover,
-#xbybody .rss-leftmenu .arco-menu-selected,
-#xbybody .book-nav-item:hover,
-#xbybody .book-nav-item.active,
-#xbybody .media-server-title:hover,
-#xbybody .workspace-tab:hover,
-#xbybody .workspace-tab.active,
-#xbybody .media-library-nav button:hover,
-#xbybody .media-library-nav button.active {
+#xbybody .rss-leftmenu .arco-menu-selected {
   color: #fff !important;
   background: rgba(255,255,255,.072) !important;
 }
 
 #xbybody .xbyleftmenu .arco-menu-selected,
-#xbybody .rss-leftmenu .arco-menu-selected,
-#xbybody .book-nav-item.active,
-#xbybody .workspace-tab.active,
-#xbybody .media-library-nav button.active {
+#xbybody .rss-leftmenu .arco-menu-selected {
   border-color: rgba(0,245,212,.26) !important;
   background: rgba(0,245,212,.090) !important;
   box-shadow: inset 0 0 0 1px rgba(0,245,212,.12), 0 12px 30px rgba(0,245,212,.075) !important;
 }
 
 #xbybody .xbyleftmenu .arco-menu-item:hover,
-#xbybody .rss-leftmenu .arco-menu-item:hover,
-#xbybody .book-nav-item:hover,
-#xbybody .media-server-title:hover,
-#xbybody .workspace-tab:hover,
-#xbybody .media-library-nav button:hover {
+#xbybody .rss-leftmenu .arco-menu-item:hover {
   transform: translateY(-1px);
 }
 
@@ -1360,9 +1046,6 @@ body {
 }
 
 #xbybody .settings-side-title,
-#xbybody .book-brand,
-#xbybody .media-library-title,
-#xbybody .library-scan-panel,
 #xbybody .scan-progress-section {
   border: 0 !important;
   background: transparent !important;
@@ -1370,9 +1053,7 @@ body {
   backdrop-filter: none !important;
 }
 
-#xbybody .settings-side-title,
-#xbybody .book-brand,
-#xbybody .media-library-title {
+#xbybody .settings-side-title {
   border-radius: 0 !important;
 }
 
@@ -1390,11 +1071,6 @@ body {
 #xbybody .settings-card,
 #xbybody .settings-panel,
 #xbybody .settingcard,
-#xbybody .media-library-pane,
-#xbybody .media-server-content,
-#xbybody .media-server-workspace,
-#xbybody .workspace-toolbar,
-#xbybody .workspace-header-card,
 #xbybody .summary-item,
 #xbybody .placeholder-card,
 #xbybody .server-switch-menu,
@@ -1402,25 +1078,10 @@ body {
 #xbybody .home-error,
 #xbybody .home-loading,
 #xbybody .empty-placeholder,
-#xbybody .library-card,
 #xbybody .detail-section,
 #xbybody .person-shelf-card,
 #xbybody .person-rail-card,
-#xbybody .search-feedback-card,
 #xbybody .listing-toggle-group,
-#xbybody .book-main,
-#xbybody .book-header,
-#xbybody .book-content,
-#xbybody .book-list-item,
-#xbybody .book-group,
-#xbybody .book-cover-item,
-#xbybody .book-annotation-toolbar,
-#xbybody .book-annotation-item,
-#xbybody .book-tag-editor,
-#xbybody .book-trash-toolbar,
-#xbybody .workspace-tabs,
-#xbybody .ai-input-bar,
-#xbybody .ai-msg-body,
 #xbybody .gs-panel {
   color: var(--app-mineradio-ink);
   border-color: var(--app-glass-line) !important;
@@ -1433,30 +1094,18 @@ body {
 #xbybody .settings-card,
 #xbybody .settings-panel,
 #xbybody .settingcard,
-#xbybody .workspace-toolbar,
-#xbybody .workspace-header-card,
 #xbybody .summary-item,
 #xbybody .placeholder-card,
-#xbybody .library-card,
 #xbybody .detail-section,
 #xbybody .person-shelf-card,
 #xbybody .person-rail-card,
-#xbybody .book-list-item,
-#xbybody .book-group,
-#xbybody .book-cover-item,
-#xbybody .book-annotation-item,
 #xbybody .gs-panel {
   border-radius: 18px !important;
 }
 
 #xbybody .xbyright > .hidetabs,
 #xbybody .rightbg,
-#xbybody .settings-content,
-#xbybody .media-library-pane,
-#xbybody .media-server-content,
-#xbybody .media-server-workspace,
-#xbybody .book-main,
-#xbybody .book-content {
+#xbybody .settings-content {
   border: 1px solid rgba(255,255,255,.075) !important;
   border-radius: 24px !important;
   background:
@@ -1472,48 +1121,15 @@ body {
 }
 
 #xbybody .rightbg,
-#xbybody .settings-content,
-#xbybody .media-server-content,
-#xbybody .media-server-workspace,
-#xbybody .book-content {
+#xbybody .settings-content {
   height: 100%;
   overflow: hidden;
-}
-
-#xbybody .media-library-pane,
-#xbybody .book-main {
-  box-sizing: border-box;
-  height: calc(100% - 36px);
 }
 
 #xbybody .settings-content {
   box-sizing: border-box;
   height: calc(100% - 36px);
   margin: 18px 18px 18px 14px !important;
-}
-
-#xbybody .book-main {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-#xbybody .book-content {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  border: 0 !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-}
-
-#xbybody .book-header {
-  background: linear-gradient(180deg, rgba(255,255,255,.04), transparent) !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
 }
 
 #xbybody #SettingObserver.settings-content {
@@ -1539,8 +1155,6 @@ body[arco-theme='dark'] #xbybody .settings-sider .xbyleftmenu .arco-menu-item:ho
   transform: none !important;
 }
 
-#xbybody .book-library,
-#xbybody .workspace-page,
 #xbybody .home-page,
 #xbybody .search-shell,
 #xbybody .detail-page,
@@ -1550,63 +1164,36 @@ body[arco-theme='dark'] #xbybody .settings-sider .xbyleftmenu .arco-menu-item:ho
   background-color: transparent !important;
 }
 
-#xbybody .workspace-header h2,
 #xbybody .server-empty-shell h2,
-#xbybody .workspace-header-card h2,
 #xbybody .home-intro h2,
 #xbybody .detail-section-title,
-#xbybody .library-list-title,
 #xbybody .person-shelf-title,
 #xbybody .person-rail-title,
-#xbybody .book-header-title,
-#xbybody .book-list-title,
-#xbybody .book-cover-item-title,
-#xbybody .book-group-title,
-#xbybody .settinghead,
-#xbybody .media-library-title h2 {
+#xbybody .settinghead {
   color: rgba(255,255,255,.92) !important;
 }
 
-#xbybody .workspace-header p,
 #xbybody .server-empty-shell p,
-#xbybody .workspace-header-card p,
-#xbybody .library-meta-line,
-#xbybody .library-list-overview,
 #xbybody .person-rail-subtitle,
 #xbybody .person-rail-overview,
-#xbybody .book-list-sub,
-#xbybody .book-cover-item-author,
-#xbybody .book-cover-item-publisher,
-#xbybody .book-cover-item-desc,
 #xbybody .settingrow,
-#xbybody .helptxt,
-#xbybody .media-library-title p {
+#xbybody .helptxt {
   color: rgba(232,236,239,.66) !important;
 }
 
-#xbybody .workspace-eyebrow,
 #xbybody .scan-header,
-#xbybody .book-source-pill,
-#xbybody .book-progress-chip,
-#xbybody .library-list-meta-chip,
 #xbybody .listing-overlay-badge {
   color: var(--app-mineradio-accent) !important;
   background: rgba(0,245,212,.10) !important;
   border-color: rgba(0,245,212,.18) !important;
 }
 
-#xbybody .workspace-tab,
-#xbybody .book-sort-item,
-#xbybody .book-annotation-tag,
 #xbybody .listing-toggle-group button,
 #xbybody .home-poster-toggle button {
   color: rgba(255,255,255,.68) !important;
   background: transparent !important;
 }
 
-#xbybody .workspace-tab.active,
-#xbybody .book-sort-item.active,
-#xbybody .book-annotation-tag.active,
 #xbybody .listing-toggle-group button.active,
 #xbybody .home-poster-toggle button.active {
   color: #fff !important;
@@ -1689,35 +1276,12 @@ body[arco-theme='dark'] #xbybody .settings-sider .xbyleftmenu .arco-menu-item:ho
 #xbybody .xbyleftmenu .arco-menu-item,
 #xbybody .xbyleftmenu .arco-menu-title,
 #xbybody .rss-leftmenu .arco-menu-item,
-#xbybody .rss-leftmenu .arco-menu-title,
-#xbybody .book-sidebar .book-nav-item,
-#xbybody .book-sidebar .book-nav-item > span,
-#xbybody .media-library-nav .nav-item,
-#xbybody .media-library-nav .nav-item > span:first-of-type,
-#xbybody .media-server-nav .nav-item,
-#xbybody .media-server-nav .nav-item .server-name,
-#xbybody .media-server-nav .nav-item > span:first-of-type,
-#xbybody .workspace-tab {
+#xbybody .rss-leftmenu .arco-menu-title {
   font-size: var(--app-type-nav) !important;
 }
 
-#xbybody .ai-task-rail .ai-new-task,
-#xbybody .ai-task-rail .ai-rail-action,
-#xbybody .ai-task-rail .ai-history-item {
-  font-size: var(--app-type-nav) !important;
-}
-
-#xbybody .media-library-nav .nav-header,
-#xbybody .media-library-nav .nav-item .count,
-#xbybody .media-library-nav .folder-source,
-#xbybody .media-server-nav .nav-header,
-#xbybody .media-server-nav .server-meta,
-#xbybody .book-sidebar .book-brand-sub,
 #xbybody .settings-sider .settings-side-kicker,
-#xbybody .settings-sider .settings-side-title small,
-#xbybody .ai-task-rail .ai-rail-label,
-#xbybody .ai-task-rail .ai-rail-foot,
-#xbybody .ai-task-rail .ai-memory-item {
+#xbybody .settings-sider .settings-side-title small {
   font-size: var(--app-type-caption) !important;
 }
 
@@ -1780,32 +1344,15 @@ body > .arco-trigger-popup :where(.arco-dropdown-option, .arco-select-option, .a
 @media (prefers-reduced-transparency: reduce) {
   #xbybody .xbyleft,
   #xbybody .settings-sider,
-  #xbybody .book-sidebar,
-  #xbybody .media-server-sidebar,
   #xbybody .rss-sider,
-  #xbybody .library-sidebar,
   #xbybody .arco-card,
   #xbybody .arco-list,
   #xbybody .arco-table,
   #xbybody .settings-card,
   #xbybody .settings-panel,
   #xbybody .settingcard,
-  #xbybody .media-library-pane,
-  #xbybody .media-server-content,
-  #xbybody .media-server-workspace,
-  #xbybody .workspace-toolbar,
-  #xbybody .workspace-header-card,
   #xbybody .summary-item,
   #xbybody .placeholder-card,
-  #xbybody .library-card,
-  #xbybody .book-main,
-  #xbybody .book-header,
-  #xbybody .book-content,
-  #xbybody .book-list-item,
-  #xbybody .book-group,
-  #xbybody .book-cover-item,
-  #xbybody .ai-input-bar,
-  #xbybody .ai-msg-body,
   #xbybody .gs-panel {
     background: #101216 !important;
     backdrop-filter: none !important;
@@ -1879,10 +1426,7 @@ body:not([arco-theme='dark']) #xbybody .settings-content {
 
 body:not([arco-theme='dark']) #xbybody .xbyleft,
 body:not([arco-theme='dark']) #xbybody .settings-sider,
-body:not([arco-theme='dark']) #xbybody .book-sidebar,
-body:not([arco-theme='dark']) #xbybody .media-server-sidebar,
-body:not([arco-theme='dark']) #xbybody .rss-sider,
-body:not([arco-theme='dark']) #xbybody .library-sidebar {
+body:not([arco-theme='dark']) #xbybody .rss-sider {
   color: var(--color-text-1);
   background: var(--color-bg-1) !important;
   border-right: 1px solid var(--color-neutral-3) !important;
@@ -1896,24 +1440,12 @@ body:not([arco-theme='dark']) #xbybody .single-boundary-sidebar {
 
 body:not([arco-theme='dark']) #xbybody .xbyleft::before,
 body:not([arco-theme='dark']) #xbybody .settings-sider::before,
-body:not([arco-theme='dark']) #xbybody .book-sidebar::before,
-body:not([arco-theme='dark']) #xbybody .media-server-sidebar::before,
-body:not([arco-theme='dark']) #xbybody .rss-sider::before,
-body:not([arco-theme='dark']) #xbybody .library-sidebar::before {
+body:not([arco-theme='dark']) #xbybody .rss-sider::before {
   display: none;
 }
 
-body:not([arco-theme='dark']) #xbybody .library-sidebar > .media-library-nav {
-  border: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-}
-
 body:not([arco-theme='dark']) #xbybody .headdesc,
-body:not([arco-theme='dark']) #xbybody .settings-side-title,
-body:not([arco-theme='dark']) #xbybody .book-brand,
-body:not([arco-theme='dark']) #xbybody .media-library-title {
+body:not([arco-theme='dark']) #xbybody .settings-side-title {
   border: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
@@ -1930,11 +1462,7 @@ body:not([arco-theme='dark']) #xbybody .rss-leftmenu .arco-menu-inner {
 }
 
 body:not([arco-theme='dark']) #xbybody .xbyleftmenu .arco-menu-item,
-body:not([arco-theme='dark']) #xbybody .rss-leftmenu .arco-menu-item,
-body:not([arco-theme='dark']) #xbybody .book-nav-item,
-body:not([arco-theme='dark']) #xbybody .media-server-title,
-body:not([arco-theme='dark']) #xbybody .workspace-tab,
-body:not([arco-theme='dark']) #xbybody .media-library-nav button {
+body:not([arco-theme='dark']) #xbybody .rss-leftmenu .arco-menu-item {
   color: var(--color-text-2) !important;
   background: transparent !important;
   box-shadow: none !important;
@@ -1943,14 +1471,7 @@ body:not([arco-theme='dark']) #xbybody .media-library-nav button {
 body:not([arco-theme='dark']) #xbybody .xbyleftmenu .arco-menu-item:hover,
 body:not([arco-theme='dark']) #xbybody .xbyleftmenu .arco-menu-selected,
 body:not([arco-theme='dark']) #xbybody .rss-leftmenu .arco-menu-item:hover,
-body:not([arco-theme='dark']) #xbybody .rss-leftmenu .arco-menu-selected,
-body:not([arco-theme='dark']) #xbybody .book-nav-item:hover,
-body:not([arco-theme='dark']) #xbybody .book-nav-item.active,
-body:not([arco-theme='dark']) #xbybody .media-server-title:hover,
-body:not([arco-theme='dark']) #xbybody .workspace-tab:hover,
-body:not([arco-theme='dark']) #xbybody .workspace-tab.active,
-body:not([arco-theme='dark']) #xbybody .media-library-nav button:hover,
-body:not([arco-theme='dark']) #xbybody .media-library-nav button.active {
+body:not([arco-theme='dark']) #xbybody .rss-leftmenu .arco-menu-selected {
   color: var(--color-text-1) !important;
   background: var(--color-fill-2) !important;
 }
@@ -1964,11 +1485,6 @@ body:not([arco-theme='dark']) #xbybody .arco-drawer,
 body:not([arco-theme='dark']) #xbybody .settings-card,
 body:not([arco-theme='dark']) #xbybody .settings-panel,
 body:not([arco-theme='dark']) #xbybody .settingcard,
-body:not([arco-theme='dark']) #xbybody .media-library-pane,
-body:not([arco-theme='dark']) #xbybody .media-server-content,
-body:not([arco-theme='dark']) #xbybody .media-server-workspace,
-body:not([arco-theme='dark']) #xbybody .workspace-toolbar,
-body:not([arco-theme='dark']) #xbybody .workspace-header-card,
 body:not([arco-theme='dark']) #xbybody .summary-item,
 body:not([arco-theme='dark']) #xbybody .placeholder-card,
 body:not([arco-theme='dark']) #xbybody .server-switch-menu,
@@ -1976,25 +1492,10 @@ body:not([arco-theme='dark']) #xbybody .home-intro,
 body:not([arco-theme='dark']) #xbybody .home-error,
 body:not([arco-theme='dark']) #xbybody .home-loading,
 body:not([arco-theme='dark']) #xbybody .empty-placeholder,
-body:not([arco-theme='dark']) #xbybody .library-card,
 body:not([arco-theme='dark']) #xbybody .detail-section,
 body:not([arco-theme='dark']) #xbybody .person-shelf-card,
 body:not([arco-theme='dark']) #xbybody .person-rail-card,
-body:not([arco-theme='dark']) #xbybody .search-feedback-card,
 body:not([arco-theme='dark']) #xbybody .listing-toggle-group,
-body:not([arco-theme='dark']) #xbybody .book-main,
-body:not([arco-theme='dark']) #xbybody .book-header,
-body:not([arco-theme='dark']) #xbybody .book-content,
-body:not([arco-theme='dark']) #xbybody .book-list-item,
-body:not([arco-theme='dark']) #xbybody .book-group,
-body:not([arco-theme='dark']) #xbybody .book-cover-item,
-body:not([arco-theme='dark']) #xbybody .book-annotation-toolbar,
-body:not([arco-theme='dark']) #xbybody .book-annotation-item,
-body:not([arco-theme='dark']) #xbybody .book-tag-editor,
-body:not([arco-theme='dark']) #xbybody .book-trash-toolbar,
-body:not([arco-theme='dark']) #xbybody .workspace-tabs,
-body:not([arco-theme='dark']) #xbybody .ai-input-bar,
-body:not([arco-theme='dark']) #xbybody .ai-msg-body,
 body:not([arco-theme='dark']) #xbybody .gs-panel {
   color: var(--color-text-1) !important;
   border-color: var(--color-border-2) !important;
@@ -2003,37 +1504,20 @@ body:not([arco-theme='dark']) #xbybody .gs-panel {
   backdrop-filter: none !important;
 }
 
-body:not([arco-theme='dark']) #xbybody .workspace-header h2,
 body:not([arco-theme='dark']) #xbybody .server-empty-shell h2,
-body:not([arco-theme='dark']) #xbybody .workspace-header-card h2,
 body:not([arco-theme='dark']) #xbybody .home-intro h2,
 body:not([arco-theme='dark']) #xbybody .detail-section-title,
-body:not([arco-theme='dark']) #xbybody .library-list-title,
 body:not([arco-theme='dark']) #xbybody .person-shelf-title,
 body:not([arco-theme='dark']) #xbybody .person-rail-title,
-body:not([arco-theme='dark']) #xbybody .book-header-title,
-body:not([arco-theme='dark']) #xbybody .book-list-title,
-body:not([arco-theme='dark']) #xbybody .book-cover-item-title,
-body:not([arco-theme='dark']) #xbybody .book-group-title,
-body:not([arco-theme='dark']) #xbybody .settinghead,
-body:not([arco-theme='dark']) #xbybody .media-library-title h2 {
+body:not([arco-theme='dark']) #xbybody .settinghead {
   color: var(--color-text-1) !important;
 }
 
-body:not([arco-theme='dark']) #xbybody .workspace-header p,
 body:not([arco-theme='dark']) #xbybody .server-empty-shell p,
-body:not([arco-theme='dark']) #xbybody .workspace-header-card p,
-body:not([arco-theme='dark']) #xbybody .library-meta-line,
-body:not([arco-theme='dark']) #xbybody .library-list-overview,
 body:not([arco-theme='dark']) #xbybody .person-rail-subtitle,
 body:not([arco-theme='dark']) #xbybody .person-rail-overview,
-body:not([arco-theme='dark']) #xbybody .book-list-sub,
-body:not([arco-theme='dark']) #xbybody .book-cover-item-author,
-body:not([arco-theme='dark']) #xbybody .book-cover-item-publisher,
-body:not([arco-theme='dark']) #xbybody .book-cover-item-desc,
 body:not([arco-theme='dark']) #xbybody .settingrow,
-body:not([arco-theme='dark']) #xbybody .helptxt,
-body:not([arco-theme='dark']) #xbybody .media-library-title p {
+body:not([arco-theme='dark']) #xbybody .helptxt {
   color: var(--color-text-2) !important;
 }
 
@@ -2196,118 +1680,6 @@ a {
   opacity: 0.9;
 }
 
-.footer-music-player {
-  display: flex;
-  align-items: center;
-  flex: 0 1 420px;
-  min-width: 260px;
-  max-width: 420px;
-  height: 24px;
-  padding: 0 6px;
-  gap: 5px;
-  border-left: 1px solid rgba(255, 255, 255, 0.12);
-  border-right: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-.footer-music-cover {
-  width: 18px;
-  height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  overflow: hidden;
-  color: hsla(0, 0%, 100%, 0.8);
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 3px;
-  cursor: pointer;
-}
-
-.footer-music-cover img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.footer-music-meta {
-  flex: 1 1 auto;
-  min-width: 0;
-  cursor: pointer;
-}
-
-.footer-music-title {
-  max-width: 100%;
-  height: 14px;
-  overflow: hidden;
-  color: hsla(0, 0%, 100%, 0.92);
-  font-size: 12px;
-  line-height: 14px;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.footer-music-bar {
-  position: relative;
-  height: 2px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 999px;
-}
-
-.footer-music-bar-fill {
-  height: 100%;
-  background: #ffffff;
-  border-radius: inherit;
-  transition: width 0.2s ease;
-}
-
-.footer-music-time {
-  flex: 0 0 auto;
-  min-width: 32px;
-  color: hsla(0, 0%, 100%, 0.72);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-}
-
-.footer-music-btn {
-  width: 18px;
-  height: 18px;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  color: hsla(0, 0%, 100%, 0.82);
-  background: transparent;
-  border: 0;
-  border-radius: 50%;
-  cursor: pointer;
-}
-
-.footer-music-btn:hover,
-.footer-music-toggle:hover {
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.16);
-}
-
-.footer-music-btn.primary {
-  color: var(--foot-bg);
-  background: rgba(255, 255, 255, 0.9);
-}
-
-.footer-music-toggle {
-  height: 18px;
-  padding: 0 6px;
-  flex: 0 0 auto;
-  color: hsla(0, 0%, 100%, 0.8);
-  font-size: 11px;
-  line-height: 18px;
-  background: transparent;
-  border: 0;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
 body[arco-theme='dark'] .footinfo {
   opacity: 0.8;
 }
@@ -2460,32 +1832,6 @@ body[arco-theme='dark'] #footer2 audio::-webkit-media-controls-time-remaining-di
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.music-scan-foot {
-  opacity: 0.85;
-}
-
-.music-scan-foot:hover {
-  background-color: #569dff;
-  opacity: 1;
-}
-
-.music-scan-foot .music-scan-spin {
-  flex-shrink: 0;
-  animation: music-scan-rotate 2.4s linear infinite;
-}
-
-.music-scan-foot .music-scan-text {
-  max-width: 240px;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-@keyframes music-scan-rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
 }
 </style>
 

@@ -12,8 +12,6 @@ import AliShare from '../../aliapi/share'
 import { usePanTreeStore, usePanFileStore } from '../../store'
 import message from '../../utils/message'
 import PanDAL from '../pandal'
-import { isAliyunUser } from '../../aliapi/utils'
-import { isWritableProviderDirectory, supportsCreateFolder, supportsCreateTextFile, supportsEncryptedFileOperations, supportsLocalUpload, supportsShareImport } from '../../drive/providerFeatures'
 import { t } from '../../i18n'
 
 const props = defineProps({
@@ -39,13 +37,8 @@ const videoSelectType = ref('recent')
 const panTreeStore = usePanTreeStore()
 const panFileStore = usePanFileStore()
 
-const isShareImportSupported = computed(() => supportsShareImport(panTreeStore.user_id || '', panTreeStore.drive_id || ''))
-const canWriteCurrentDirectory = computed(() => isWritableProviderDirectory(panTreeStore.selectDir.file_id || ''))
-const canCreateTextFile = computed(() => canWriteCurrentDirectory.value && supportsCreateTextFile(panTreeStore.user_id || '', panTreeStore.drive_id || ''))
-const canCreateFolder = computed(() => canWriteCurrentDirectory.value && supportsCreateFolder(panTreeStore.user_id || '', panTreeStore.drive_id || ''))
-const canUploadLocal = computed(() => canWriteCurrentDirectory.value && supportsLocalUpload(panTreeStore.user_id || '', panTreeStore.drive_id || ''))
-const canUseEncryption = computed(() => canWriteCurrentDirectory.value && supportsEncryptedFileOperations(panTreeStore.user_id || ''))
-const canCreateAnything = computed(() => canCreateTextFile.value || canCreateFolder.value || canUseEncryption.value)
+const isWritableDirectory = (fileId: string) => !fileId.startsWith('search') && !['recent', 'favorite', 'trash'].includes(fileId)
+const canWriteCurrentDirectory = computed(() => isWritableDirectory(panTreeStore.selectDir.file_id || ''))
 
 const isShowBtn = computed(() => {
   return (props.dirtype === 'pic' && props.inputpicType != 'mypic')
@@ -104,30 +97,30 @@ const handleClickBottleFish = async () => {
     </a-space>
   </div>
   <div v-show="!isselected && ['pan', 'pic', 'mypic'].includes(dirtype)" class='toppanbtn'>
-    <a-button v-if="inputselectType.includes('resource') && isAliyunUser(panTreeStore.user_id || '')" type='text' size='small' tabindex='-1'
+    <a-button v-if="inputselectType.includes('resource')" type='text' size='small' tabindex='-1'
               @click="handleClickBottleFish">
       <IconFont name="iconnotification" />{{ t('file.luckyBottle') }}
     </a-button>
-    <a-dropdown v-if='dirtype !== "pic" && canCreateAnything' trigger='hover' class='rightmenu' position='bl'>
+    <a-dropdown v-if='dirtype !== "pic" && canWriteCurrentDirectory' trigger='hover' class='rightmenu' position='bl'>
       <a-button type='text' size='small' tabindex='-1'>
         <IconFont name="iconplus" />{{ t('file.new') }}<IconFont name="icondown" />
       </a-button>
       <template #content>
         <a-dgroup :title="t('file.normalNew')">
-          <a-doption v-if='canCreateTextFile' value='newfile' title='Ctrl+N' @click='() => modalCreatNewFile()'>
+          <a-doption value='newfile' title='Ctrl+N' @click='() => modalCreatNewFile()'>
             <template #icon><IconFont name="iconwenjian" /></template>
             <template #default>{{ t('file.newFile') }}</template>
           </a-doption>
-          <a-doption v-if='canCreateFolder' value='newfolder' title='Ctrl+Shift+N' @click="() => modalCreatNewDir('folder')">
+          <a-doption value='newfolder' title='Ctrl+Shift+N' @click="() => modalCreatNewDir('folder')">
             <template #icon><IconFont name="iconfile-folder" /></template>
             <template #default>{{ t('file.newFolder') }}</template>
           </a-doption>
-          <a-doption v-if='canCreateFolder' value='newdatefolder' @click="() => modalCreatNewDir('datefolder')">
+          <a-doption value='newdatefolder' @click="() => modalCreatNewDir('datefolder')">
             <template #icon><IconFont name="iconfolderadd" /></template>
             <template #default>{{ t('file.dateFolder') }}</template>
           </a-doption>
         </a-dgroup>
-        <a-dgroup v-if='canUseEncryption' :title="t('file.encryptedNew')">
+        <a-dgroup :title="t('file.encryptedNew')">
           <a-doption value='newfile' @click='() => modalCreatNewFile("xbyEncrypt1")'>
             <template #icon><IconFont name="iconwenjian" /></template>
             <template #default>{{ t('file.newFile') }}（{{ t('file.encrypted') }}）</template>
@@ -141,7 +134,7 @@ const handleClickBottleFish = async () => {
             <template #default>{{ t('file.dateFolder') }}（{{ t('file.encrypted') }}）</template>
           </a-doption>
         </a-dgroup>
-        <a-dgroup v-if='canUseEncryption' :title="t('file.privateNew')">
+        <a-dgroup :title="t('file.privateNew')">
           <a-doption value='newfile' @click='() => modalCreatNewFile("xbyEncrypt2")'>
             <template #icon><IconFont name="iconwenjian" /></template>
             <template #default>{{ t('file.newFile') }}（{{ t('file.private') }}）</template>
@@ -162,7 +155,7 @@ const handleClickBottleFish = async () => {
               @click='modalCreatNewAlbum'>
       <IconFont name="iconplus" />{{ t('file.createAlbum') }}
     </a-button>
-    <a-dropdown v-if='!dirtype.includes("pic") && canUploadLocal' trigger='hover' class='rightmenu' position='bl'>
+    <a-dropdown v-if='!dirtype.includes("pic") && canWriteCurrentDirectory' trigger='hover' class='rightmenu' position='bl'>
       <a-button type='text' size='small' tabindex='-1'>
         <IconFont name="iconupload" />{{ t('file.upload') }}<IconFont name="icondown" />
       </a-button>
@@ -178,7 +171,7 @@ const handleClickBottleFish = async () => {
             <template #default>{{ t('file.uploadFolder') }}</template>
           </a-doption>
         </a-dgroup>
-        <a-dgroup v-if='canUseEncryption' :title="t('file.encryptedUpload')">
+        <a-dgroup :title="t('file.encryptedUpload')">
           <a-doption value='uploadfile' title='Ctrl+J'
                      @click="() => handleUpload('file', 'xbyEncrypt1')">
             <template #icon><IconFont name="iconwenjian" /></template>
@@ -189,7 +182,7 @@ const handleClickBottleFish = async () => {
             <template #default>{{ t('file.uploadFolder') }}（{{ t('file.encrypted') }}）</template>
           </a-doption>
         </a-dgroup>
-        <a-dgroup v-if='canUseEncryption' :title="t('file.privateUpload')">
+        <a-dgroup :title="t('file.privateUpload')">
           <a-doption value='uploadfile' title='Ctrl+M'
                      @click="() => handleUpload('file', 'xbyEncrypt2')">
             <template #icon><IconFont name="iconwenjian" /></template>
@@ -202,7 +195,7 @@ const handleClickBottleFish = async () => {
         </a-dgroup>
       </template>
     </a-dropdown>
-    <a-dropdown v-if="isShowBtn && dirtype.includes('pic') &&  isAliyunUser(panTreeStore.user_id || '')"
+    <a-dropdown v-if="isShowBtn && dirtype.includes('pic')"
                 trigger='hover' class='rightmenu' position='bl'>
       <a-button type='text' size='small' tabindex='-1'>
         <IconFont name="iconupload" />{{ t('file.uploadPhotosVideos') }}<IconFont name="icondown" />
@@ -231,7 +224,7 @@ const handleClickBottleFish = async () => {
         </a-dgroup>
       </template>
     </a-dropdown>
-    <a-button v-if="!dirtype.includes('pic') && isShareImportSupported" type='text' size='small' tabindex='-1' title='Ctrl+L'
+    <a-button v-if="!dirtype.includes('pic')" type='text' size='small' tabindex='-1' title='Ctrl+L'
               @click='modalDaoRuShareLink()'>
       <IconFont name="iconlink2" />{{ t('file.importShare') }}
     </a-button>

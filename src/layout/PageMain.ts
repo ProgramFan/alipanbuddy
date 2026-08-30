@@ -12,7 +12,6 @@ import UploadingDAL from '../transfer/uploadingdal'
 import { Sleep } from '../utils/format'
 import { createProxyServer } from '../utils/proxyhelper'
 import cache from '../utils/cache'
-import WebDavServer from '../module/webdav'
 import message from '../utils/message'
 import { startBackgroundStartupTasks } from '../utils/startupTask'
 
@@ -71,24 +70,8 @@ export function PageMain() {
             await Sleep(1500)
             await AppCache.aLoadStorageSize()
           }
-        },
-        {
-          label: 'StartWebDav',
-          run: async () => {
-            if (!useSettingStore().webDavAutoEnable) {
-              useSettingStore().webDavEnable = false
-              return
-            }
-            await WebDavServer.config({
-              port: useSettingStore().webDavPort,
-              hostname: useSettingStore().webDavHost,
-              requireAuthentification: false
-            }).start()
-            useSettingStore().webDavEnable = WebDavServer.isStarted()
-          }
         }
       ], (label, err: any) => {
-        if (label === 'StartWebDav') useSettingStore().webDavEnable = false
         DebugLog.mSaveDanger(label, err)
       })
       setTimeout(timeEvent, 1000)

@@ -5,8 +5,7 @@ import { GetFocusNext, GetSelectedList, KeyboardSelectOne, MouseSelectOne, Selec
 import { humanSize } from '../utils/format'
 import message from '../utils/message'
 import fs from 'fs'
-import { resolveDownloadOpenPath, resolveLegacyMagnetPath } from './integration/btDownloadTarget'
-import { buildLocalVideoPage, isLocalVideoPath } from './integration/localVideoPlayback'
+import path from 'path'
 import { t } from '../i18n'
 
 type Item = IStateDownFile
@@ -256,12 +255,7 @@ const useDownStore = defineStore('down', {
      */
     mOpenUploadedFile(file: Item | null, downIDList: string[], isDir: boolean) {
       const DownedList = this.ListDataRaw
-      const resolveExistingPath = (item: Item) => {
-        const recordedPath = resolveDownloadOpenPath(item.Info)
-        if (fs.existsSync(recordedPath)) return recordedPath
-        const legacyPath = resolveLegacyMagnetPath(item.Info.DownSavePath, item.Down.DownUrl || '')
-        return legacyPath && fs.existsSync(legacyPath) ? legacyPath : recordedPath
-      }
+      const resolveExistingPath = (item: Item) => item.Info.localFilePath || path.join(item.Info.DownSavePath, item.Info.name)
 
       const openDir = (localFilePath: string, savePath: string) => {
         try {
@@ -279,11 +273,7 @@ const useDownStore = defineStore('down', {
       const openFile = (localFilePath: string) => {
         try {
           if (fs.existsSync(localFilePath)) {
-            if (isLocalVideoPath(localFilePath)) {
-              window.WebOpenWindow({ page: 'PageVideo', data: buildLocalVideoPage(localFilePath), theme: 'dark' })
-            } else {
-              window.Electron.shell.openPath(localFilePath)
-            }
+            window.Electron.shell.openPath(localFilePath)
           } else {
             message.error(t('transfer.fileMayDeleted'))
           }
@@ -292,7 +282,6 @@ const useDownStore = defineStore('down', {
       }
 
       if (file) {
-        if (file.Info.offlineProvider) return
         if (file.Info.ariaRemote) {
           message.error(t('transfer.remoteDownloadUnsupported'))
           return
@@ -314,7 +303,6 @@ const useDownStore = defineStore('down', {
       for (let j = 0; j < DownedList.length; j++) {
         const downID = DownedList[j].DownID
         if (opDownIDList.includes(downID)) {
-          if (DownedList[j].Info.offlineProvider) continue
           if (DownedList[j].Info.ariaRemote) {
             message.error(t('transfer.remoteDownloadUnsupported'))
             continue

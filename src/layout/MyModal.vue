@@ -15,8 +15,6 @@ import SelectPanDirModal from '../pan/topbtns/SelectPanDirModal.vue'
 import CreatNewShareLinkModal from '../share/share/CreatNewShareLinkModal.vue'
 import ShuXingModal from '../pan/topbtns/ShuXingModal.vue'
 import SearchPanModal from '../pan/topbtns/SearchPanModal.vue'
-import DLNAPlayerModal from '../pan/topbtns/DLNAPlayerModal.vue'
-import M3U8DownloadModal from '../pan/topbtns/M3U8DownloadModal.vue'
 import CopyFileTreeModal from '../pan/topbtns/CopyFileTreeModal.vue'
 import ArchiveModal from '../pan/topbtns/ArchiveModal.vue'
 import ArchivePasswordModal from '../pan/topbtns/ArchivePasswordModal.vue'
@@ -29,17 +27,9 @@ import UserRewardSpace from '../user/UserRewardSpace.vue'
 import PasswordModal from '../pan/topbtns/PasswordModal.vue'
 import UpdateModal from '../pan/topbtns/ShowUpdateModal.vue'
 import ShowUpdateModal from '../pan/topbtns/ShowUpdateModal.vue'
-import SelectVideoQualityModal from '../pan/topbtns/SelectVideoQualityModal.vue'
-import Cloud123OfflineDownloadModal from '../down/Cloud123OfflineDownloadModal.vue'
-import Drive115OfflineManagementModal from '../down/Drive115OfflineManagementModal.vue'
-import Cloud123PaidShareModal from '../share/share/Cloud123PaidShareModal.vue'
 
 export default defineComponent({
   components: {
-    SelectVideoQualityModal,
-    Cloud123OfflineDownloadModal,
-    Drive115OfflineManagementModal,
-    Cloud123PaidShareModal,
     ShowUpdateModal,
     UpdateModal,
     PasswordModal,
@@ -59,8 +49,6 @@ export default defineComponent({
     SelectPanDirModal,
     ShuXingModal,
     SearchPanModal,
-    DLNAPlayerModal,
-    M3U8DownloadModal,
     CopyFileTreeModal,
     ArchiveModal,
     ArchivePasswordModal,
@@ -108,8 +96,6 @@ export default defineComponent({
   <SearchPanModal :visible="modalStore.modalName == 'searchpan'"
                   :inputsearchType="modalStore.modalData.inputsearchType || []" />
 
-  <DLNAPlayerModal :visible="modalStore.modalName == 'dlna'" />
-  <M3U8DownloadModal :visible="modalStore.modalName == 'm3u8download'" />
   <CopyFileTreeModal :visible="modalStore.modalName == 'copyfiletree'"
                      :filelist='modalStore.modalData.filelist || []' />
   <ArchiveModal
@@ -161,14 +147,7 @@ export default defineComponent({
   <ShowUpdateLog :visible="modalStore.modalName == 'showupdatelog'" />
   <ShowUpdateModal :visible="modalStore.modalName == 'showupdate'"
                    :verData='modalStore.modalData.verData || {}' />
-  <SelectVideoQualityModal :visible="modalStore.modalName == 'selectvideoquality'"
-                           :file-info="modalStore.modalData.fileInfo || {}"
-                           :quality-data="modalStore.modalData.qualityData || {}"
-                           :callback="modalStore.modalData.callback" />
 
-  <Cloud123OfflineDownloadModal :visible="modalStore.modalName == 'cloud123offline'" />
-  <Drive115OfflineManagementModal :visible="modalStore.modalName == 'drive115management'" />
-  <Cloud123PaidShareModal :visible="modalStore.modalName == 'cloud123paidshare'" />
 
   <PostModal :visible="modalStore.modalName == 'showpostmodal'"
              :msg='modalStore.modalData.msg || ""'

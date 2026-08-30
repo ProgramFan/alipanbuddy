@@ -5,8 +5,6 @@ import AliHttp, { IUrlRespData } from './alihttp'
 import { IAliShareBottleFishItem, IAliShareItem, IAliShareRecentItem } from './alimodels'
 import AliDirFileList from './dirfilelist'
 import { useSettingStore } from '../store'
-import { isAliyunUser } from '../utils/driveIdentity'
-import { listProviderAccountShares } from '../drive/providerShare'
 
 export interface IAliShareResp {
   items: IAliShareItem[]
@@ -39,17 +37,6 @@ export interface IAliShareBottleFishResp {
 export default class AliShareList {
 
   static async ApiShareListAll(user_id: string): Promise<IAliShareResp> {
-    const providerShares = await listProviderAccountShares(user_id)
-    if (providerShares) {
-      const dir = AliShareList.EmptyShareResp(user_id)
-      if (providerShares.error) message.warning(providerShares.error, 2)
-      dir.items = providerShares.items
-      for (const item of dir.items) dir.itemsKey.add(item.share_id)
-      return dir
-    }
-    if (!isAliyunUser(user_id)) {
-      return AliShareList.EmptyShareResp(user_id)
-    }
     const dir: IAliShareResp = {
       items: [],
       itemsKey: new Set(),
@@ -68,10 +55,6 @@ export default class AliShareList {
   }
 
   static async ApiShareListOnePage(dir: IAliShareResp): Promise<boolean> {
-    if (!isAliyunUser(dir.m_user_id)) {
-      dir.next_marker = ''
-      return false
-    }
     const url = 'adrive/v3/share_link/list'
     const postData = {
       marker: dir.next_marker,
@@ -280,9 +263,6 @@ export default class AliShareList {
   }
 
   static async ApiShareListUntilShareID(user_id: string, share_id: string): Promise<boolean> {
-    const providerShares = await listProviderAccountShares(user_id)
-    if (providerShares) return providerShares.items.some(link => link.share_id === share_id)
-    if (!isAliyunUser(user_id)) return false
     const url = 'adrive/v3/share_link/list'
     const postData = {
       marker: '',
@@ -299,14 +279,5 @@ export default class AliShareList {
     return false
   }
 
-  private static EmptyShareResp(user_id: string): IAliShareResp {
-    return {
-      items: [],
-      itemsKey: new Set(),
-      next_marker: '',
-      m_time: 0,
-      m_user_id: user_id
-    }
-  }
 
 }

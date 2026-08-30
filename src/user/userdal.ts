@@ -14,110 +14,16 @@ import {
 } from '../store'
 import PanDAL from '../pan/pandal'
 import DebugLog from '../utils/debuglog'
-import { refreshGuangyaAccessToken } from '../guangya/auth'
-import { applyProviderQuota, ensureProviderAccessToken, ensureProviderSession, refreshProviderAccountInfo } from '../drive/providerAuth'
-import { isBaiduUser, isBoxUser, isCloud123User, isCloud139User, isCloud189User, isDrive115User, isDropboxUser, isGoogleUser, isGuangyaUser, isNonAliyunProvider, isOneDriveUser, isPikPakUser, isQuarkUser, isRemoteDriveUser } from '../utils/driveIdentity'
-import { promptAutoScanForUser } from '../utils/libraryAutoScanPrompt'
-import { getWebDavConnection, getWebDavConnectionId, getWebDavConnections } from '../utils/webdavClient'
-import { createRemoteDriveAccount } from '../utils/remoteDriveAccount'
 import { supportsAliyunAutoSign } from './autoSignPolicy'
 import { getStoredTokenProvider } from '../utils/driveProvider'
-import { captureProviderLogin } from '../analytics/posthog'
 import { withStartupTimeout } from '../utils/startupTask'
-import { loadInitialProviderRoot, shouldRetryInitialRootLoad } from './startupProviderRootLoad'
 
 export const UserTokenMap = new Map<string, ITokenInfo>()
 
-const getTokenRefreshState = (token: ITokenInfo) => [token.access_token, token.refresh_token, token.expires_in, token.expire_time, token.token_type, token.default_drive_id].join('\u0000')
-
 export default class UserDAL {
-  private static cliSyncTimer: ReturnType<typeof setTimeout> | undefined
-
-  private static toCliProvider(token: ITokenInfo): string {
-    return token.tokenfrom === 'aliyun' || token.tokenfrom === 'unknown' ? 'aliyun' : token.tokenfrom
-  }
-
-  private static toCliAccount(token: ITokenInfo) {
-    const provider = this.toCliProvider(token)
-    const accountId = provider === 'aliyun' ? `aliyun_${token.user_id}` : token.user_id
-    return {
-      provider,
-      accountId,
-      displayName: token.nick_name || token.user_name || token.name || token.user_id,
-      token: {
-        access_token: token.access_token,
-        refresh_token: token.refresh_token,
-        token_type: token.token_type || 'Bearer',
-        expires_in: token.expires_in,
-        expire_time: token.expire_time,
-        device_id: token.device_id,
-        signature: token.signature,
-        user_id: token.user_id,
-        user_name: token.user_name,
-        nick_name: token.nick_name,
-        default_drive_id: token.default_drive_id,
-        default_sbox_drive_id: token.default_sbox_drive_id,
-        resource_drive_id: token.resource_drive_id,
-        backup_drive_id: token.backup_drive_id,
-        sbox_drive_id: token.sbox_drive_id,
-        pic_drive_id: token.pic_drive_id,
-        open_api_access_token: token.open_api_access_token,
-        open_api_refresh_token: token.open_api_refresh_token,
-        open_api_token_type: token.open_api_token_type,
-      },
-    }
-  }
-
-  static async SyncCliAccountsToCli(): Promise<{ ok?: boolean; exported?: number; path?: string; error?: string } | null> {
-    if (!window.TvBoxInvoke) return null
-    const userList = await DB.getUserAll()
-    const accounts = userList
-      .filter((token) => token.user_id && !isRemoteDriveUser(token))
-      .map((token) => this.toCliAccount(token))
-    return await window.TvBoxInvoke('ExportCliTokens', { accounts }) as { ok?: boolean; exported?: number; path?: string; error?: string } | null
-  }
-
-  private static scheduleCliAccountSync() {
-    if (!window.TvBoxInvoke) return
-    if (this.cliSyncTimer) clearTimeout(this.cliSyncTimer)
-    this.cliSyncTimer = setTimeout(() => {
-      this.cliSyncTimer = undefined
-      this.SyncCliAccountsToCli().catch((err: any) => {
-        DebugLog.mSaveWarning('SyncCliAccountsToCli', err?.message || err)
-      })
-    }, 1000)
-  }
-
   private static async ensureTokenReady(token: ITokenInfo, force = false): Promise<ITokenInfo | null> {
     try {
-      const previousRefreshState = getTokenRefreshState(token)
-      const oauthToken = await ensureProviderAccessToken(token, force)
-      if (oauthToken !== undefined) {
-        if (!oauthToken) return null
-        if (oauthToken !== token || getTokenRefreshState(oauthToken) !== previousRefreshState) this.SaveUserToken(oauthToken)
-        return oauthToken
-      }
-      const sessionToken = await ensureProviderSession(token, force)
-      if (sessionToken !== undefined) {
-        if (!sessionToken) return null
-        if (sessionToken !== token || getTokenRefreshState(sessionToken) !== previousRefreshState) this.SaveUserToken(sessionToken)
-        return sessionToken
-      }
-      if (isGuangyaUser(token)) {
-        token.default_drive_id = token.default_drive_id || 'guangya'
-        const expireTime = new Date(token.expire_time || 0).getTime()
-        if (force || !token.access_token || (expireTime && expireTime <= Date.now())) {
-          const refreshed = await refreshGuangyaAccessToken(token)
-          if (!refreshed?.access_token) return null
-          this.SaveUserToken(refreshed)
-          return refreshed
-        }
-        return token.user_id && token.access_token ? token : null
-      }
-      if (isRemoteDriveUser(token)) {
-        return getWebDavConnection(getWebDavConnectionId(token.default_drive_id)) ? token : null
-      }
-      const ok = !!(token.user_id && (await AliUser.ApiTokenRefreshAccount(token, false)))
+      const ok = !!(token.user_id && (await AliUser.ApiTokenRefreshAccount(token, force)))
       return ok ? token : null
     } catch (err: any) {
       DebugLog.mSaveDanger('ensureTokenReady', err)
@@ -127,12 +33,6 @@ export default class UserDAL {
 
   static async aLoadFromDB() {
     const tokenList = await DB.getUserAll()
-    for (const connection of getWebDavConnections()) {
-      const token = createRemoteDriveAccount(connection).token
-      if (tokenList.some((item) => item.user_id === token.user_id)) continue
-      await DB.saveUser(token)
-      tokenList.push(token)
-    }
     const defaultUser = await DB.getValueString('uiDefaultUser')
     UserTokenMap.clear()
     // 先把所有账号塞进 UserTokenMap，保证 UserInfo 历史账号列表 + 切换可用，
@@ -196,7 +96,6 @@ export default class UserDAL {
     if (!hasLogin) {
       useUserStore().userShowLogin = true
     }
-    this.scheduleCliAccountSync()
   }
 
 
@@ -206,32 +105,6 @@ export default class UserDAL {
     for (let i = 0, maxi = tokenList.length; i < maxi; i++) {
       const token = tokenList[i]
       try {
-        const previousRefreshState = getTokenRefreshState(token)
-        const expireTime = new Date(token.expire_time || 0).getTime()
-        const providerToken = await ensureProviderAccessToken(token, !!expireTime && expireTime - dateNow <= 1000 * 60 * 5)
-        if (providerToken !== undefined) {
-          if (providerToken && (providerToken !== token || getTokenRefreshState(providerToken) !== previousRefreshState)) UserDAL.SaveUserToken(providerToken)
-          continue
-        }
-        const sessionToken = await ensureProviderSession(token, !!expireTime && expireTime - dateNow <= 1000 * 60 * 5)
-        if (sessionToken !== undefined) {
-          if (sessionToken && (sessionToken !== token || getTokenRefreshState(sessionToken) !== previousRefreshState)) UserDAL.SaveUserToken(sessionToken)
-          continue
-        }
-        if (isGuangyaUser(token)) {
-          const expireTime = new Date(token.expire_time || 0).getTime()
-          if (expireTime && expireTime - dateNow <= 1000 * 60 * 5) {
-            const refreshed = await refreshGuangyaAccessToken(token)
-            if (refreshed) {
-              UserTokenMap.set(refreshed.user_id, refreshed)
-              await DB.saveUser(refreshed)
-            }
-          }
-          continue
-        }
-        if (isNonAliyunProvider(token)) {
-          continue
-        }
         const expire_time = new Date(token.expire_time).getTime()
         const session_expire_time = new Date(token.session_expires_in).getTime()
         // 自动刷新Token(过期前5分钟)
@@ -352,7 +225,6 @@ export default class UserDAL {
         .then(() => {
           window.WinMsgToUpload({ cmd: 'ClearUserToken' })
           window.WinMsgToDownload({ cmd: 'ClearUserToken' })
-          UserDAL.scheduleCliAccountSync()
         })
         .catch(() => {
         })
@@ -370,12 +242,6 @@ export default class UserDAL {
       UserTokenMap.set(initialUserId, token)
     }
     const refreshAccountInfo = async () => {
-      const sessionToken = await ensureProviderSession(token)
-      if (sessionToken && sessionToken !== token) Object.assign(token, sessionToken)
-      const quotaApplied = await applyProviderQuota(token)
-      const accountInfoRefreshed = quotaApplied === undefined ? await refreshProviderAccountInfo(token) : undefined
-      if (quotaApplied !== undefined || accountInfoRefreshed !== undefined) return
-      if (isNonAliyunProvider(token)) return
       await Promise.all([
         AliUser.ApiUserInfo(token),
         AliUser.ApiUserDriveInfo(token),
@@ -416,7 +282,6 @@ export default class UserDAL {
     const loadPanData = UserDAL.LoadPanData(token)
     if (isInteractive) await loadPanData
     else void loadPanData.catch((err: any) => DebugLog.mSaveWarning('UserLogin LoadPanData ' + token.user_id, err?.message || err))
-    if (isInteractive && token.tokenfrom !== 'unknown') captureProviderLogin(token.tokenfrom)
     // 刷新所有状态
     PanDAL.aReLoadQuickFile(token.user_id)
     useAppStore().resetTab(useSettingStore().uiDefaultTab || 'pan')
@@ -425,73 +290,9 @@ export default class UserDAL {
     useOtherFollowingStore().$reset()
     useFootStore().mSaveUserInfo(token)
     message.success('加载用户成功!', 2, loadingKey)
-    if (isInteractive && token.user_id) {
-      const label = token.nick_name || token.user_name || token.user_id
-      promptAutoScanForUser(token.user_id, label).catch(() => { /* ignore */ })
-    }
   }
 
   static async LoadPanData(token: ITokenInfo) {
-    console.warn('LoadPanData....')
-    const loadSingleRootDrive = async (reload: () => Promise<void>, provider = '') => {
-      try {
-        await loadInitialProviderRoot(shouldRetryInitialRootLoad(provider), reload)
-      } finally {
-        useFootStore().mSaveLoading('')
-      }
-    }
-    if (isCloud123User(token)) {
-      await loadSingleRootDrive(() => PanDAL.aReLoadCloudDrive(token))
-      return
-    }
-    if (isBaiduUser(token)) {
-      await loadSingleRootDrive(() => PanDAL.aReLoadBaiduDrive(token), 'baidu')
-      return
-    }
-    if (isDrive115User(token)) {
-      await loadSingleRootDrive(() => PanDAL.aReLoadDrive115(token))
-      return
-    }
-    if (isPikPakUser(token)) {
-      await loadSingleRootDrive(() => PanDAL.aReLoadPikPakDrive(token))
-      return
-    }
-    if (isQuarkUser(token)) {
-      await loadSingleRootDrive(() => PanDAL.aReLoadQuarkDrive(token))
-      return
-    }
-    if (isCloud139User(token)) {
-      await loadSingleRootDrive(() => PanDAL.aReLoadCloud139Drive(token), '139')
-      return
-    }
-    if (isCloud189User(token)) {
-      await loadSingleRootDrive(() => PanDAL.aReLoadCloud189Drive(token))
-      return
-    }
-    if (isGuangyaUser(token)) {
-      await loadSingleRootDrive(() => PanDAL.aReLoadGuangyaDrive(token))
-      return
-    }
-    if (isDropboxUser(token)) {
-      await loadSingleRootDrive(() => PanDAL.aReLoadDropboxDrive(token))
-      return
-    }
-    if (isOneDriveUser(token)) {
-      await loadSingleRootDrive(() => PanDAL.aReLoadOneDrive(token))
-      return
-    }
-    if (isBoxUser(token)) {
-      await loadSingleRootDrive(() => PanDAL.aReLoadBoxDrive(token))
-      return
-    }
-    if (isGoogleUser(token)) {
-      await loadSingleRootDrive(() => PanDAL.aReLoadGoogleDrive(token))
-      return
-    }
-    if (isRemoteDriveUser(token)) {
-      await loadSingleRootDrive(() => PanDAL.aReLoadWebDavDrive(token))
-      return
-    }
     // 刷新网盘数据
     if (!useSettingStore().securityHideResourceDrive) {
       await PanDAL.aReLoadResourceDrive(token)
@@ -556,11 +357,6 @@ export default class UserDAL {
     const expiresIn = new Date(token.expire_time).getTime() - token.expires_in * 1000
     const time = Date.now() - expiresIn
     const refreshProviderInfo = async () => {
-      const quotaApplied = await applyProviderQuota(token)
-      if (quotaApplied !== undefined) return
-      const accountInfoRefreshed = await refreshProviderAccountInfo(token)
-      if (accountInfoRefreshed !== undefined) return
-      if (isNonAliyunProvider(token)) return
       await Promise.all([
         AliUser.ApiUserInfo(token),
         AliUser.ApiUserPic(token),
@@ -573,22 +369,10 @@ export default class UserDAL {
       return true
     }
     if (!token.user_id) return false
-    const providerToken = await ensureProviderAccessToken(token, true)
-    if (providerToken !== undefined) {
-      if (!providerToken) return false
-      Object.assign(token, providerToken)
-    }
-    const sessionToken = await ensureProviderSession(token, true)
-    if (sessionToken !== undefined) {
-      if (!sessionToken) return false
-      Object.assign(token, sessionToken)
-    }
-    if (providerToken === undefined && sessionToken === undefined && !isNonAliyunProvider(token)) {
-      const isToken = await AliUser.ApiTokenRefreshAccount(token, true)
-      if (!isToken) return false
-      await AliUser.ApiSessionRefreshAccount(token, true)
-      await AliUser.OpenApiTokenRefreshAccount(token, true)
-    }
+    const isToken = await AliUser.ApiTokenRefreshAccount(token, true)
+    if (!isToken) return false
+    await AliUser.ApiSessionRefreshAccount(token, true)
+    await AliUser.OpenApiTokenRefreshAccount(token, true)
     await refreshProviderInfo()
     useUserStore().userLogin(token.user_id)
     UserDAL.SaveUserToken(token)

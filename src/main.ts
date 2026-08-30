@@ -8,10 +8,8 @@ import DebugLog from './utils/debuglog'
 import { PageMain } from './layout/PageMain'
 import { WorkerPage } from './workerpage/workercmd'
 import ServerHttp from './aliapi/server'
-import { startMediaAcquisitionWorkflowRunner, wakeMediaAcquisitionWorkflowRunner } from './services/mediaAcquisition/workflowRunner'
 import { setLocale } from './i18n'
 import UserDAL from './user/userdal'
-import { startAnalytics } from './analytics/posthog'
 
 window.onerror = function (errorMessage, scriptURI, lineNo, columnNo, error) {
   try {
@@ -82,17 +80,7 @@ app.use(store)
 const settingStore = useSettingStore()
 setLocale(settingStore.uiLanguage)
 settingStore.$subscribe((_mutation, state) => setLocale(state.uiLanguage))
-// Page components can request cloud data as soon as Vue mounts, so install
-// network-failure tracking before those first requests begin.
-startAnalytics()
 app.mount('#app')
-window.Electron.ipcRenderer.on('mediaAcquisition:wake', () => {
-  // A deep-link page can receive the durable main-process wake before the UI
-  // switches back to PageMain. The runner is lease-protected, so start it in
-  // every renderer route rather than silently dropping queued work.
-  startMediaAcquisitionWorkflowRunner()
-  wakeMediaAcquisitionWorkflowRunner()
-})
 
 
 window.WinMsgToMain = function (event: any) {
@@ -165,33 +153,10 @@ window.Electron.ipcRenderer.on('setPage', async (_event: any, args: any) => {
   if (args.page == 'PageMain') {
     PageMain()
     window.IsMainPage = true
-    startMediaAcquisitionWorkflowRunner()
   } else if (args.page == 'PageWorker') {
     WorkerPage(args.data.type)
-  } else if (args.page == 'PageCode') {
-    appStore.pageCode = args.data
-  } else if (args.page == 'PageOffice') {
-    appStore.pageOffice = args.data
-  } else if (args.page == 'PagePdf') {
-    appStore.pagePdf = args.data
-  } else if (args.page == 'PageEpub') {
-    appStore.pageEpub = args.data
-  } else if (args.page == 'PageBookReader') {
-    appStore.pageEpub = args.data
-  } else if (args.page == 'PageDocx') {
-    appStore.pageDocx = args.data
-  } else if (args.page == 'PageSheet') {
-    appStore.pageSheet = args.data
   } else if (args.page == 'PageImage') {
     appStore.pageImage = args.data
-  } else if (args.page == 'PageVideoXBT') {
-    appStore.pageVideoXBT = args.data
-  } else if (args.page == 'PageVideo') {
-    appStore.pageVideo = args.data
-  } else if (args.page == 'PageMusic') {
-    appStore.pageMusic = args.data
-  } else if (args.page == 'PageLyric') {
-    // Desktop lyric window - just toggle page, no data needed
   }
   if (args.page) appStore.togglePage(args.page)
 })
@@ -206,10 +171,6 @@ window.Electron.ipcRenderer.on('showUpdateModal', () => {
   ServerHttp.CheckUpgrade(false).catch(() => {})
 })
 
-window.Electron.ipcRenderer.on('cloud123-oauth-callback', (_event: any, url: string) => {
-  if (!url) return
-  window.dispatchEvent(new CustomEvent('cloud123-oauth-callback', { detail: url }))
-})
 try {
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
 } catch {}

@@ -5,7 +5,6 @@ import IconFont from '../components/IconFont.vue'
 import PanDAL from './pandal'
 import TreeStore, { TreeNodeData } from '../store/treestore'
 import { getDriveId as GetDriveID } from '../drive/context'
-import { isBaiduUser, isBoxUser, isCloud123User, isCloud139User, isCloud189User, isDrive115User, isDropboxUser, isGuangyaUser, isOneDriveUser, isPikPakUser, isQuarkUser } from '../utils/driveIdentity'
 import message from '../utils/message'
 import type { QuickFileEntry } from './quickFiles'
 import { t } from '../i18n'
@@ -144,52 +143,6 @@ const usePanTreeStore = defineStore('pantree', {
     mTreeSelected(e: any, kuaijie: boolean = false) {
       let { key, drive_id = undefined } = e.node
       let is_refresh_drive_id = !['favorite', 'trash', 'recover'].includes(key) || !/color.*/g.test(key)
-      const isCloudUser = isCloud123User(this.user_id || '')
-      const isDrive115 = isDrive115User(this.user_id || '')
-      const isBaidu = isBaiduUser(this.user_id || '')
-      const isPikPak = isPikPakUser(this.user_id || '')
-      const isDropbox = isDropboxUser(this.user_id || '')
-      const isOneDrive = isOneDriveUser(this.user_id || '')
-      const isBox = isBoxUser(this.user_id || '')
-      const isQuark = isQuarkUser(this.user_id || '')
-      const isCloud139 = isCloud139User(this.user_id || '')
-      const isCloud189 = isCloud189User(this.user_id || '')
-      const isGuangya = isGuangyaUser(this.user_id || '')
-      if (isCloudUser) {
-        const unsupported = ['video', 'recover', 'pic_root', 'backup_root', 'resource_root', 'favorite']
-        if (unsupported.includes(key)) {
-          message.info(t('pan.unsupportedFeature', { provider: t('drive.cloud123') }))
-          return
-        }
-      }
-      if ((isDrive115 || isBaidu) && key === 'resource_root') {
-        message.info(t('pan.unsupportedFeature', { provider: isDrive115 ? t('drive.drive115') : t('drive.baiduFull') }))
-        return
-      }
-      if (isPikPak && ['video', 'recover', 'pic_root', 'backup_root', 'resource_root', 'favorite'].includes(key)) {
-        message.info(t('pan.unsupportedFeature', { provider: 'PikPak' }))
-        return
-      }
-      if (isQuark && ['video', 'recover', 'pic_root', 'backup_root', 'resource_root', 'favorite'].includes(key)) {
-        message.info(t('pan.unsupportedFeature', { provider: t('drive.quarkFull') }))
-        return
-      }
-      if ((isCloud139 || isCloud189 || isGuangya) && ['video', 'recover', 'pic_root', 'backup_root', 'resource_root', 'favorite', 'trash'].includes(key)) {
-        message.info(t('pan.unsupportedFeature', { provider: isCloud139 ? t('drive.cloud139') : isCloud189 ? t('drive.cloud189') : t('drive.guangya') }))
-        return
-      }
-      if (isDropbox && ['video', 'recover', 'pic_root', 'backup_root', 'resource_root', 'favorite', 'trash'].includes(key)) {
-        message.info(t('pan.unsupportedFeature', { provider: 'Dropbox' }))
-        return
-      }
-      if (isOneDrive && ['video', 'recover', 'pic_root', 'backup_root', 'resource_root', 'favorite'].includes(key)) {
-        message.info(t('pan.unsupportedFeature', { provider: 'OneDrive' }))
-        return
-      }
-      if (isBox && ['video', 'recover', 'pic_root', 'backup_root', 'resource_root', 'favorite'].includes(key)) {
-        message.info(t('pan.unsupportedFeature', { provider: 'Box' }))
-        return
-      }
       if (!kuaijie) {
         const getParentNode = (node: any): any => {
           return node.parent ? getParentNode(node.parent) : node

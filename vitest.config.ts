@@ -8,9 +8,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@shared': path.resolve(__dirname, 'shared'),
-      '@main':   path.resolve(__dirname, 'electron/main'),
-      '@earendil-works/pi-ai/compat': path.resolve(__dirname, 'src/services/agent/piCompatBrowser.ts'),
-      '@earendil-works/pi-agent-core/dist/agent.js': path.resolve(__dirname, 'node_modules/@earendil-works/pi-agent-core/dist/agent.js')
+      '@main':   path.resolve(__dirname, 'electron/main')
     }
   },
   test: {
@@ -21,22 +19,8 @@ export default defineConfig({
       'shared/__tests__/**/*.test.ts',
       'src/down/motrix-integration/**/*.test.ts',
       'src/down/integration/**/*.test.ts',
-      'scripts/__tests__/**/*.test.mjs',
-      'src/media-server/__tests__/**/*.test.ts',
       'src/utils/__tests__/**/*.test.ts',
-      'src/analytics/__tests__/**/*.test.ts',
-      'src/aliapi/__tests__/**/*.test.ts',
-      'src/pikpak/__tests__/**/*.test.ts',
-      'src/quark/__tests__/**/*.test.ts',
-      'src/guangya/__tests__/**/*.test.ts',
-      'src/cloud123/__tests__/**/*.test.ts',
-      'src/cloudbaidu/__tests__/**/*.test.ts',
-      'src/cloud139/__tests__/**/*.test.ts',
-      'src/dropbox/__tests__/**/*.test.ts',
-      'src/onedrive/__tests__/**/*.test.ts',
-      'src/box/__tests__/**/*.test.ts',
-      'src/google/__tests__/**/*.test.ts',
-      'clouddrive-cli/__tests__/**/*.test.ts',
+      'src/aliapi/__tests__/**/*.test.ts'
     ],
   },
 })

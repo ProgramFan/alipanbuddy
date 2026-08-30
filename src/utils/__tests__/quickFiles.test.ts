@@ -30,13 +30,13 @@ describe('multi-drive quick files', () => {
   })
 
   it('migrates legacy per-user records into versioned entries', () => {
-    const migrated = migrateLegacyQuickFiles([], 'legacy-user', [{ key: '/Movies', drive_id: 'webdav:home', drive_name: 'Home', title: 'Movies' }], 'webdav', 'Legacy Account')
+    const migrated = migrateLegacyQuickFiles([], 'legacy-user', [{ key: '/Movies', drive_id: 'drive-home', drive_name: 'Home', title: 'Movies' }], 'aliyun', 'Legacy Account')
     expect(migrated).toEqual([
       expect.objectContaining({
-        id: quickFileId('legacy-user', 'webdav:home', '/Movies'),
+        id: quickFileId('legacy-user', 'drive-home', '/Movies'),
         user_id: 'legacy-user',
         user_name: 'Legacy Account',
-        provider: 'webdav',
+        provider: 'aliyun',
         file_id: '/Movies',
         path: '/Movies'
       })
@@ -44,11 +44,11 @@ describe('multi-drive quick files', () => {
   })
 
   it('restores the target directory when an old shortcut has no cached path', () => {
-    const item = entry('user-a', 'webdav:home', '/Movies/Anime')
+    const item = entry('user-a', 'drive-home', '/Movies/Anime')
     item.dir_path = []
     expect(buildQuickFilePath(item)).toEqual([
       expect.objectContaining({
-        drive_id: 'webdav:home',
+        drive_id: 'drive-home',
         file_id: '/Movies/Anime',
         name: '/Movies/Anime'
       })

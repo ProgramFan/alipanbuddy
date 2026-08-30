@@ -7,7 +7,7 @@ vi.mock('../../utils/aria2c', () => ({
 }))
 
 import { AriaConnect, AriaRawCall } from '../../utils/aria2c'
-import { batchPauseTasks, batchRemoveTasks, batchResumeTasks, buildSelectFileOption, discardMagnetPreview, normalizeTaskListResult, prepareMagnetFiles } from './aria2TaskApi'
+import { batchPauseTasks, batchRemoveTasks, batchResumeTasks, buildSelectFileOption, normalizeTaskListResult } from './aria2TaskApi'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -83,39 +83,4 @@ describe('aria2TaskApi helpers', () => {
     expect(AriaRawCall).toHaveBeenCalledWith('aria2.removeDownloadResult', 'g1')
   })
 
-  it('fetches magnet metadata and pauses the generated BT task before file selection', async () => {
-    vi.mocked(AriaRawCall).mockImplementation(async (method: string, ...args: any[]) => {
-      if (method === 'aria2.addUri') return 'metadata-gid'
-      if (method === 'aria2.tellStatus' && args[0] === 'metadata-gid') return { status: 'complete', followedBy: ['content-gid'] }
-      if (method === 'aria2.tellStatus' && args[0] === 'content-gid') {
-        return {
-          bittorrent: { info: { name: 'Movie Pack' } },
-          files: [{ index: '1', path: '/downloads/Movie Pack/movie.mkv', length: '100', completedLength: '0', selected: 'true' }]
-        }
-      }
-      return undefined
-    })
-
-    const preview = await prepareMagnetFiles('magnet:?xt=urn:btih:abc', '/downloads', { pollIntervalMs: 0 })
-
-    expect(preview).toMatchObject({ metadataGid: 'metadata-gid', taskGid: 'content-gid', name: 'Movie Pack' })
-    expect(preview.files).toEqual([{ index: 1, path: '/downloads/Movie Pack/movie.mkv', name: 'movie.mkv', length: 100, completedLength: 0, selected: true }])
-    expect(AriaRawCall).toHaveBeenCalledWith('aria2.addUri', ['magnet:?xt=urn:btih:abc'], {
-      dir: '/downloads',
-      'follow-torrent': 'mem',
-      'pause-metadata': 'true'
-    })
-    expect(AriaRawCall).toHaveBeenCalledWith('aria2.forcePause', 'content-gid')
-  })
-
-  it('cleans up both magnet metadata and generated content tasks', async () => {
-    vi.mocked(AriaRawCall).mockResolvedValue(undefined)
-
-    await discardMagnetPreview({ metadataGid: 'metadata-gid', taskGid: 'content-gid' })
-
-    expect(AriaRawCall).toHaveBeenCalledWith('aria2.forceRemove', 'metadata-gid')
-    expect(AriaRawCall).toHaveBeenCalledWith('aria2.removeDownloadResult', 'metadata-gid')
-    expect(AriaRawCall).toHaveBeenCalledWith('aria2.forceRemove', 'content-gid')
-    expect(AriaRawCall).toHaveBeenCalledWith('aria2.removeDownloadResult', 'content-gid')
-  })
 })

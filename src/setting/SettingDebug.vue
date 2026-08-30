@@ -59,42 +59,6 @@ const handleResetPort = async () => {
   }
 }
 
-const cacheTotalBytes = ref(0)
-const cacheLoading = ref(false)
-const cacheClearing = ref(false)
-
-const loadCacheStats = async () => {
-  if (!(window as any).MsImageCacheStats) return
-  cacheLoading.value = true
-  try {
-    const stats = await (window as any).MsImageCacheStats()
-    cacheTotalBytes.value = stats.totalBytes ?? 0
-  } finally {
-    cacheLoading.value = false
-  }
-}
-
-const handleClearCache = async () => {
-  if (!(window as any).MsImageCacheClear) return
-  cacheClearing.value = true
-  try {
-    await (window as any).MsImageCacheClear()
-    await loadCacheStats()
-    message.success(t('settings.debug.imageCacheCleared'))
-  } catch {
-    message.error(t('settings.debug.clearFailed'))
-  } finally {
-    cacheClearing.value = false
-  }
-}
-
-const formatBytes = (bytes: number) => {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
-}
-
-onMounted(loadCacheStats)
 </script>
 
 <template>
@@ -274,32 +238,6 @@ onMounted(loadCacheStats)
     </div>
   </div>
 
-  <div class="settingcard">
-    <div class="settinghead">
-      {{ t('settings.debug.mediaImageCache') }}
-      <span v-if="cacheTotalBytes > 0" class="opblue" style="margin-left: 12px; padding: 0 12px">
-        {{ formatBytes(cacheTotalBytes) }}
-      </span>
-      <a-spin v-if="cacheLoading" size="small" style="margin-left: 8px" />
-    </div>
-    <div class="settingrow">
-      <a-button type="outline" size="small" tabindex="-1" :loading="cacheLoading" @click="loadCacheStats">
-        {{ t('settings.debug.refreshStats') }}
-      </a-button>
-      <a-popconfirm :content="t('settings.debug.confirmClearImageCache')" @ok="handleClearCache">
-        <a-button
-          type="outline"
-          size="small"
-          status="danger"
-          tabindex="-1"
-          style="margin-left: 12px"
-          :loading="cacheClearing"
-        >
-          {{ t('settings.debug.clearImageCache') }}
-        </a-button>
-      </a-popconfirm>
-    </div>
-  </div>
 </template>
 
 <style></style>

@@ -4,14 +4,12 @@ import axios from 'axios'
 import AliUpload from './upload'
 import AliUploadHashPool from './uploadhashpool'
 import { getFlowEnc } from '../utils/proxyhelper'
-import { isAliyunUser } from '../utils/driveIdentity'
 
 export default class AliUploadMem {
   
   static async UploadMem(user_id: string, drive_id: string, parent_file_id: string, CreatFileName: string, context: string, encType: string = '') {
     const token = await UserDAL.GetUserTokenFromDB(user_id)
     if (!token || !token.access_token) return '账号失效，操作取消'
-    if (!isAliyunUser(user_id)) return '当前网盘暂不支持新建文本文件'
     let hash = 'DA39A3EE5E6B4B0D3255BFEF95601890AFD80709' 
     let proof = ''
     let buff = Buffer.from([])

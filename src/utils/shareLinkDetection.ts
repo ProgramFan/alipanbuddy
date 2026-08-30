@@ -1,4 +1,4 @@
-export type ShareLinkProvider = 'aliyun' | 'quark' | 'guangya' | 'pikpak' | 'baidu' | 'cloud123' | '115' | 'xunlei'
+export type ShareLinkProvider = 'aliyun'
 
 export interface DetectedShareLink {
   provider: ShareLinkProvider
@@ -9,14 +9,7 @@ export interface DetectedShareLink {
 }
 
 const providerPatterns: { provider: ShareLinkProvider; providerName: string; canImport: boolean; pattern: RegExp }[] = [
-  { provider: 'aliyun', providerName: '阿里云盘', canImport: true, pattern: /(?:https?:\/\/)?(?:www\.)?(?:(?:aliyundrive|alipan)\.com)\/s\/[0-9a-zA-Z_-]+[^\s]*/i },
-  { provider: 'quark', providerName: '夸克网盘', canImport: true, pattern: /(?:https?:\/\/)?pan\.quark\.cn\/s\/[0-9a-zA-Z_-]+[^\s]*/i },
-  { provider: 'guangya', providerName: '光鸭云盘', canImport: true, pattern: /(?:https?:\/\/)?(?:www\.)?guangyapan\.com\/s\/[0-9a-zA-Z_-]+[^\s]*/i },
-  { provider: 'pikpak', providerName: 'PikPak', canImport: true, pattern: /(?:https?:\/\/)?(?:www\.)?(?:my)?pikpak\.com\/s\/[0-9a-zA-Z_-]+[^\s]*/i },
-  { provider: 'baidu', providerName: '百度网盘', canImport: false, pattern: /(?:https?:\/\/)?pan\.baidu\.com\/(?:s\/[0-9a-zA-Z_-]+|share\/init\?surl=[0-9a-zA-Z_-]+)[^\s]*/i },
-  { provider: 'cloud123', providerName: '123 云盘', canImport: false, pattern: /(?:https?:\/\/)?(?:www\.)?(?:123pan|123684|123912)\.com\/s\/[0-9a-zA-Z_-]+[^\s]*/i },
-  { provider: '115', providerName: '115 网盘', canImport: false, pattern: /(?:https?:\/\/)?(?:115|115cdn)\.com\/s\/[0-9a-zA-Z_-]+[^\s]*/i },
-  { provider: 'xunlei', providerName: '迅雷云盘', canImport: false, pattern: /(?:https?:\/\/)?pan\.xunlei\.com\/s\/[0-9a-zA-Z_-]+[^\s]*/i }
+  { provider: 'aliyun', providerName: '阿里云盘', canImport: true, pattern: /(?:https?:\/\/)?(?:www\.)?(?:(?:aliyundrive|alipan)\.com)\/s\/[0-9a-zA-Z_-]+[^\s]*/i }
 ]
 
 const trimUrlSuffix = (url: string): string => url.replace(/[)\]}>）】》。，,;!]+$/g, '')

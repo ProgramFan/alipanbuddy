@@ -1,8 +1,5 @@
 <script setup lang="ts">
 import { useAppStore } from '../store'
-import usePanTreeStore from '../pan/pantreestore'
-import { computed, watch } from 'vue'
-import { isAliyunUser } from '../aliapi/utils'
 import RssScanClean from './rssscanclean/RssScanClean.vue'
 import AppSame from './appsame/AppSame.vue'
 import RssXiMa from './rssxima/RssXiMa.vue'
@@ -15,25 +12,7 @@ import RssEmptyDirs from './drivetools/RssEmptyDirs.vue'
 import { t } from '../i18n'
 
 const appStore = useAppStore()
-const panTreeStore = usePanTreeStore()
-const isAliyunAccount = computed(() => isAliyunUser(panTreeStore.user_id || ''))
-const aliyunOnlyMenus = new Set(['AppSame', 'RssScanPunish', 'RssScanEnmpty', 'RssDriveCopy'])
-const removedMenus = new Set(['RssDriveTools', 'RssMoveOrganize', 'RssMediaOrganize', 'RssRename', 'RssUserCopy'])
 withDefaults(defineProps<{ sidebarVisible?: boolean }>(), { sidebarVisible: true })
-
-watch(
-  () => [isAliyunAccount.value, appStore.GetAppTabMenu],
-  ([isAliyun]) => {
-    if (removedMenus.has(appStore.GetAppTabMenu)) {
-      appStore.toggleTabMenu('rss', 'RssEmptyDirs')
-      return
-    }
-    if (!isAliyun && aliyunOnlyMenus.has(appStore.GetAppTabMenu)) {
-      appStore.toggleTabMenu('rss', 'RssXiMa')
-    }
-  },
-  { immediate: true }
-)
 </script>
 
 <template>
@@ -55,7 +34,7 @@ watch(
           <template #icon><IconFont name="iconempty" /></template>
           {{ t('plugins.emptyDirs') }}
         </a-menu-item>
-        <a-menu-item v-if="isAliyunAccount" key="AppSame">
+        <a-menu-item key="AppSame">
           <template #icon><IconFont name="iconcopy" /></template>
           {{ t('plugins.duplicates') }}
         </a-menu-item>
@@ -67,15 +46,15 @@ watch(
           <template #icon><IconFont name="iconcopy" /></template>
           {{ t('plugins.scanDuplicates') }}
         </a-menu-item>
-        <a-menu-item v-if="isAliyunAccount" key="RssScanPunish">
+        <a-menu-item key="RssScanPunish">
           <template #icon><IconFont name="iconweixiang" /></template>
           {{ t('plugins.violations') }}
         </a-menu-item>
-        <a-menu-item v-if="isAliyunAccount" key="RssScanEnmpty">
+        <a-menu-item key="RssScanEnmpty">
           <template #icon><IconFont name="iconempty" /></template>
           {{ t('plugins.emptyFiles') }}
         </a-menu-item>
-        <a-menu-item v-if="isAliyunAccount" key="RssDriveCopy">
+        <a-menu-item key="RssDriveCopy">
           <template #icon><IconFont name="iconchuanshu2" /></template>
           {{ t('plugins.albumCopy') }}
         </a-menu-item>
@@ -86,12 +65,12 @@ watch(
         <a-tab-pane key="RssXiMa" title="1"><RssXiMa /></a-tab-pane>
         <a-tab-pane key="RssJiaMi" title="3"><RssJiaMi /></a-tab-pane>
         <a-tab-pane key="RssEmptyDirs" title="7"><RssEmptyDirs /></a-tab-pane>
-        <a-tab-pane v-if="isAliyunAccount" key="AppSame" title="4"><AppSame /></a-tab-pane>
+        <a-tab-pane key="AppSame" title="4"><AppSame /></a-tab-pane>
         <a-tab-pane key="RssScanClean" title="6"><RssScanClean /></a-tab-pane>
         <a-tab-pane key="RssScanSame" title="7"><RssScanSame /></a-tab-pane>
-        <a-tab-pane v-if="isAliyunAccount" key="RssScanPunish" title="8"><RssScanPunish /></a-tab-pane>
-        <a-tab-pane v-if="isAliyunAccount" key="RssScanEnmpty" title="9"><RssScanEnmpty /></a-tab-pane>
-        <a-tab-pane v-if="isAliyunAccount" key="RssDriveCopy" title="10"><RssDriveCopy /></a-tab-pane>
+        <a-tab-pane key="RssScanPunish" title="8"><RssScanPunish /></a-tab-pane>
+        <a-tab-pane key="RssScanEnmpty" title="9"><RssScanEnmpty /></a-tab-pane>
+        <a-tab-pane key="RssDriveCopy" title="10"><RssDriveCopy /></a-tab-pane>
       </a-tabs>
     </a-layout-content>
   </a-layout>

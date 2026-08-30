@@ -5,13 +5,6 @@ import { describe, expect, it } from 'vitest'
 const root = resolve(__dirname, '../../../..')
 
 describe('startup scheduling', () => {
-  it('does not wake media acquisition immediately from the main process', () => {
-    const source = readFileSync(resolve(root, 'electron/main/mediaAcquisition/MediaAcquisitionWakeScheduler.ts'), 'utf8')
-
-    expect(source).toContain('const WAKE_INTERVAL_MS = 60_000')
-    expect(source).not.toMatch(/\n\s*wake\(\)\n\s*timer = setInterval/)
-  })
-
   it('creates transfer workers only when work is queued', () => {
     const windowSource = readFileSync(resolve(root, 'electron/main/core/window.ts'), 'utf8')
     const mainWindowStart = windowSource.indexOf('export function createMainWindow')

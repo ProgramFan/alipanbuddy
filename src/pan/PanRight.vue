@@ -43,8 +43,7 @@ import {
   modalPassword,
   modalRename,
   modalSelectPanDir,
-  modalUpload,
-  modalCloud123OfflineDownload
+  modalUpload
 } from '../utils/modal'
 import { PanFileState } from './panfilestore'
 import PanTopbtn from './menus/PanTopbtn.vue'
@@ -60,25 +59,7 @@ import { TestButton } from '../utils/mosehelper'
 import { isValidDropUploadTarget } from '../utils/uploadTarget'
 import usePanTreeStore from './pantreestore'
 import { getDriveId as GetDriveID, getDriveType as GetDriveType } from '../drive/context'
-import { isAliyunUser, isCloud123User, isDrive115User, isGuangyaUser, isPikPakUser } from '../utils/driveIdentity'
 import { xorWith } from 'lodash'
-import { flattenDriveToolFolders, moveDriveToolFiles, type OrganizeFileItem } from '../utils/drive-tools/organize'
-import { buildMediaOrganizePlan, executeMediaOrganizePlan, mapMediaOrganizeFiles } from '../utils/drive-tools/mediaOrganize'
-import {
-  supportsCopy,
-  supportsCreateFolder,
-  supportsCreateShare,
-  supportsCreateTextFile,
-  isWritableProviderDirectory,
-  supportsDirectPermanentDelete,
-  supportsLocalUpload,
-  supportsMove,
-  supportsRename,
-  supportsSearch,
-  supportsShareImport,
-  supportsTrashMove,
-  supportsTrashPermanentDelete
-} from '../drive/providerFeatures'
 
 
 const viewlist = ref()
@@ -93,150 +74,13 @@ const handleListScroll = () => {
   cancelFolderPreview()
 }
 
-const handleListReachBottom = () => {
-  void PanDAL.LoadMoreCurrentProviderItems().catch((error: any) => {
-    message.warning(`加载下一页失败，滚动到底部可重试：${error?.message || '网络请求失败'}`)
-  })
-}
-
 const appStore = useAppStore()
 const settingStore = useSettingStore()
 const winStore = useWinStore()
 const panfileStore = usePanFileStore()
 const panTreeStore = usePanTreeStore()
-const currentDriveId = computed(() => panTreeStore.drive_id || panfileStore.DriveID || '')
-const currentUserId = computed(() => panTreeStore.user_id || '')
-const canWriteCurrentDirectory = computed(() => isWritableProviderDirectory(panTreeStore.selectDir.file_id || ''))
-const canCopy = computed(() => supportsCopy(currentUserId.value, currentDriveId.value))
-const canCreateFolder = computed(() => canWriteCurrentDirectory.value && supportsCreateFolder(currentUserId.value, currentDriveId.value))
-const canCreateTextFile = computed(() => canWriteCurrentDirectory.value && supportsCreateTextFile(currentUserId.value, currentDriveId.value))
-const canCreateShare = computed(() => supportsCreateShare(currentUserId.value, currentDriveId.value))
-const canImportShare = computed(() => supportsShareImport(currentUserId.value, currentDriveId.value))
-const canMove = computed(() => supportsMove(currentUserId.value, currentDriveId.value))
-const canRename = computed(() => supportsRename(currentUserId.value, currentDriveId.value))
-const canSearchCurrentDrive = computed(() => supportsSearch(currentUserId.value, currentDriveId.value))
-const canTrash = computed(() => supportsTrashMove(currentUserId.value, currentDriveId.value))
-const canDeletePermanently = computed(() => panfileStore.SelectDirType === 'trash'
-  ? supportsTrashPermanentDelete(currentUserId.value, currentDriveId.value)
-  : supportsDirectPermanentDelete(currentUserId.value, currentDriveId.value))
-const canUpload = computed(() => canWriteCurrentDirectory.value && supportsLocalUpload(currentUserId.value, currentDriveId.value))
-
-const isOfflineDownloadSupported = computed(() => {
-  if (panfileStore.SelectDirType !== 'pan') return false
-  const user = panTreeStore.user_id || ''
-  const drive = panTreeStore.drive_id || panfileStore.DriveID
-  return isCloud123User(user) || isPikPakUser(user) || isGuangyaUser(user) || isDrive115User(user)
-    || ['cloud123', 'pikpak', 'guangya', 'drive115'].includes(drive)
-})
-
-const handleOfflineDownload = () => {
-  if (!isOfflineDownloadSupported.value) return
-  const isRoot = !panfileStore.DirID || panfileStore.DirID.includes('root')
-  const isDrive115 = isDrive115User(panTreeStore.user_id || '') || (panTreeStore.drive_id || panfileStore.DriveID) === 'drive115'
-  modalCloud123OfflineDownload({
-    dirId: isRoot ? (isDrive115 ? '0' : '') : panfileStore.DirID,
-    dirName: isRoot ? (isDrive115 ? t('pan.rootFolder') : t('pan.defaultOfflineFolder')) : panfileStore.DirName
-  })
-}
-
-const getSelectedOrganizeFiles = (): OrganizeFileItem[] => {
-  const userId = panTreeStore.user_id || ''
-  return panfileStore.GetSelected().map((file: any) => ({ userId, driveId: file.drive_id || panfileStore.DriveID, fileId: file.file_id, name: file.name || file.file_name }))
-}
-
-const allSelectedInCurrentDrive = (files: OrganizeFileItem[]) => files.every(file => file.driveId === panfileStore.DriveID)
-
-const handleMoveOrganizeToParent = async () => {
-  const files = getSelectedOrganizeFiles()
-  const parentId = panTreeStore.selectDir?.parent_file_id || ''
-  if (!files.length) {
-    message.warning(t('pan.selectFileOrFolderFirst'))
-    return
-  }
-  if (!parentId) {
-    message.warning(t('pan.noParentFolder'))
-    return
-  }
-  if (!allSelectedInCurrentDrive(files)) {
-    message.warning(t('pan.currentDriveOnly'))
-    return
-  }
-  if (!window.confirm(t('pan.confirmMoveUp', { count: files.length }))) return
-  const result = await moveDriveToolFiles(files, parentId, panfileStore.DriveID)
-  if (result.failed) message.warning(result.report)
-  else message.success(result.report)
-  await PanDAL.aReLoadOneDirToShow('', 'refresh', false)
-}
-
-const handleMoveOrganizeFlatten = async () => {
-  const files = getSelectedOrganizeFiles()
-  const currentDirId = panfileStore.DirID || ''
-  if (!files.length) {
-    message.warning(t('pan.selectFolderFirst'))
-    return
-  }
-  if (!currentDirId) {
-    message.warning(t('pan.unrecognizedCurrentDir'))
-    return
-  }
-  if (!allSelectedInCurrentDrive(files)) {
-    message.warning(t('pan.currentDriveOnly'))
-    return
-  }
-  if (!window.confirm(t('pan.confirmFlatten'))) return
-  const result = await flattenDriveToolFolders(files, currentDirId, panfileStore.DriveID)
-  if (result.failed) message.warning(result.report)
-  else message.success(result.report)
-  await PanDAL.aReLoadOneDirToShow('', 'refresh', false)
-}
-
-const handleMoveOrganizeToSelectedDir = () => {
-  const files = getSelectedOrganizeFiles()
-  if (!files.length) {
-    message.warning(t('pan.selectFileOrFolderFirst'))
-    return
-  }
-  modalSelectPanDir('cut', panfileStore.DirID || '', async (_userId: string, driveId: string, selectFile: any) => {
-    if (files.some(file => file.driveId !== driveId)) {
-      message.warning(t('pan.sameDriveMoveOnly'))
-      return
-    }
-    if (!window.confirm(t('pan.confirmMoveTo', { count: files.length, name: selectFile.name }))) return
-    const result = await moveDriveToolFiles(files, selectFile.file_id, driveId)
-    if (result.failed) message.warning(result.report)
-    else message.success(result.report)
-    await PanDAL.aReLoadOneDirToShow('', 'refresh', false)
-  })
-}
-
-const handleMediaOrganize = async () => {
-  const userId = panTreeStore.user_id || ''
-  const rootId = panfileStore.DirID || ''
-  const files = panfileStore.GetSelected()
-  if (!files.length) {
-    message.warning(t('pan.selectMediaFirst'))
-    return
-  }
-  if (!rootId || !userId) {
-    message.warning(t('pan.unrecognizedOrganizeDir'))
-    return
-  }
-  const plans = buildMediaOrganizePlan(mapMediaOrganizeFiles(files, userId), rootId)
-  if (!plans.every(plan => plan.driveId === panfileStore.DriveID)) {
-    message.warning(t('pan.currentDriveMediaOnly'))
-    return
-  }
-  if (!plans.length) {
-    message.warning(t('pan.noOrganizableMedia'))
-    return
-  }
-  const preview = plans.slice(0, 8).map(item => `${item.name} → ${item.targetPath}`).join('\n')
-  if (!window.confirm(t('pan.confirmMediaOrganize', { count: plans.length, preview, suffix: plans.length > 8 ? '\n...' : '' }))) return
-  const result = await executeMediaOrganizePlan(plans, rootId)
-  if (result.failed) message.warning(result.report)
-  else message.success(result.report)
-  await PanDAL.aReLoadOneDirToShow('', 'refresh', false)
-}
+const isWritableDirectory = (fileId: string) => !fileId.startsWith('search') && !['recent', 'favorite', 'trash'].includes(fileId)
+const canWriteCurrentDirectory = computed(() => isWritableDirectory(panTreeStore.selectDir.file_id || ''))
 
 let dirID = ''
 let DriveID = panfileStore.DriveID
@@ -253,8 +97,6 @@ panfileStore.$subscribe((_m: any, state: PanFileState) => {
   }
   const isTrash = panfileStore.SelectDirType == 'trash' || panfileStore.SelectDirType == 'recover'
   const selectItem = panfileStore.GetSelectedFirst()
-  const isShowVideo = !isTrash && panfileStore.ListSelected.size == 1 && selectItem?.category == 'video'
-  if (menuShowVideo.value != isShowVideo) menuShowVideo.value = isShowVideo
   const isShowZip = !isTrash && panfileStore.ListSelected.size == 1 && (selectItem?.ext == 'zip' || selectItem?.ext == 'rar')
   if (menuShowZip.value != isShowZip) menuShowZip.value = isShowZip
 })
@@ -274,10 +116,10 @@ keyboardStore.$subscribe((_m: any, state: KeyboardState) => {
   if (appStore.appTab != 'pan') return
 
   if (TestCtrl('a', state.KeyDownEvent, () => panfileStore.mSelectAll())) return
-  if (TestCtrl('c', state.KeyDownEvent, () => canCopy.value && menuCopySelectedFile(false, 'copy'))) return
-  if (TestCtrl('x', state.KeyDownEvent, () => canMove.value && menuCopySelectedFile(false, 'cut'))) return
-  if (TestCtrlShift('Delete', state.KeyDownEvent, () => canDeletePermanently.value && menuTrashSelectFile(false, true))) return
-  if (TestCtrl('Delete', state.KeyDownEvent, () => canTrash.value && menuTrashSelectFile(false, false))) return
+  if (TestCtrl('c', state.KeyDownEvent, () => menuCopySelectedFile(false, 'copy'))) return
+  if (TestCtrl('x', state.KeyDownEvent, () => menuCopySelectedFile(false, 'cut'))) return
+  if (TestCtrlShift('Delete', state.KeyDownEvent, () => menuTrashSelectFile(false, true))) return
+  if (TestCtrl('Delete', state.KeyDownEvent, () => menuTrashSelectFile(false, false))) return
   if (
     TestCtrlShift('f', state.KeyDownEvent, () => {
       PanDAL.aReLoadOneDirToShow('', 'search', false)
@@ -290,28 +132,28 @@ keyboardStore.$subscribe((_m: any, state: KeyboardState) => {
   if (TestKey('f3', state.KeyDownEvent, () => inputsearch.value.focus())) return
   if (TestKey(' ', state.KeyDownEvent, () => inputsearch.value.focus())) return
   // 新建文件
-  if (TestCtrl('n', state.KeyDownEvent, () => canCreateTextFile.value && modalCreatNewFile())) return
-  if (TestCtrlShift('n', state.KeyDownEvent, () => canCreateFolder.value && modalCreatNewDir('folder'))) return
+  if (TestCtrl('n', state.KeyDownEvent, () => canWriteCurrentDirectory.value && modalCreatNewFile())) return
+  if (TestCtrlShift('n', state.KeyDownEvent, () => canWriteCurrentDirectory.value && modalCreatNewDir('folder'))) return
   // 上传文件
-  if (TestCtrlShift('u', state.KeyDownEvent, () => canUpload.value && handleUpload('folder'))) return
-  if (TestCtrl('u', state.KeyDownEvent, () => canUpload.value && handleUpload('file'))) return
-  if (TestCtrlShift('j', state.KeyDownEvent, () => canUpload.value && handleUpload('folder', 'enc'))) return
-  if (TestCtrl('j', state.KeyDownEvent, () => canUpload.value && handleUpload('file', 'enc'))) return
-  if (TestCtrlShift('m', state.KeyDownEvent, () => canUpload.value && handleUpload('folder', 'myenc'))) return
-  if (TestCtrl('m', state.KeyDownEvent, () => canUpload.value && handleUpload('file', 'myenc'))) return
+  if (TestCtrlShift('u', state.KeyDownEvent, () => canWriteCurrentDirectory.value && handleUpload('folder'))) return
+  if (TestCtrl('u', state.KeyDownEvent, () => canWriteCurrentDirectory.value && handleUpload('file'))) return
+  if (TestCtrlShift('j', state.KeyDownEvent, () => canWriteCurrentDirectory.value && handleUpload('folder', 'enc'))) return
+  if (TestCtrl('j', state.KeyDownEvent, () => canWriteCurrentDirectory.value && handleUpload('file', 'enc'))) return
+  if (TestCtrlShift('m', state.KeyDownEvent, () => canWriteCurrentDirectory.value && handleUpload('folder', 'myenc'))) return
+  if (TestCtrl('m', state.KeyDownEvent, () => canWriteCurrentDirectory.value && handleUpload('file', 'myenc'))) return
 
-  if (TestCtrl('l', state.KeyDownEvent, () => canImportShare.value && modalDaoRuShareLink())) return
+  if (TestCtrl('l', state.KeyDownEvent, () => modalDaoRuShareLink())) return
   if (TestCtrl('h', state.KeyDownEvent, handleHome)) return
   if (TestKey('f5', state.KeyDownEvent, handleRefresh)) return
   if (TestKey('f6', state.KeyDownEvent, handleDingWei)) return
   if (TestKey('Backspace', state.KeyDownEvent, handleBack)) return
-  if (TestKey('f2', state.KeyDownEvent, () => canRename.value && modalRename(false, panfileStore.IsListSelectedMulti, false))) return
-  if (TestCtrl('e', state.KeyDownEvent, () => canRename.value && modalRename(false, panfileStore.IsListSelectedMulti, false))) return
+  if (TestKey('f2', state.KeyDownEvent, () => modalRename(false, panfileStore.IsListSelectedMulti, false))) return
+  if (TestCtrl('e', state.KeyDownEvent, () => modalRename(false, panfileStore.IsListSelectedMulti, false))) return
   if (TestCtrl('s', state.KeyDownEvent, () => {
-    isresourcedrive && canCreateShare.value && menuCreatShare(false, 'pan', 'resource_root')
+    isresourcedrive && menuCreatShare(false, 'pan', 'resource_root')
   })) return
-  if (TestCtrl('t', state.KeyDownEvent, () => canCreateShare.value && menuCreatShare(false, 'pan', 'backup_root'))) return
-  if (TestCtrl('g', state.KeyDownEvent, () => isAliyunUser(currentUserId.value) && menuFavSelectFile(false, !panfileStore.IsListSelectedFavAll))) return
+  if (TestCtrl('t', state.KeyDownEvent, () => menuCreatShare(false, 'pan', 'backup_root'))) return
+  if (TestCtrl('g', state.KeyDownEvent, () => menuFavSelectFile(false, !panfileStore.IsListSelectedFavAll))) return
   if (TestCtrl('q', state.KeyDownEvent, onSelectRangStart)) return
   if (TestKeyboardSelect(state.KeyDownEvent, viewlist.value, panfileStore, handleOpenFile)) return
   if (TestKeyboardScroll(state.KeyDownEvent, viewlist.value, panfileStore)) return
@@ -464,18 +306,6 @@ const handleSearchEnter = (event: any) => {
   event.target.blur()
   viewlist.value.scrollIntoView(0)
 }
-const globalSearchKeyword = ref('')
-const handleGlobalSearch = (value: string) => {
-  const keyword = value.trim()
-  if (!keyword) return
-  void topSearchAll(keyword, inputsearchType.value)
-}
-const handleGlobalSearchEnter = (event: any) => {
-  event.target.blur()
-  handleGlobalSearch(event.target.value || globalSearchKeyword.value)
-}
-
-const menuShowVideo = ref(false)
 const menuShowZip = ref(false)
 const handleRightClick = (e: { event: MouseEvent; node: any }) => {
   const key = e.node.key
@@ -679,7 +509,6 @@ const onRowItemDrop = (ev: any, data: any) => {
   ev.preventDefault()
   ev.target.style.outline = 'none'
   ev.target.style.background = ''
-  if (!canMove.value) return
   dropMoveSelectedFile(data.drive_id, data.file_id, false)
 }
 const onRowItemDragEnd = (ev: any) => {
@@ -697,7 +526,7 @@ const onPanDrop = (e: any) => {
   e.stopPropagation()
   e.preventDefault()
   showDragUpload.value = false
-  if (!canUpload.value) {
+  if (!canWriteCurrentDirectory.value) {
     message.warning(t('pan.readOnlyNoUpload'))
     return
   }
@@ -747,7 +576,7 @@ const onPanDrop = (e: any) => {
 }
 const onPanDragEnter = (ev: any) => {
   if (dragingRowItem.value) return
-  if (!canUpload.value) return
+  if (!canWriteCurrentDirectory.value) return
   ev.stopPropagation()
   ev.preventDefault()
   ev.dataTransfer.dropEffect = 'copy'
@@ -759,7 +588,7 @@ const onPanDragLeave = (ev: any) => {
   showDragUpload.value = false
 }
 const onPanDragOver = (ev: any) => {
-  if (!canUpload.value) return
+  if (!canWriteCurrentDirectory.value) return
   ev.stopPropagation()
   ev.preventDefault()
 }
@@ -778,8 +607,7 @@ const onPanDragEnd = (ev: any) => {
     <DirTopPath />
     <div style='flex-grow: 1'></div>
     <div v-if="panfileStore.SelectDirType == 'trash'" class='toppantip'>
-      <span v-if="isCloud123User(panTreeStore.user_id || '')" style='color: crimson'>{{ t('pan.trashTipCloud123') }}</span>
-      <span v-else style='color: crimson'>{{ t('pan.trashTipAliyun') }}</span>
+      <span style='color: crimson'>{{ t('pan.trashTipAliyun') }}</span>
     </div>
     <div v-if="panfileStore.SelectDirType == 'recover'" class='toppantip'>
       <span style='color: crimson'>{{ t('pan.recoverTip') }}</span>
@@ -815,35 +643,6 @@ const onPanDragEnd = (ev: any) => {
           <IconFont name="icondingwei" />
         </template>
       </a-button>
-      <a-button v-if='isOfflineDownloadSupported' type='text' size='small' tabindex='-1' :title="t('pan.cloudDownload')"
-                @click='handleOfflineDownload'>
-        <template #icon>
-          <IconFont name="iconcloud-download" />
-        </template>
-        {{ t('pan.cloudDownload') }}
-      </a-button>
-      <a-dropdown v-if="panfileStore.SelectDirType === 'pan' && panfileStore.IsListSelected && canMove" trigger="click">
-        <a-button type='text' size='small' tabindex='-1' :title="t('pan.organizeSelected')">
-          <template #icon>
-            <IconFont name="iconmoveto" />
-          </template>
-          {{ t('pan.organize') }}
-        </a-button>
-        <template #content>
-          <a-doption @click="handleMoveOrganizeToParent">
-            <span class="arco-dropdown-option-icon"><IconFont name="iconmoveto" /></span>{{ t('pan.moveUpOneLevel') }}
-          </a-doption>
-          <a-doption @click="handleMoveOrganizeFlatten">
-            <span class="arco-dropdown-option-icon"><IconFont name="iconfile-folder" /></span>{{ t('pan.flattenToCurrent') }}
-          </a-doption>
-          <a-doption @click="handleMoveOrganizeToSelectedDir">
-            <span class="arco-dropdown-option-icon"><IconFont name="iconmoveto" /></span>{{ t('pan.chooseDirAndMove') }}
-          </a-doption>
-          <a-doption @click="handleMediaOrganize">
-            <span class="arco-dropdown-option-icon"><IconFont name="iconscan" /></span>{{ t('pan.mediaOrganize') }}
-          </a-doption>
-        </template>
-      </a-dropdown>
     </div>
     <div v-show="!panfileStore.IsListSelected && panfileStore.SelectDirType.includes('pic')" class='toppanbtn'>
       <a-select v-model:model-value='inputpicType' size='small' tabindex='-1'
@@ -853,7 +652,7 @@ const onPanDragEnd = (ev: any) => {
         <a-option value='mypic'>{{ t('pan.myAlbums') }}</a-option>
       </a-select>
     </div>
-    <div v-show="!panfileStore.IsListSelected && ['trash', 'recover', 'favorite'].includes(panfileStore.SelectDirType) && isAliyunUser(panTreeStore.user_id || '')"
+    <div v-show="!panfileStore.IsListSelected && ['trash', 'recover', 'favorite'].includes(panfileStore.SelectDirType)"
          class='toppanbtn'>
       <a-select v-model:model-value='inputselectType'
                 size='small' tabindex='-1'
@@ -865,7 +664,7 @@ const onPanDragEnd = (ev: any) => {
         <a-option value='pic' :disabled="useSettingStore().securityHidePicDrive">{{ t('pan.album') }}</a-option>
       </a-select>
     </div>
-    <div v-show="panfileStore.SelectDirType == 'search' && !panfileStore.IsListSelected && isAliyunUser(panTreeStore.user_id || '')" class='toppanbtn'>
+    <div v-show="panfileStore.SelectDirType == 'search' && !panfileStore.IsListSelected" class='toppanbtn'>
       <a-dropdown style='width: 100px;' @popup-visible-change="handleSearchCheck">
         <a-button :disabled='panfileStore.ListLoading'>{{ t('pan.scope') }}</a-button>
         <template #content>
@@ -890,7 +689,7 @@ const onPanDragEnd = (ev: any) => {
         @search='(val:string)=>topSearchAll(val, inputsearchType)'
         @press-enter='($event:any)=>topSearchAll($event.srcElement.value as string, inputsearchType)'
         @keydown.esc=';($event.target as any).blur()' />
-      <a-button v-show=" isAliyunUser(panTreeStore.user_id || '')" type='text' size='small' tabindex='-1' style='border: none'
+      <a-button type='text' size='small' tabindex='-1' style='border: none'
                 @click="() => topSearchAll('topSearchAll高级搜索', inputsearchType)">{{ t('pan.advanced') }}
       </a-button>
     </div>
@@ -901,7 +700,6 @@ const onPanDragEnd = (ev: any) => {
                :isselected='panfileStore.IsListSelected' />
     <FileTopbtn :dirtype='panfileStore.SelectDirType'
                 :isselected='panfileStore.IsListSelected'
-                :isvideo='menuShowVideo'
                 :inputselectType='inputselectType'
                 :inputpicType='inputpicType'
                 :isselectedmulti='panfileStore.IsListSelectedMulti'
@@ -912,22 +710,6 @@ const onPanDragEnd = (ev: any) => {
     <div style='flex-grow: 1'></div>
     <div class='toppanbtn'>
       <a-input-search
-        v-if='canSearchCurrentDrive'
-        ref='inputsearch'
-        v-model='globalSearchKeyword'
-        :input-attrs="{ tabindex: '-1' }"
-        size='small'
-        title='Ctrl+F / F3 / Space'
-        :placeholder="t('pan.globalSearch')"
-        :loading='panfileStore.ListLoading'
-        draggable='false'
-        allow-clear
-        @dragenter.stop='() => false'
-        @search='(value:string)=>handleGlobalSearch(value)'
-        @press-enter='handleGlobalSearchEnter'
-        @keydown.esc=';($event.target as any).blur()' />
-      <a-input-search
-        v-else
         ref='inputsearch'
         v-model='panfileStore.ListSearchKey'
         :input-attrs="{ tabindex: '-1' }"
@@ -1068,7 +850,7 @@ const onPanDragEnd = (ev: any) => {
       :data='panfileStore.ListDataShow'
       tabindex='-1'
       @scroll='handleListScroll'
-      @reach-bottom='handleListReachBottom'>
+>
       <template #empty>
         <a-empty :description="t('pan.emptyFolder')" />
       </template>
@@ -1234,7 +1016,7 @@ const onPanDragEnd = (ev: any) => {
       :data='panfileStore.ListDataGrid'
       tabindex='-1'
       @scroll='handleListScroll'
-      @reach-bottom='handleListReachBottom'>
+>
       <template #empty>
         <a-empty :description="t('pan.emptyFolder')" />
       </template>
@@ -1392,7 +1174,7 @@ const onPanDragEnd = (ev: any) => {
       :data='panfileStore.ListDataGrid'
       tabindex='-1'
       @scroll='handleListScroll'
-      @reach-bottom='handleListReachBottom'>
+>
       <template #empty>
         <a-empty :description="t('pan.emptyFolder')" />
       </template>
@@ -1530,8 +1312,7 @@ const onPanDragEnd = (ev: any) => {
     </a-list>
 
     <FileRightMenu :dirtype='panfileStore.SelectDirType'
-                   :isvideo='menuShowVideo'
-                   :isselected='panfileStore.IsListSelected'
+                      :isselected='panfileStore.IsListSelected'
                    :isselectedmulti='panfileStore.IsListSelectedMulti'
                    :inputselectType='inputselectType'
                    :inputpicType='inputpicType'

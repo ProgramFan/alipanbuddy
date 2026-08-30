@@ -7,25 +7,15 @@ import { IDownloadUrl } from './models'
 import AliFile from './file'
 import message from '../utils/message'
 import usePanFileStore from '../pan/panfilestore'
-import { isWebDavDrive } from '../utils/webdavClient'
-import UserDAL from '../user/userdal'
-import { resolveDriveProvider } from '../utils/driveProvider'
-import { cleanProviderTrash, copyProviderFiles, createProviderFolder, deleteProviderFiles, getProviderFileCommandContext, getProviderFileCommandNotice, getProviderFilesInfo, getProviderFolderCommandContext, moveProviderFiles, renameProviderFiles, restoreProviderTrash, trashProviderFiles, type ProviderFileCommandOptions } from '../drive/providerFileCmd'
 
 export default class AliFileCmd {
   static async ApiCreatNewForder(
     user_id: string, drive_id: string,
     parent_file_id: string, creatDirName: string,
-    encType: string = '', check_name_mode: string = 'refuse', providerOptions: ProviderFileCommandOptions = {}
+    encType: string = '', check_name_mode: string = 'refuse'
   ): Promise<{ file_id: string; error: string }> {
     const result = { file_id: '', error: '新建文件夹失败' }
     if (!user_id || !drive_id || !parent_file_id) return result
-    const route = resolveDriveProvider(user_id, drive_id, UserDAL.GetUserToken(user_id)?.tokenfrom)
-    if (!route.isValid) return { file_id: '', error: route.error }
-    if (isWebDavDrive(drive_id)) {
-      return { file_id: '', error: 'WebDAV / AList 文件源为只读' }
-    }
-    if (route.provider !== 'aliyun') return createProviderFolder(route.provider, user_id, parent_file_id, creatDirName, { checkNameMode: check_name_mode, ...getProviderFolderCommandContext(route.provider, parent_file_id), ...providerOptions })
     if (parent_file_id.includes('root')) parent_file_id = 'root'
     const url = 'adrive/v2/file/createWithFolders'
     const name = EncodeEncName(user_id, creatDirName, true, encType)
@@ -51,12 +41,6 @@ export default class AliFileCmd {
 
 
   static async ApiTrashBatch(user_id: string, drive_id: string, file_idList: string[]): Promise<string[]> {
-    const route = resolveDriveProvider(user_id, drive_id, UserDAL.GetUserToken(user_id)?.tokenfrom)
-    if (!route.isValid) return []
-    if (isWebDavDrive(drive_id)) {
-      return []
-    }
-    if (route.provider !== 'aliyun') return trashProviderFiles(route.provider, user_id, file_idList, getProviderFileCommandContext(route.provider, file_idList))
     const batchList = ApiBatchMaker('/recyclebin/trash', file_idList, (file_id: string) => {
       return { drive_id: drive_id, file_id: file_id }
     })
@@ -65,17 +49,6 @@ export default class AliFileCmd {
 
 
   static async ApiDeleteBatch(user_id: string, drive_id: string, file_idList: string[]): Promise<string[]> {
-    const route = resolveDriveProvider(user_id, drive_id, UserDAL.GetUserToken(user_id)?.tokenfrom)
-    if (!route.isValid) return []
-    if (isWebDavDrive(drive_id)) {
-      return []
-    }
-    const notice = getProviderFileCommandNotice(route.provider, 'delete')
-    if (notice) {
-      message.info(notice)
-      return []
-    }
-    if (route.provider !== 'aliyun') return deleteProviderFiles(route.provider, user_id, file_idList, getProviderFileCommandContext(route.provider, file_idList))
     const batchList = ApiBatchMaker('/file/delete', file_idList, (file_id: string) => {
       return { drive_id: drive_id, file_id: file_id }
     })
@@ -89,12 +62,6 @@ export default class AliFileCmd {
     name: string;
     isDir: boolean
   }[]> {
-    const route = resolveDriveProvider(user_id, drive_id, UserDAL.GetUserToken(user_id)?.tokenfrom)
-    if (!route.isValid) return []
-    if (isWebDavDrive(drive_id)) {
-      return []
-    }
-    if (route.provider !== 'aliyun') return renameProviderFiles(route.provider, user_id, file_idList, names, getProviderFileCommandContext(route.provider, file_idList))
     const batchList = ApiBatchMaker2('/file/update', file_idList, names, (file_id: string, name: string) => {
       return { drive_id: drive_id, file_id: file_id, name: name, check_name_mode: 'refuse' }
     })
@@ -113,11 +80,6 @@ export default class AliFileCmd {
 
 
   static async ApiFavorBatch(user_id: string, drive_id: string, isfavor: boolean, ismessage: boolean, file_idList: string[]): Promise<string[]> {
-    const route = resolveDriveProvider(user_id, drive_id, UserDAL.GetUserToken(user_id)?.tokenfrom)
-    if (!route.isValid || route.provider !== 'aliyun') {
-      if (ismessage) message.info('当前网盘暂不支持收藏操作')
-      return []
-    }
     const batchList = ApiBatchMaker('/file/update', file_idList, (file_id: string) => {
       return { drive_id: drive_id, file_id: file_id, custom_index_key: isfavor ? 'starred_yes' : '', starred: isfavor }
     })
@@ -126,14 +88,6 @@ export default class AliFileCmd {
 
 
   static async ApiTrashCleanBatch(user_id: string, drive_id: string, ismessage: boolean, file_idList: string[]): Promise<string[]> {
-    const route = resolveDriveProvider(user_id, drive_id, UserDAL.GetUserToken(user_id)?.tokenfrom)
-    if (!route.isValid) return []
-    if (route.provider !== 'aliyun') {
-      const result = await cleanProviderTrash(route.provider, user_id, file_idList, getProviderFileCommandContext(route.provider, file_idList))
-      if (result.length || !ismessage) return result
-      message.info(getProviderFileCommandNotice(route.provider, 'trashClean') || '当前网盘暂不支持彻底删除回收站文件')
-      return result
-    }
     const batchList = ApiBatchMaker('/file/delete', file_idList, (file_id: string) => {
       return { drive_id: drive_id, file_id: file_id }
     })
@@ -142,14 +96,6 @@ export default class AliFileCmd {
 
 
   static async ApiTrashRestoreBatch(user_id: string, drive_id: string, ismessage: boolean, file_idList: string[]): Promise<string[]> {
-    const route = resolveDriveProvider(user_id, drive_id, UserDAL.GetUserToken(user_id)?.tokenfrom)
-    if (!route.isValid) return []
-    if (route.provider !== 'aliyun') {
-      const result = await restoreProviderTrash(route.provider, user_id, file_idList, getProviderFileCommandContext(route.provider, file_idList))
-      if (result.length || !ismessage) return result
-      message.info(getProviderFileCommandNotice(route.provider, 'trashRestore') || '当前网盘暂不支持恢复回收站文件')
-      return result
-    }
     const batchList = ApiBatchMaker('/recyclebin/restore', file_idList, (file_id: string) => {
       return { drive_id: drive_id, file_id: file_id }
     })
@@ -157,8 +103,6 @@ export default class AliFileCmd {
   }
 
   static async ApiFileHistoryBatch(user_id: string, drive_id: string, file_idList: string[]) {
-    const route = resolveDriveProvider(user_id, drive_id, UserDAL.GetUserToken(user_id)?.tokenfrom)
-    if (!route.isValid || route.provider !== 'aliyun') return []
     let allTask = []
     const loadingKey = 'filehistorybatch' + Date.now().toString()
     message.loading('清除历史 执行中...', 60, loadingKey)
@@ -176,10 +120,6 @@ export default class AliFileCmd {
   }
 
   static async ApiFileColorBatch(user_id: string, drive_id: string, description: string, color: string, file_idList: string[]) {
-    const route = resolveDriveProvider(user_id, drive_id, UserDAL.GetUserToken(user_id)?.tokenfrom)
-    if (!route.isValid) return []
-    if (isWebDavDrive(drive_id)) return
-    if (route.provider !== 'aliyun') return
     // 防止加密标记清空
     let parts = description.split(',') || []
     let encryptPart = parts.find((part: any) => part.includes('xbyEncrypt')) || ''
@@ -219,8 +159,6 @@ export default class AliFileCmd {
   }[]): Promise<string[] | string> {
     const successList: string[] = []
     if (!resumeList || resumeList.length == 0) return Promise.resolve(successList)
-    const route = resolveDriveProvider(user_id, '', UserDAL.GetUserToken(user_id)?.tokenfrom)
-    if (!route.isValid || route.provider !== 'aliyun') return successList
 
     const url = 'adrive/v1/file/resumeDeleted'
     const postData = JSON.stringify({ resume_file_list: resumeList })
@@ -258,15 +196,6 @@ export default class AliFileCmd {
 
 
   static async ApiMoveBatch(user_id: string, drive_id: string, file_idList: string[], to_drive_id: string, to_parent_file_id: string, to_parent_description: string = ''): Promise<string[]> {
-    const route = resolveDriveProvider(user_id, drive_id, UserDAL.GetUserToken(user_id)?.tokenfrom)
-    const targetRoute = resolveDriveProvider(user_id, to_drive_id, UserDAL.GetUserToken(user_id)?.tokenfrom)
-    if (!route.isValid || !targetRoute.isValid) return []
-    if (isWebDavDrive(drive_id)) {
-      return []
-    }
-    if (route.provider !== 'aliyun') {
-      return moveProviderFiles(route.provider, user_id, file_idList, to_parent_file_id, { parentDescription: to_parent_description, ...getProviderFileCommandContext(route.provider, file_idList, to_parent_file_id, to_parent_description) })
-    }
     if (to_parent_file_id.includes('root')) to_parent_file_id = 'root'
     const batchList = ApiBatchMaker('/file/move', file_idList, (file_id: string) => {
       if (drive_id == to_drive_id) return {
@@ -288,21 +217,6 @@ export default class AliFileCmd {
 
 
   static async ApiCopyBatch(user_id: string, drive_id: string, file_idList: string[], to_drive_id: string, to_parent_file_id: string, to_parent_description: string = ''): Promise<string[]> {
-    const route = resolveDriveProvider(user_id, drive_id, UserDAL.GetUserToken(user_id)?.tokenfrom)
-    const targetRoute = resolveDriveProvider(user_id, to_drive_id, UserDAL.GetUserToken(user_id)?.tokenfrom)
-    if (!route.isValid || !targetRoute.isValid) return []
-    if (isWebDavDrive(drive_id)) {
-      return []
-    }
-    const notice = getProviderFileCommandNotice(route.provider, 'copy')
-    if (notice) {
-      message.info(notice)
-      return []
-    }
-    if (route.provider !== 'aliyun') {
-      const selectedNames = new Map(usePanFileStore().GetSelected().map((item) => [item.file_id, item.name]))
-      return copyProviderFiles(route.provider, user_id, file_idList, to_parent_file_id, { parentDescription: to_parent_description, names: selectedNames, ...getProviderFileCommandContext(route.provider, file_idList, to_parent_file_id, to_parent_description) })
-    }
     if (to_parent_file_id.includes('root')) to_parent_file_id = 'root'
     const batchList = ApiBatchMaker('/file/copy', file_idList, (file_id: string) => {
       if (drive_id == to_drive_id) return {
@@ -324,9 +238,6 @@ export default class AliFileCmd {
 
 
   static async ApiGetFileBatch(user_id: string, drive_id: string, file_idList: string[]): Promise<IAliGetFileModel[]> {
-    const route = resolveDriveProvider(user_id, drive_id, UserDAL.GetUserToken(user_id)?.tokenfrom)
-    if (!route.isValid) return []
-    if (route.provider !== 'aliyun') return getProviderFilesInfo(route.provider, user_id, file_idList)
     const batchList = ApiBatchMaker('/file/get', file_idList, (file_id: string) => {
       return {
         drive_id: drive_id,
@@ -348,8 +259,6 @@ export default class AliFileCmd {
   }
 
   static async ApiGetFileDownloadUrlBatch(user_id: string, drive_id: string, file_idList: string[]): Promise<IDownloadUrl[]> {
-    const route = resolveDriveProvider(user_id, drive_id, UserDAL.GetUserToken(user_id)?.tokenfrom)
-    if (!route.isValid || route.provider !== 'aliyun') return []
     const batchList = ApiBatchMaker('/file/get_download_url', file_idList, (file_id: string) => {
       return {
         drive_id: drive_id,

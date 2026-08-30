@@ -4,24 +4,7 @@
   "protocols": [
     {
       "name": "xbyboxplayer OAuth",
-      "schemes": ["xbyboxplayer-oauth", "boxplayer-onedriveoauth"]
-    }
-  ],
-  "fileAssociations": [
-    {
-      "ext": ["mp4", "mkv", "avi", "mov", "webm", "ts", "m2ts", "flv", "wmv", "mpg", "mpeg"],
-      "name": "BoxPlayer Video",
-      "description": "Video file"
-    },
-    {
-      "ext": ["mp3", "flac", "m4a", "aac", "wav", "ogg", "opus", "wma", "aiff", "ape"],
-      "name": "BoxPlayer Audio",
-      "description": "Audio file"
-    },
-    {
-      "ext": ["epub", "pdf", "mobi", "azw", "azw3", "fb2", "md", "markdown", "html", "htm", "cbz", "cbr", "cbt", "cb7"],
-      "name": "BoxPlayer Book",
-      "description": "Book or comic file"
+      "schemes": ["xbyboxplayer-oauth"]
     }
   ],
   "copyright": "copyright ©2026 GaoZhangMin",
@@ -33,10 +16,7 @@
   "files": [ "dist" ],
   "extraResources": [
     { "from": "./static/engine/aria2.conf", "to": "./engine/aria2.conf"},
-    { "from": "./static/crx", "to": "./crx"},
-    { "from": "./scripts/clouddrive-cli.mjs", "to": "./cli/clouddrive-cli.mjs"},
-    { "from": "./scripts/clouddrive-mcp.mjs", "to": "./cli/clouddrive-mcp.mjs"},
-    { "from": "./clouddrive-cli", "to": "./clouddrive-cli"}
+    { "from": "./static/crx", "to": "./crx"}
   ],
   "mac": {
     "icon": "./static/images/icon.icns",
@@ -89,7 +69,7 @@
     "extraResources": [
       { "from": "./static/images/icon_64x64.png", "to": "./images/icon_64x64.png"},
       { "from": "./static/images/icon_256x256.ico", "to": "./images/icon_256x256.ico"},
-      { "from": "./static/engine/win32/${arch}", "to": "./engine/win32/${arch}", "filter": ["**/*", "!mpv{,/**}"]}
+      { "from": "./static/engine/win32/${arch}", "to": "./engine/win32/${arch}"}
     ],
     "target": [
       { "target": "nsis", "arch": [ "x64", "arm64" ] }

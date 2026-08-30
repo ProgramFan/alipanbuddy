@@ -25,7 +25,7 @@ describe('settings app version', () => {
     const pageMainSource = readFileSync(resolve(process.cwd(), 'src/layout/PageMain.ts'), 'utf8')
     const autoUpdateSource = readFileSync(resolve(process.cwd(), 'electron/main/core/autoUpdate.ts'), 'utf8')
 
-    expect(pageMainSource).toContain('if (useSettingStore().uiLaunchAutoCheckUpdate)')
+    expect(pageMainSource).toContain('useSettingStore().uiLaunchAutoCheckUpdate')
     expect(autoUpdateSource).not.toContain('checkOnStart')
     expect(autoUpdateSource).toContain("readUpdateProxyPreferences(app.getPath('userData'))")
   })

@@ -8,13 +8,10 @@ import pkg from './package.json'
 
 const sharedAlias = {
   '@shared': path.resolve(__dirname, 'shared'),
-  '@main':   path.resolve(__dirname, 'electron/main'),
-  '@earendil-works/pi-ai/compat': path.resolve(__dirname, 'src/services/agent/piCompatBrowser.ts'),
-  '@earendil-works/pi-agent-core/dist/agent.js': path.resolve(__dirname, 'node_modules/@earendil-works/pi-agent-core/dist/agent.js')
+  '@main':   path.resolve(__dirname, 'electron/main')
 }
-// Native addons must stay outside Rollup. better-sqlite3 resolves its .node
-// binding at runtime, which cannot work once its CommonJS loader is bundled.
-const electronMainExternal = [...Object.keys('dependencies' in pkg ? pkg.dependencies : {}), 'better-sqlite3', '@motrix/nat-api', 'aria2-lib', 'pdfjs-dist']
+// Native addons must stay outside Rollup so they resolve their bindings at runtime.
+const electronMainExternal = [...Object.keys('dependencies' in pkg ? pkg.dependencies : {}), '@motrix/nat-api', 'aria2-lib']
 
 // https://vitejs.dev/config/
 // @ts-ignore
@@ -69,15 +66,14 @@ export default defineConfig(({ command }) => {
               outDir: 'dist/electron/main',
               rollupOptions: {
                 input: {
-                  index: path.resolve(__dirname, 'electron/main/index.ts'),
-                  pdfExtractWorker: path.resolve(__dirname, 'electron/main/documentInsight/pdfExtractWorker.ts')
+                  index: path.resolve(__dirname, 'electron/main/index.ts')
                 },
                 output: {
                   entryFileNames: '[name].js',
                   chunkFileNames: '[name].js'
                 },
                 // @ts-ignore
-                external: (id: string) => electronMainExternal.includes(id) || id.startsWith('pdfjs-dist/')
+                external: (id: string) => electronMainExternal.includes(id)
               }
             }
           }

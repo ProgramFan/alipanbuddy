@@ -7,17 +7,11 @@ import AliUser from './user'
 import message from '../utils/message'
 import DebugLog from '../utils/debuglog'
 import { v4 } from 'uuid'
-import { isNonAliyunProvider } from '../utils/driveIdentity'
 
 export interface IUrlRespData {
   code: number
   header: string
   body: any
-}
-
-const nonAliyunRequest = (userId: string): IUrlRespData | undefined => {
-  if (!userId || !isNonAliyunProvider(userId)) return undefined
-  return { code: 403, header: '', body: '当前网盘账号不能调用阿里云盘 API' }
 }
 
 function BlobToString(body: Blob, encoding: string): Promise<string> {
@@ -105,13 +99,6 @@ export default class AliHttp {
           // 自动刷新Token
           if (data.code == 'AccessTokenInvalid' || data.code == 'AccessTokenExpired') {
             if (token) {
-              if (isNonAliyunProvider(token)) {
-                return {
-                  code: error.response.status || 403,
-                  header: JSON.stringify(error.response.headers || {}),
-                  body: error.response.data || 'NetError 当前网盘接口请求错误'
-                } as IUrlRespData
-              }
               const isOpenApi = config.url.includes('openapi.alipan.com') || config.url.includes('adrive/v1.0') || config.url.includes('adrive/v1.1')
               if (!isOpenApi) {
                 return await AliUser.ApiTokenRefreshAccount(token, true, true).then((isLogin: boolean) => {
@@ -138,13 +125,6 @@ export default class AliHttp {
             || data.code == 'UserDeviceOffline'
             || data.code == 'DeviceSessionSignatureInvalid') {
             if (token) {
-              if (isNonAliyunProvider(token)) {
-                return {
-                  code: error.response.status || 403,
-                  header: JSON.stringify(error.response.headers || {}),
-                  body: error.response.data || 'NetError 当前网盘接口请求错误'
-                } as IUrlRespData
-              }
               return await AliUser.ApiSessionRefreshAccount(token, true, true).then((flag: boolean) => {
                 if (flag) {
                   return { code: 401, header: '', body: '' } as IUrlRespData
@@ -193,8 +173,6 @@ export default class AliHttp {
   }
 
   static async Get(url: string, user_id: string, params?: any): Promise<IUrlRespData> {
-    const blocked = nonAliyunRequest(user_id)
-    if (blocked) return blocked
     if (!url.startsWith('http') && !url.startsWith('https')) {
       if (url.includes('adrive/v1.0') || url.includes('adrive/v1.1')) {
         url = AliHttp.baseOpenApi + url
@@ -251,8 +229,6 @@ export default class AliHttp {
 
 
   static async GetString(url: string, user_id: string, fileSize: number, maxSize: number, requestHeaders: Record<string, string> = {}, allowProviderUrl: boolean = false): Promise<IUrlRespData> {
-    const blocked = nonAliyunRequest(user_id)
-    if (blocked && !allowProviderUrl) return blocked
     if (!url.startsWith('http') && !url.startsWith('https')) {
       if (url.includes('adrive/v1.0') || url.includes('adrive/v1.1')) {
         url = AliHttp.baseOpenApi + url
@@ -272,7 +248,7 @@ export default class AliHttp {
   private static _GetString(url: string, user_id: string, fileSize: number, maxSize: number, requestHeaders: Record<string, string> = {}): Promise<IUrlRespData> {
     return UserDAL.GetUserTokenFromDB(user_id).then((token) => {
       const headers: any = { ...requestHeaders }
-      if (token && !isNonAliyunProvider(token)) {
+      if (token) {
         let token_type = token.token_type
         let access_token = token.access_token
         let need_open_api = url.includes('openapi')
@@ -355,8 +331,6 @@ export default class AliHttp {
 
 
   static async GetBlob(url: string, user_id: string): Promise<IUrlRespData> {
-    const blocked = nonAliyunRequest(user_id)
-    if (blocked) return blocked
     if (!url.startsWith('http') && !url.startsWith('https')) {
       if (url.includes('adrive/v1.0') || url.includes('adrive/v1.1')) {
         url = AliHttp.baseOpenApi + url
@@ -411,8 +385,6 @@ export default class AliHttp {
   }
 
   static async Post(url: string, postData: any, user_id: string, share_token: string): Promise<IUrlRespData> {
-    const blocked = nonAliyunRequest(user_id)
-    if (blocked) return blocked
     if (!url.startsWith('http') && !url.startsWith('https')) {
       if (url.includes('adrive/v1.0') || url.includes('adrive/v1.1')) {
         url = AliHttp.baseOpenApi + url
@@ -487,8 +459,6 @@ export default class AliHttp {
   }
 
   static async PostString(url: string, postData: any, user_id: string, share_token: string): Promise<IUrlRespData> {
-    const blocked = nonAliyunRequest(user_id)
-    if (blocked) return blocked
     if (!url.startsWith('http') && !url.startsWith('https')) {
       if (url.includes('adrive/v1.0') || url.includes('adrive/v1.1')) {
         url = AliHttp.baseOpenApi + url

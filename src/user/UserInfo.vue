@@ -5,18 +5,13 @@ import UserDAL from '../user/userdal'
 import message from '../utils/message'
 import { modalUserRewardSpace, modalUserSpace } from '../utils/modal'
 import AliUser from '../aliapi/user'
-import { humanSize } from '../utils/format'
 import type { ITokenInfo } from './userstore'
-import { isAliyunUser, isBaiduUser, isQuarkUser, isRemoteDriveUser } from '../aliapi/utils'
-import { useMediaLibraryStore } from '../store/medialibrary'
+import { isAliyunUser } from '../aliapi/utils'
 import { Modal } from '@arco-design/web-vue'
-import { showAlipanMemberPromotion, showAlipanMemberQrPromotion } from '../utils/alipanPromotion'
 import { getDriveProviderIcon, getDriveProviderLabel, getDriveProviderMeta } from '../utils/driveProvider'
 import { t } from '../i18n'
-import { getWebDavConnectionId, removeWebDavConnection } from '../utils/webdavClient'
 
 const userStore = useUserStore()
-const mediaLibraryStore = useMediaLibraryStore()
 const isAliyunAccount = computed(() => isAliyunUser(userStore.user_id || userStore.GetUserToken))
 const avatarErrorKeys = ref<Set<string>>(new Set())
 
@@ -46,17 +41,6 @@ const handleUserRewardSpace = () => {
   modalUserRewardSpace(userStore.user_id)
 }
 
-const handleAlipanMemberPromotion = () => {
-  showAlipanMemberPromotion('购买会员，平台返佣支持开发者。开通阿里云盘三方会员后，可享受高速下载通道和高清观影地址。', {
-    userId: userStore.user_id,
-    confirm: false
-  })
-}
-
-const handleAlipanAnnualMemberPromotion = () => {
-  showAlipanMemberQrPromotion('购买会员，平台返佣支持开发者。扫码购买更多 VIP、扩容空间等服务。')
-}
-
 const handleLogOff = () => {
   UserDAL.UserLogOff(userStore.user_id)
 }
@@ -64,14 +48,11 @@ const handleLogOff = () => {
 const handleDeleteLocalAccount = (token: ITokenInfo) => {
   Modal.confirm({
     title: '彻底删除本地帐号',
-    content: `确定要彻底删除本地保存的帐号“${token.nick_name || token.user_name}”吗？同时会删除该帐号在媒体库中扫描过的文件源和相关媒体数据。`,
+    content: `确定要彻底删除本地保存的帐号“${token.nick_name || token.user_name}”吗？`,
     okText: '删除',
     okButtonProps: { status: 'danger' },
     cancelText: '取消',
     onOk: async () => {
-      const remoteConnectionId = isRemoteDriveUser(token) ? getWebDavConnectionId(token.default_drive_id) : ''
-      mediaLibraryStore.removeMediaSourceByUserId(remoteConnectionId || token.user_id)
-      if (remoteConnectionId) removeWebDavConnection(remoteConnectionId)
       if (userStore.user_id === token.user_id) {
         await UserDAL.UserLogOff(token.user_id)
       } else {
@@ -91,61 +72,10 @@ const handleLogin = () => {
   useUserStore().userShowLogin = true
 }
 
-const activeProvider = ref<'aliyun' | 'cloud123' | '115' | 'baidu' | 'pikpak' | 'guangya' | 'dropbox' | 'onedrive' | 'box' | 'google' | 'webdav' | 'alist'>('aliyun')
 const userListState = ref<ITokenInfo[]>([])
 
 const refreshUserList = async () => {
   userListState.value = await UserDAL.GetUserListFromDB()
-}
-
-const handleCloud123Login = () => {
-  localStorage.setItem('login_provider', 'cloud123')
-  useUserStore().userShowLogin = true
-}
-
-const handle115Login = () => {
-  localStorage.setItem('login_provider', '115')
-  useUserStore().userShowLogin = true
-}
-
-const handleBaiduLogin = () => {
-  localStorage.setItem('login_provider', 'baidu')
-  useUserStore().userShowLogin = true
-}
-
-const handlePikPakLogin = () => {
-  localStorage.setItem('login_provider', 'pikpak')
-  useUserStore().userShowLogin = true
-}
-
-const handleGuangyaLogin = () => {
-  localStorage.setItem('login_provider', 'guangya')
-  useUserStore().userShowLogin = true
-}
-
-const handleDropboxLogin = () => {
-  localStorage.setItem('login_provider', 'dropbox')
-  useUserStore().userShowLogin = true
-}
-
-const handleOneDriveLogin = () => {
-  localStorage.setItem('login_provider', 'onedrive')
-  useUserStore().userShowLogin = true
-}
-
-const handleBoxLogin = () => {
-  localStorage.setItem('login_provider', 'box')
-  useUserStore().userShowLogin = true
-}
-
-const handleGoogleLogin = () => {
-  localStorage.setItem('login_provider', 'google')
-  useUserStore().userShowLogin = true
-}
-
-const handleRemoteDriveLogin = (provider: 'webdav' | 'alist') => {
-  localStorage.setItem('login_provider', provider)
-  useUserStore().userShowLogin = true
 }
 
 const userList = computed(() => {
@@ -154,10 +84,6 @@ const userList = computed(() => {
 
 const getAccountDisplayName = (token: ITokenInfo) => {
   const displayName = token.nick_name || token.user_name || token.name || ''
-  if (isQuarkUser(token)) {
-    const accountId = token.user_id.replace(/^quark_/, '')
-    if (!displayName || displayName === token.user_id || displayName === accountId || displayName.startsWith('cookie_')) return getDriveProviderLabel(token.tokenfrom)
-  }
   return displayName || getDriveProviderLabel(token.tokenfrom)
 }
 
@@ -171,13 +97,6 @@ const getUserName = computed(() => {
   }
 })
 
-const baiduQuotaText = computed(() => {
-  const token = userStore.GetUserToken
-  if (!isBaiduUser(userStore.user_id || token)) return ''
-  const free = typeof token.free_size === 'number' ? humanSize(token.free_size) : ''
-  const expire = token.space_expire ? '是' : '否'
-  return `可用 ${free} · 7天内到期 ${expire}`
-})
 const storageText = computed(() => userStore.GetUserToken.spaceinfo || '容量信息暂不可用')
 
 const activeProviderMeta = computed(() => getDriveProviderMeta(userStore.GetUserToken.tokenfrom))
@@ -282,9 +201,6 @@ watch(
         <a-row class='userinfo-row' justify='space-between' align='center'>
           <a-col class='userinfo-left' flex='1'>
             <span class='userspace'>{{ storageText }}</span>
-            <span v-if="isBaiduUser(userStore.user_id || userStore.GetUserToken) && baiduQuotaText" class='userspace userspace-sub'>
-              {{ baiduQuotaText }}
-            </span>
           </a-col>
           <a-col flex='auto'></a-col>
           <a-col flex='none'>
@@ -293,14 +209,6 @@ watch(
             </a-button>
             <a-button v-if='isAliyunAccount' type='text' size='small' tabindex='-1' style='min-width: 20px; padding: 0 8px' status='success'
                       @click='handleUserRewardSpace()'>福利兑换
-            </a-button>
-            <a-button v-if='isAliyunAccount' type='text' size='small' tabindex='-1' style='min-width: 20px; padding: 0 8px' status='success'
-                      title='年费会员购买'
-                      @click='handleAlipanAnnualMemberPromotion()'>年费会员购买
-            </a-button>
-            <a-button v-if='isAliyunAccount' type='text' size='small' tabindex='-1' style='min-width: 20px; padding: 0 8px' status='success'
-                      title='三方APP权益购买'
-                      @click='handleAlipanMemberPromotion()'>三方APP权益购买
             </a-button>
           </a-col>
         </a-row>
@@ -353,20 +261,6 @@ watch(
         </a-row>
       </div>
       <div v-else style='width: 250px'>
-        <a-tabs size='small' v-model:active-key='activeProvider'>
-          <a-tab-pane key='aliyun' title='阿里云盘' />
-          <a-tab-pane key='cloud123' title='123网盘' />
-          <a-tab-pane key='115' title='115网盘' />
-          <a-tab-pane key='baidu' title='百度网盘' />
-          <a-tab-pane key='pikpak' title='PikPak' />
-          <a-tab-pane key='guangya' title='光鸭云盘' />
-          <a-tab-pane key='dropbox' title='Dropbox' />
-          <a-tab-pane key='onedrive' title='OneDrive' />
-          <a-tab-pane key='box' title='Box' />
-          <a-tab-pane key='google' title='Google Drive' />
-          <a-tab-pane key='webdav' title='WebDAV' />
-          <a-tab-pane key='alist' title='AList' />
-        </a-tabs>
         <a-row align='stretch'>
           <a-col flex='60px'>
             <a-avatar :size='56'
@@ -383,7 +277,6 @@ watch(
         <a-divider />
         <a-row justify='center'>
           <a-button
-            v-if="activeProvider === 'aliyun'"
             type='outline'
             size='small'
             tabindex='-1'
@@ -392,106 +285,6 @@ watch(
             @click='handleLogin()'
           >
             登录一个新账号
-          </a-button>
-          <a-button
-            v-else-if="activeProvider === 'cloud123'"
-            type='outline'
-            size='small'
-            tabindex='-1'
-            style='margin: 0 0 8px 0'
-            @click='handleCloud123Login()'
-          >
-            登录 123 网盘
-          </a-button>
-          <a-button
-            v-else-if="activeProvider === '115'"
-            type='outline'
-            size='small'
-            tabindex='-1'
-            style='margin: 0 0 8px 0'
-            @click='handle115Login()'
-          >
-            登录 115 网盘
-          </a-button>
-          <a-button
-            v-else-if="activeProvider === 'baidu'"
-            type='outline'
-            size='small'
-            tabindex='-1'
-            style='margin: 0 0 8px 0'
-            @click='handleBaiduLogin()'
-          >
-            登录 百度网盘
-          </a-button>
-          <a-button
-            v-else-if="activeProvider === 'pikpak'"
-            type='outline'
-            size='small'
-            tabindex='-1'
-            style='margin: 0 0 8px 0'
-            @click='handlePikPakLogin()'
-          >
-            登录 PikPak
-          </a-button>
-          <a-button
-            v-else-if="activeProvider === 'guangya'"
-            type='outline'
-            size='small'
-            tabindex='-1'
-            style='margin: 0 0 8px 0'
-            @click='handleGuangyaLogin()'
-          >
-            登录 光鸭云盘
-          </a-button>
-          <a-button
-            v-else-if="activeProvider === 'dropbox'"
-            type='outline'
-            size='small'
-            tabindex='-1'
-            style='margin: 0 0 8px 0'
-            @click='handleDropboxLogin()'
-          >
-            登录 Dropbox
-          </a-button>
-          <a-button
-            v-else-if="activeProvider === 'onedrive'"
-            type='outline'
-            size='small'
-            tabindex='-1'
-            style='margin: 0 0 8px 0'
-            @click='handleOneDriveLogin()'
-          >
-            登录 OneDrive
-          </a-button>
-          <a-button
-            v-else-if="activeProvider === 'box'"
-            type='outline'
-            size='small'
-            tabindex='-1'
-            style='margin: 0 0 8px 0'
-            @click='handleBoxLogin()'
-          >
-            登录 Box
-          </a-button>
-          <a-button
-            v-else-if="activeProvider === 'google'"
-            type='outline'
-            size='small'
-            tabindex='-1'
-            style='margin: 0 0 8px 0'
-            @click='handleGoogleLogin()'
-          >
-            登录 Google Drive
-          </a-button>
-          <a-button
-            v-else-if="activeProvider === 'webdav' || activeProvider === 'alist'"
-            type='outline'
-            size='small'
-            tabindex='-1'
-            style='margin: 0 0 8px 0'
-            @click="handleRemoteDriveLogin(activeProvider)"
-          >
-            添加 {{ activeProvider === 'alist' ? 'AList' : 'WebDAV' }}
           </a-button>
         </a-row>
       </div>

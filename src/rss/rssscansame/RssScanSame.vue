@@ -5,8 +5,6 @@ import { useUserStore, useWinStore } from '../../store'
 import UserDAL from '../../user/userdal'
 import message from '../../utils/message'
 import { deleteDriveDuplicates, scanDriveDuplicates, type DuplicateDriveTarget, type DuplicateFileItem, type DuplicateGroup, type DuplicateScanMode } from '../../utils/drive-tools/duplicates'
-import { driveToolDriveIdForPlatform, driveToolRootIdFor } from '../../utils/drive-tools/directLinks'
-import { getWebDavConnections } from '../../utils/webdavClient'
 
 const userStore = useUserStore()
 const winStore = useWinStore()
@@ -23,9 +21,6 @@ const selected = ref(new Set<string>())
 
 const driveKey = (target: DuplicateDriveTarget) => `${target.userId}\n${target.driveId}`
 const fileKey = (file: DuplicateFileItem) => `${file.userId}\n${file.driveId}\n${file.fileId}`
-const isReadOnlyFile = (file: DuplicateFileItem) => file.driveId.startsWith('webdav:')
-const hasWritableResults = computed(() => groups.value.some(group => group.files.some(file => !isReadOnlyFile(file))))
-const groupHasWritableFiles = (group: DuplicateGroup) => group.files.some(file => !isReadOnlyFile(file))
 
 const loadDriveOptions = async () => {
   const users = await UserDAL.GetUserListFromDB()
@@ -33,7 +28,6 @@ const loadDriveOptions = async () => {
   const seen = new Set<string>()
   for (const user of users) {
     if (!user?.user_id || !user?.access_token) continue
-    const platform = user.tokenfrom || 'aliyun'
     const name = user.nick_name || user.user_name || user.name || user.user_id
     const add = (driveId: string, rootId: string, suffix = '') => {
       if (!driveId) return
@@ -44,17 +38,9 @@ const loadDriveOptions = async () => {
         options.push(target)
       }
     }
-    if (platform === 'aliyun') {
-      add(user.resource_drive_id, 'resource_root', ' / 资源盘')
-      add(user.backup_drive_id, 'backup_root', ' / 备份盘')
-      add(user.default_drive_id, 'root', ' / 默认盘')
-    } else {
-      const driveId = driveToolDriveIdForPlatform(platform, user.default_drive_id)
-      add(driveId, driveToolRootIdFor(driveId), ` / ${platform}`)
-    }
-  }
-  for (const connection of getWebDavConnections()) {
-    options.push({ userId: connection.id, driveId: `webdav:${connection.id}`, rootId: '/', name: `${connection.name} / WebDAV` })
+    add(user.resource_drive_id, 'resource_root', ' / 资源盘')
+    add(user.backup_drive_id, 'backup_root', ' / 备份盘')
+    add(user.default_drive_id, 'root', ' / 默认盘')
   }
   driveOptions.value = options
   if (!selectedDriveKeys.value.length && options.length) selectedDriveKeys.value = [driveKey(options[0])]
@@ -89,7 +75,6 @@ const handleScan = async () => {
 }
 
 const toggleFile = (file: DuplicateFileItem) => {
-  if (isReadOnlyFile(file)) return
   const next = new Set(selected.value)
   const key = fileKey(file)
   if (next.has(key)) next.delete(key)
@@ -98,7 +83,7 @@ const toggleFile = (file: DuplicateFileItem) => {
 }
 
 const toggleGroup = (group: DuplicateGroup) => {
-  const keys = group.files.filter(file => !isReadOnlyFile(file)).map(fileKey)
+  const keys = group.files.map(fileKey)
   const allSelected = keys.every(key => selected.value.has(key))
   const next = new Set(selected.value)
   keys.forEach(key => allSelected ? next.delete(key) : next.add(key))
@@ -107,7 +92,7 @@ const toggleGroup = (group: DuplicateGroup) => {
 
 const handleDelete = async () => {
   if (deleting.value) return
-  const files = groups.value.flatMap(group => group.files).filter(file => !isReadOnlyFile(file) && selected.value.has(fileKey(file)))
+  const files = groups.value.flatMap(group => group.files).filter(file => selected.value.has(fileKey(file)))
   if (!files.length) {
     message.warning('请先勾选需要删除的文件')
     return
@@ -157,7 +142,7 @@ watch(userStore.$state, async () => {
         </a-select>
         <a-input v-if="mode === 'helperName'" v-model="numberText" :disabled="loading" style="width: 120px" placeholder="编号，如 1,2,3" />
         <a-button type="primary" :loading="loading" @click="handleScan">开始扫描</a-button>
-        <a-button v-if="hasWritableResults" status="danger" :disabled="!selected.size" :loading="deleting" @click="handleDelete">删除选中</a-button>
+        <a-button v-if="groups.length" status="danger" :disabled="!selected.size" :loading="deleting" @click="handleDelete">删除选中</a-button>
       </div>
       <div class="scan-hint">光鸭重复项规则：匹配文件名末尾的 (1)、(2)、(3)，支持中文括号、全角数字和扩展名。内容哈希模式按各网盘返回的 content_hash 判重。</div>
       <pre v-if="result" class="scan-report">{{ result }}</pre>
@@ -168,10 +153,10 @@ watch(userStore.$state, async () => {
             <div :key="item.key" class="sameitem">
               <div class="samehash">
                 <span>#{{ index + 1 }}：{{ item.label }}</span>
-                <a-button v-if="groupHasWritableFiles(item)" type="text" size="mini" @click="toggleGroup(item)">全选/取消</a-button>
+                <a-button type="text" size="mini" @click="toggleGroup(item)">全选/取消</a-button>
               </div>
               <div v-for="file in item.files" :key="fileKey(file)" class="samefile">
-                <AntdCheckbox v-if="!isReadOnlyFile(file)" :checked="selected.has(fileKey(file))" @change="toggleFile(file)" />
+                <AntdCheckbox :checked="selected.has(fileKey(file))" @change="toggleFile(file)" />
                 <IconFont :name="file.icon" aria-hidden="true" />
                 <div class="samename" :title="file.name">{{ file.name }}</div>
                 <div class="samepath" :title="file.path">{{ file.path }}</div>

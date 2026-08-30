@@ -12,20 +12,13 @@ describe('剪贴板分享链接识别', () => {
     })
   })
 
-  it('识别百度网盘链接，但不谎称可直接转存', () => {
-    expect(detectShareLink('https://pan.baidu.com/s/1abc_DEF?pwd=2x3y）')).toEqual({
-      provider: 'baidu',
-      providerName: '百度网盘',
-      url: 'https://pan.baidu.com/s/1abc_DEF?pwd=2x3y',
-      password: '2x3y',
-      canImport: false
-    })
+  it('识别旧域名 aliyundrive.com 的分享链接', () => {
+    expect(canImportShareLink('https://www.aliyundrive.com/s/abc123')).toBe(true)
   })
 
-  it('统一判断现有导入弹窗真正支持的网盘', () => {
-    expect(canImportShareLink('pan.quark.cn/s/abc123')).toBe(true)
-    expect(canImportShareLink('https://123pan.com/s/abc123')).toBe(false)
-    expect(canImportShareLink('https://115.com/s/abc123')).toBe(false)
+  it('不识别其他网盘链接', () => {
+    expect(detectShareLink('https://pan.baidu.com/s/1abc_DEF?pwd=2x3y')).toBeUndefined()
+    expect(canImportShareLink('pan.quark.cn/s/abc123')).toBe(false)
   })
 
   it('不会把普通网页当成分享链接', () => {

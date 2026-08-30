@@ -7,9 +7,6 @@ import { CheckWindowsBreakPath, FileSystemErrorMessage } from '../utils/filehelp
 import { humanSize, humanSizeSpeed } from '../utils/format'
 import message from '../utils/message'
 import UploadingData from './uploadingdata'
-import UserDAL from '../user/userdal'
-import { getProviderFolderCommandContext } from '../drive/providerFileCmd'
-import { resolveDriveProvider } from '../utils/driveProvider'
 import path from 'node:path'
 import fspromises from 'fs/promises'
 import { Stats } from 'fs'
@@ -237,16 +234,6 @@ export default class UploadingDAL {
   static async aUploadLocalFiles(user_id: string, drive_id: string, parent_file_id: string, files: string[], check_name_mode: string, tip: boolean, encType: string = '') {
     if (!user_id) return 0
     if (!files || files.length == 0) return 0
-    const route = resolveDriveProvider(user_id, drive_id, UserDAL.GetUserToken(user_id)?.tokenfrom)
-    const parentContext = route.isValid ? getProviderFolderCommandContext(route.provider, parent_file_id) : {}
-    if (route.isValid && route.provider === 'baidu') {
-      const parentPath = parentContext.targetPath
-      if (!parentPath) {
-        message.error('无法确定百度网盘上传位置，请刷新目录后重试')
-        return 0
-      }
-      parent_file_id = parentPath
-    }
     const dateNow = Date.now()
     const loadingKey = 'adduploading_' + dateNow
     if (tip) {
@@ -302,7 +289,7 @@ export default class UploadingDAL {
               user_id: user_id,
               localFilePath: basePath,
               parent_file_id: parent_file_id,
-              parent_description: parentContext.parentDescription || '',
+              parent_description: '',
               drive_id: drive_id,
               isDir: isDir,
               encType: encType,

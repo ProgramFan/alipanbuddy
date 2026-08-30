@@ -12,11 +12,7 @@ declare interface Window {
   platform: any
   WebToElectron: any
   WebToElectronCB: any
-  WebSpawnSync: any
-  WebExecSync: any
   WebShowOpenDialogSync: any
-  WebShowSaveDialogSync: any
-  WebShowItemInFolder: any
   WebPlatformSync: any
   WebClearCookies: any
   WebClearCache: any
@@ -27,13 +23,11 @@ declare interface Window {
   WebRelaunchAria: () => Promise<number>
   WebSetProgressBar: any
   WebGetCookies: any
-  WebSetCookies: any
   WebOpenWindow: any
   WebShutDown: any
   openDatabase: any
   loginfn: any
   postdataFunc: any
-  Prism: any
   winmain: number
   winworker: number
   WinMsg: any

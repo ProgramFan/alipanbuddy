@@ -3,58 +3,6 @@ import { onHideRightMenu } from '../utils/keyboardhelper'
 import { defineStore } from 'pinia'
 import { IAliGetFileModel } from '../aliapi/alimodels'
 
-export interface IPageOffice {
-  user_id: string
-  drive_id: string
-  file_id: string
-  file_name: string
-  preview_url: string
-  access_token: string
-}
-
-export interface IPagePdf {
-  user_id: string
-  drive_id: string
-  file_id: string
-  file_name: string
-  preview_url: string
-}
-
-export interface IPageEpub {
-  user_id: string
-  drive_id: string
-  file_id: string
-  file_name: string
-  preview_url: string
-}
-
-export interface IPageDocx {
-  user_id: string
-  drive_id: string
-  file_id: string
-  file_name: string
-  preview_url: string
-}
-
-export interface IPageSheet {
-  user_id: string
-  drive_id: string
-  file_id: string
-  file_name: string
-  preview_url: string
-}
-
-export interface IPageCode {
-  user_id: string
-  drive_id: string
-  file_id: string
-  file_name: string
-  file_size: number
-  code_ext: string
-  encType: string
-  password: string
-}
-
 export interface IPageImage {
   user_id: string
   drive_id: string
@@ -63,110 +11,6 @@ export interface IPageImage {
   mode: string
   password: string
   imageList: IAliGetFileModel[]
-}
-
-export interface IPageVideoXBT {
-  user_id: string
-  drive_id: string
-  file_id: string
-  file_name: string
-}
-
-export interface IPageVideoPlaylistEntry {
-  user_id: string
-  tokenfrom?: string
-  drive_id: string
-  file_id: string
-  parent_file_id: string
-  file_name: string
-  html: string
-  ext?: string
-  description?: string
-  play_cursor?: number
-  password?: string
-  encType?: string
-}
-
-export interface IPageVideoSubtitleFile {
-  file_id: string
-  name: string
-  parent_file_id: string
-  drive_id: string
-  user_id?: string
-  ext?: string
-}
-
-export interface IPageVideo {
-  user_id: string
-  tokenfrom?: string
-  drive_id: string
-  file_id: string
-  parent_file_id: string
-  parent_file_name: string
-  file_name: string
-  html: string
-  encType: string
-  password: string
-  expire_time: number
-  play_cursor: number
-  play_esposide?: number
-  media_url?: string
-  media_headers?: Record<string, string>
-  media_subtitle_sources?: Array<{ url: string, title?: string, streamIndex?: number }>
-  media_server_tracks_selectable?: boolean
-  media_server_id?: string
-  media_server_item_id?: string
-  media_server_source_id?: string
-  media_server_source_label?: string
-  media_server_play_session_id?: string
-  media_server_source_options?: Array<{ id: string, label: string, subLabel?: string }>
-  media_server_video_label?: string
-  media_server_audio_label?: string
-  media_server_subtitle_label?: string
-  media_server_video_options?: Array<{ streamIndex: number, label: string }>
-  media_server_audio_options?: Array<{ streamIndex: number, label: string }>
-  media_server_subtitle_options?: Array<{ streamIndex: number, label: string }>
-  media_server_playlist_label?: string
-  media_server_episode_playlist?: Array<{ id: string, title: string }>
-  media_server_chapters?: Array<{ start: number, end: number, title: string }>
-  custom_playlist_label?: string
-  custom_playlist?: IPageVideoPlaylistEntry[]
-  library_subtitle_files?: IPageVideoSubtitleFile[]
-}
-
-export interface IPageMusicTrack {
-  user_id: string
-  tokenfrom?: string
-  drive_id: string
-  file_id: string
-  parent_file_id: string
-  file_name: string
-  ext?: string
-  size?: number
-  category?: string
-  icon?: string
-  thumbnail?: string
-  description?: string
-  duration_ms?: number
-  encType?: string
-  password?: string
-  local_url?: string
-  media_server_id?: string
-  media_server_item_id?: string
-  media_server_source_id?: string
-}
-
-export interface IPageMusic {
-  user_id: string
-  tokenfrom?: string
-  drive_id: string
-  file_id: string
-  parent_file_id: string
-  parent_file_name: string
-  file_name: string
-  encType: string
-  password: string
-  playlist: IPageMusicTrack[]
 }
 
 export interface AppState {
@@ -181,16 +25,7 @@ export interface AppState {
   appShutDown: boolean
 
 
-  pageOffice?: IPageOffice
-  pagePdf?: IPagePdf
-  pageEpub?: IPageEpub
-  pageDocx?: IPageDocx
-  pageSheet?: IPageSheet
-  pageCode?: IPageCode
   pageImage?: IPageImage
-  pageVideoXBT?: IPageVideoXBT
-  pageVideo?: IPageVideo
-  pageMusic?: IPageMusic
 }
 
 const useAppStore = defineStore('app', {
@@ -203,10 +38,6 @@ const useAppStore = defineStore('app', {
       ['down', 'DowningRight'],
       ['share', 'ShareSiteRight'],
       ['rss', 'RssXiMa'],
-      ['media', 'MediaLibrary'],
-      ['media-server', 'MediaServerWorkspace'],
-      ['music', 'MusicLibrary'],
-      ['book', 'BookLibrary'],
       ['setting', 'SettingUI']
     ]),
     appDark: false,
@@ -256,10 +87,6 @@ const useAppStore = defineStore('app', {
           ['down', 'DowningRight'],
           ['share', 'ShareSiteRight'],
           ['rss', 'RssXiMa'],
-          ['media', 'MediaLibrary'],
-          ['media-server', 'MediaServerWorkspace'],
-          ['music', 'MusicLibrary'],
-          ['book', 'BookLibrary'],
           ['setting', 'SettingUI']
         ])
       })
@@ -308,22 +135,6 @@ const useAppStore = defineStore('app', {
           break
         }
         case 'rss': {
-          this.appTab = 'media'
-          break
-        }
-        case 'media': {
-          this.appTab = 'media-server'
-          break
-        }
-        case 'media-server': {
-          this.appTab = 'music'
-          break
-        }
-        case 'music': {
-          this.appTab = 'book'
-          break
-        }
-        case 'book': {
           this.appTab = 'setting'
           DebugLog.aLoadFromDB()
           break
@@ -365,7 +176,7 @@ const useAppStore = defineStore('app', {
           break
         }
         case 'setting': {
-          next(this.appTabMenuMap, this.appTab, ['SettingUI', 'SettingAccount', 'SettingSecurity', 'SettingPlay', 'SettingPan', 'SettingDown', 'SettingUpload', 'SettingWebDav', 'SettingDebug', 'SettingProxy', 'SettingAria', 'SettingDownloadAdvanced', 'SettingAPI', 'SettingLog'])
+          next(this.appTabMenuMap, this.appTab, ['SettingUI', 'SettingAccount', 'SettingSecurity', 'SettingPan', 'SettingDown', 'SettingDownloadAdvanced', 'SettingUpload', 'SettingDebug', 'SettingProxy', 'SettingAria', 'SettingLog'])
           const menu = this.appTabMenuMap.get('setting')!
           document.getElementById(menu)?.scrollIntoView()
           break

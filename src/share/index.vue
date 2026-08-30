@@ -12,24 +12,19 @@ import FollowingDAL from './following/FollowingDAL'
 import { computed, ref } from 'vue'
 import ShareHistoryRight from './share/ShareHistoryRight.vue'
 import ShareBottleFishRight from './share/ShareBottleFishRight.vue'
-import { isAliyunUser, isQuarkUser } from '../aliapi/utils'
+import { isAliyunUser } from '../aliapi/utils'
 import { t } from '../i18n'
 
 const appStore = useAppStore()
 const hideLeft = ref(false)
 const userStore = useUserStore()
 const isAliyunAccount = computed(() => isAliyunUser(userStore.user_id || userStore.GetUserToken))
-const isQuarkAccount = computed(() => isQuarkUser(userStore.user_id || userStore.GetUserToken))
 withDefaults(defineProps<{ sidebarVisible?: boolean }>(), { sidebarVisible: true })
 
 appStore.$subscribe(() => {
   const appPage = appStore.GetAppTabMenu
   const uid = userStore.user_id
-  if (!isAliyunAccount.value) {
-    if (isQuarkAccount.value && appPage == 'OtherShareRight') ShareDAL.aReloadOtherShare()
-    if (appPage == 'MyShareRight') ShareDAL.aReloadMyShare(uid, false)
-    return
-  }
+  if (!isAliyunAccount.value) return
   if (appPage == 'ShareSiteRight') ShareDAL.aLoadShareSite()
   if (appPage == 'MyShareRight') ShareDAL.aReloadMyShare(uid, false)
   if (appPage == 'ShareHistoryRight') ShareDAL.aReloadShareHistory(uid, false)
@@ -85,10 +80,6 @@ const handleHideLeft = (val: boolean) => {
       </a-menu>
       <a-menu v-else :selected-keys='[appStore.GetAppTabMenu]' :style="{ width: '100%' }" class='xbyleftmenu single-boundary-sidebar-menu'
               @update:selected-keys="appStore.toggleTabMenu('share', $event[0])">
-        <a-menu-item v-if="isQuarkAccount" key='OtherShareRight'>
-          <template #icon><IconFont name="iconfenxiang1" /></template>
-          {{ t('share.imported') }}
-        </a-menu-item>
         <a-menu-item key='MyShareRight'>
           <template #icon><IconFont name="iconfenxiang" /></template>
           {{ t('share.mine') }}
@@ -102,9 +93,6 @@ const handleHideLeft = (val: boolean) => {
           <ShareSiteRight @hide-left='handleHideLeft' />
         </a-tab-pane>
         <a-tab-pane v-if="isAliyunAccount" key='OtherShareRight' title='2'>
-          <OtherShareRight />
-        </a-tab-pane>
-        <a-tab-pane v-if="isQuarkAccount" key='OtherShareRight' title='2'>
           <OtherShareRight />
         </a-tab-pane>
         <a-tab-pane key='MyShareRight' title='3'>

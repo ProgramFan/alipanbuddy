@@ -43,11 +43,7 @@ const inputsearch = ref()
 const appStore = useAppStore()
 const winStore = useWinStore()
 const othershareStore = useOtherShareStore()
-const shareUrl = (share: IOtherShareLinkModel) => share.share_id.startsWith('quark:')
-  ? `https://pan.quark.cn/s/${share.share_id.replace('quark:', '')}`
-  : share.share_id.startsWith('guangya:')
-    ? `https://www.guangyapan.com/s/${share.share_id.replace('guangya:', '')}`
-  : `https://www.aliyundrive.com/s/${share.share_id}`
+const shareUrl = (share: IOtherShareLinkModel) => `https://www.aliyundrive.com/s/${share.share_id}`
 
 const keyboardStore = useKeyboardStore()
 keyboardStore.$subscribe((_m: any, state: KeyboardState) => {
@@ -276,7 +272,7 @@ const handleDeleteSelectedLink = (delby: any) => {
 const handleDaoRuLink = () => {
   daoruModel.value = true
   const txt = getFromClipboard()
-  if (txt.indexOf('.aliyundrive.com/s/') > 0 || txt.indexOf('.alipan.com/s/') > 0 || txt.indexOf('pan.quark.cn/s/') >= 0) {
+  if (txt.indexOf('.aliyundrive.com/s/') > 0 || txt.indexOf('.alipan.com/s/') > 0) {
     daoruModelText.value = txt
     setTimeout(() => {
       document.getElementById('OSRDaoRuLink')?.focus()

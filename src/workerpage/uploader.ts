@@ -13,8 +13,6 @@ import { humanSize, Sleep } from '../utils/format'
 import { RuningList } from './uiupload'
 import path from 'path'
 import fspromises from 'fs/promises'
-import { resolveDriveProvider } from '../utils/driveProvider'
-import { uploadProviderFile } from '../drive/providerUpload'
 
 export async function StartUpload(fileui: IUploadingUI): Promise<void> {
   try {
@@ -40,34 +38,9 @@ async function startUpload(fileui: IUploadingUI): Promise<void> {
     fileui.Info.failedMessage = '找不到账号,无法继续'
     return
   }
-  const route = resolveDriveProvider(fileui.user_id, fileui.drive_id, token.tokenfrom)
-  if (!route.isValid) {
-    fileui.Info.uploadState = 'error'
-    fileui.Info.failedCode = 505
-    fileui.Info.failedMessage = route.error
-    return
-  }
   // 创建文件夹
   if (fileui.File.isDir) {
     return creatDirAndReadChildren(fileui)
-  }
-  if (route.provider !== 'aliyun') {
-    if (!(await checkFileSize(fileui))) return
-    const uploadResult = await uploadProviderFile(route.provider, fileui)
-    if (!uploadResult) {
-      fileui.Info.uploadState = 'error'
-      fileui.Info.failedCode = 505
-      fileui.Info.failedMessage = route.provider === 'pikpak' ? 'PikPak 本地上传暂不支持，请使用离线下载导入 http/https 或 magnet 链接' : '当前网盘暂不支持本地文件上传'
-      return
-    }
-    if (uploadResult === 'success') fileui.Info.uploadState = 'success'
-    else if (!fileui.IsRunning) fileui.Info.uploadState = '已暂停'
-    else if (fileui.Info.uploadState === 'running' || fileui.Info.uploadState === 'hashing') {
-      fileui.Info.uploadState = 'error'
-      fileui.Info.failedCode = 505
-      fileui.Info.failedMessage = uploadResult
-    }
-    return
   }
   if (!(await checkFileSize(fileui))) return
   const uploadInfo: IUploadInfo = {
@@ -162,14 +135,14 @@ interface ReadConfig {
 }
 
 const createRemoteFolder = (readConfig: ReadConfig, name: string) =>
-  AliFileCmd.ApiCreatNewForder(readConfig.user_id, readConfig.drive_id, readConfig.parent_file_id, name, readConfig.encType, 'refuse', { parentDescription: readConfig.parent_description })
+  AliFileCmd.ApiCreatNewForder(readConfig.user_id, readConfig.drive_id, readConfig.parent_file_id, name, readConfig.encType, 'refuse')
 
 async function creatDirAndReadChildren(fileui: IUploadingUI): Promise<void> {
   fileui.Info.uploadState = '读取中'
 
   let uploaded_file_id = ''
   if (fileui.File.IsRoot) {
-    const data = await AliFileCmd.ApiCreatNewForder(fileui.user_id, fileui.drive_id, fileui.parent_file_id, fileui.File.name, fileui.encType, 'refuse', { parentDescription: fileui.parent_description })
+    const data = await AliFileCmd.ApiCreatNewForder(fileui.user_id, fileui.drive_id, fileui.parent_file_id, fileui.File.name, fileui.encType, 'refuse')
     if (data.error) {
       fileui.Info.uploadState = 'error'
       fileui.Info.failedCode = 503

@@ -18,38 +18,9 @@ pnpm config set registry https://registry.npmmirror.com
 
 #### 3.环境配置
 
-##### 3.1 配置网盘 API 密钥
+##### 3.1 配置阿里云盘 API 密钥
 
-编辑 `src/config.ts` 文件，配置各网盘平台的 APP_ID 和 APP_SECRET：
-
-```typescript
-export default class Config {
-  // 阿里云盘配置
-  static ALIYUN_APP_ID = 'your_aliyun_app_id'
-  static ALIYUN_APP_SECRET = 'your_aliyun_app_secret'
-
-  // 百度网盘配置
-  static BAIDU_APP_ID = 'your_baidu_app_id'
-  static BAIDU_APP_SECRET = 'your_baidu_app_secret'
-  static BAIDU_PCS_APP_ID = 'your_baidu_pcs_app_id'
-
-  // 123网盘配置
-  static PAN123_APP_ID = 'your_123pan_app_id'
-  static PAN123_APP_SECRET = 'your_123pan_app_secret'
-
-  // 115网盘配置
-  static PAN115_APP_ID = 'your_115pan_app_id'
-  static PAN115_APP_SECRET = 'your_115pan_app_secret'
-
-  // macOS 代码签名配置（如需签名打包）
-  static APPLE_ID = 'your-apple-id@example.com'
-  static APPLE_PASSWORD = 'your-app-specific-password'
-  static APPLE_TEAM_ID = 'your-team-id'
-
-  // TMDB 配置（可选）
-  static TMDB_API_KEY = 'your_tmdb_api_key'
-}
-```
+复制 `.env.example` 为 `.env.local`，填写 `ALIYUN_APP_ID` / `ALIYUN_APP_SECRET`，然后执行 `pnpm run secrets:generate`（`pnpm dev` / `pnpm run build` 会自动执行）生成 `src/secrets.generated.ts`。
 
 ##### 3.2 获取网盘 API 密钥
 

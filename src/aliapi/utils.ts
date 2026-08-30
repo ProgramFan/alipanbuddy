@@ -1,5 +1,4 @@
 import { useFootStore, useSettingStore } from '../store'
-import UserDAL from '../user/userdal'
 import DebugLog from '../utils/debuglog'
 import { Sleep } from '../utils/format'
 import message from '../utils/message'
@@ -24,7 +23,7 @@ export function GetDriveType(user_id: string, drive_id: string): any {
   return getDriveType(user_id, drive_id)
 }
 
-export { isAliyunUser, isBaiduUser, isBoxUser, isCloud123User, isCloud139User, isCloud189User, isDrive115User, isDropboxUser, isGoogleUser, isGuangyaUser, isNonAliyunProvider, isOneDriveUser, isPikPakUser, isQuarkUser, isRemoteDriveUser } from '../utils/driveIdentity'
+export { isAliyunUser } from '../utils/driveProvider'
 
 export function GetSignature(nonce: number, user_id: string, deviceId: string) {
   const toHex = (bytes: Uint8Array) => {

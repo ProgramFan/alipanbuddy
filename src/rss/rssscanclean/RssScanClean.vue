@@ -4,10 +4,8 @@ import { Checkbox as AntdCheckbox } from 'ant-design-vue'
 import { useUserStore, useWinStore } from '../../store'
 import UserDAL from '../../user/userdal'
 import message from '../../utils/message'
-import { getWebDavConnections } from '../../utils/webdavClient'
 import { deleteDriveLargeFiles, scanDriveLargeFiles, type LargeFileItem, type LargeFileScanMode } from '../../utils/drive-tools/largeFiles'
 import type { DuplicateDriveTarget } from '../../utils/drive-tools/duplicates'
-import { driveToolDriveIdForPlatform, driveToolRootIdFor } from '../../utils/drive-tools/directLinks'
 
 const userStore = useUserStore()
 const winStore = useWinStore()
@@ -24,8 +22,6 @@ const selected = ref(new Set<string>())
 
 const driveKey = (target: DuplicateDriveTarget) => `${target.userId}\n${target.driveId}`
 const fileKey = (file: LargeFileItem) => `${file.userId}\n${file.driveId}\n${file.fileId}`
-const isReadOnlyFile = (file: LargeFileItem) => file.driveId.startsWith('webdav:')
-const hasWritableResults = computed(() => files.value.some(file => !isReadOnlyFile(file)))
 
 const loadDriveOptions = async () => {
   const users = await UserDAL.GetUserListFromDB()
@@ -33,7 +29,6 @@ const loadDriveOptions = async () => {
   const seen = new Set<string>()
   for (const user of users) {
     if (!user?.user_id || !user?.access_token) continue
-    const platform = user.tokenfrom || 'aliyun'
     const name = user.nick_name || user.user_name || user.name || user.user_id
     const add = (driveId: string, rootId: string, suffix = '') => {
       if (!driveId) return
@@ -44,17 +39,9 @@ const loadDriveOptions = async () => {
         options.push(target)
       }
     }
-    if (platform === 'aliyun') {
-      add(user.resource_drive_id, 'resource_root', ' / 资源盘')
-      add(user.backup_drive_id, 'backup_root', ' / 备份盘')
-      add(user.default_drive_id, 'root', ' / 默认盘')
-    } else {
-      const driveId = driveToolDriveIdForPlatform(platform, user.default_drive_id)
-      add(driveId, driveToolRootIdFor(driveId), ` / ${platform}`)
-    }
-  }
-  for (const connection of getWebDavConnections()) {
-    options.push({ userId: connection.id, driveId: `webdav:${connection.id}`, rootId: '/', name: `${connection.name} / WebDAV` })
+    add(user.resource_drive_id, 'resource_root', ' / 资源盘')
+    add(user.backup_drive_id, 'backup_root', ' / 备份盘')
+    add(user.default_drive_id, 'root', ' / 默认盘')
   }
   driveOptions.value = options
   if (!selectedDriveKeys.value.length && options.length) selectedDriveKeys.value = [driveKey(options[0])]
@@ -89,7 +76,6 @@ const handleScan = async () => {
 }
 
 const toggleFile = (file: LargeFileItem) => {
-  if (isReadOnlyFile(file)) return
   const next = new Set(selected.value)
   const key = fileKey(file)
   if (next.has(key)) next.delete(key)
@@ -98,14 +84,14 @@ const toggleFile = (file: LargeFileItem) => {
 }
 
 const toggleAll = () => {
-  const keys = files.value.filter(file => !isReadOnlyFile(file)).map(fileKey)
+  const keys = files.value.map(fileKey)
   const allSelected = keys.length > 0 && keys.every(key => selected.value.has(key))
   selected.value = allSelected ? new Set() : new Set(keys)
 }
 
 const handleDelete = async () => {
   if (deleting.value) return
-  const selectedFiles = files.value.filter(file => !isReadOnlyFile(file) && selected.value.has(fileKey(file)))
+  const selectedFiles = files.value.filter(file => selected.value.has(fileKey(file)))
   if (!selectedFiles.length) {
     message.warning('请先勾选需要删除的文件')
     return
@@ -164,8 +150,8 @@ watch(userStore.$state, async () => {
           <template #suffix>MB</template>
         </a-input-number>
         <a-button type="primary" :loading="loading" @click="handleScan">开始扫描</a-button>
-        <a-button v-if="hasWritableResults" :disabled="!files.length" @click="toggleAll">全选/取消</a-button>
-        <a-button v-if="hasWritableResults" status="danger" :disabled="!selected.size" :loading="deleting" @click="handleDelete">删除选中</a-button>
+        <a-button v-if="files.length" :disabled="!files.length" @click="toggleAll">全选/取消</a-button>
+        <a-button v-if="files.length" status="danger" :disabled="!selected.size" :loading="deleting" @click="handleDelete">删除选中</a-button>
       </div>
       <div class="scan-hint">按当前阈值递归扫描所选网盘。不同网盘返回的分类信息可能不同，文档/压缩包模式会同时参考文件扩展名。</div>
       <pre v-if="result" class="scan-report">{{ result }}</pre>
@@ -174,7 +160,7 @@ watch(userStore.$state, async () => {
           <template #empty><a-empty description="扫描结束，未发现大文件" /></template>
           <template #item="{ item }">
             <div :key="fileKey(item)" class="largefile-item">
-              <AntdCheckbox v-if="!isReadOnlyFile(item)" :checked="selected.has(fileKey(item))" @change="toggleFile(item)" />
+              <AntdCheckbox :checked="selected.has(fileKey(item))" @change="toggleFile(item)" />
               <IconFont :name="item.icon" aria-hidden="true" />
               <div class="largefile-name" :title="item.name">{{ item.name }}</div>
               <div class="largefile-path" :title="item.path">{{ item.path }}</div>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import {
   KeyboardState,
   MouseState,
@@ -23,10 +23,6 @@ import { Tooltip as AntdTooltip } from 'ant-design-vue'
 import { IStateDownFile } from './DownDAL'
 import { TestButton } from '../utils/mosehelper'
 import { xorWith } from 'lodash'
-import { isLocalVideoPath } from './integration/localVideoPlayback'
-import { resolveDownloadOpenPath } from './integration/btDownloadTarget'
-import UserDAL from '../user/userdal'
-import { getCloudDownloadSourceLabel } from './cloudDownloadSource'
 import { t } from '../i18n'
 
 const viewlist = ref()
@@ -35,15 +31,8 @@ const appStore = useAppStore()
 const winStore = useWinStore()
 const downedStore = useDownedStore()
 const selectedItems = computed(() => downedStore.ListDataShow.filter(item => downedStore.ListSelected.has(item.DownID)))
-const canOpenSelectedLocal = computed(() => selectedItems.value.some(item => !item.Info.offlineProvider && !item.Info.ariaRemote))
-const isCloudDownload = (file: IStateDownFile) => !!file.Info.offlineProvider
-const accountNames = ref<Record<string, string>>({})
-const cloudSourceLabel = (item: IStateDownFile) => getCloudDownloadSourceLabel(item.Info, accountNames.value[item.Info.user_id])
+const canOpenSelectedLocal = computed(() => selectedItems.value.some(item => !item.Info.ariaRemote))
 
-onMounted(async () => {
-  const users = await UserDAL.GetUserListFromDB().catch(() => [])
-  accountNames.value = Object.fromEntries(users.filter((user) => user?.user_id).map((user) => [user.user_id, user.nick_name || user.user_name || user.name || user.user_id]))
-})
 
 const keyboardStore = useKeyboardStore()
 keyboardStore.$subscribe((_m: any, state: KeyboardState) => {
@@ -185,16 +174,13 @@ const handleSelect = (file_id: string, event: any, isCtrl: boolean = false) => {
 const handleDelete = async () => await downedStore.mDeleteDowned([...downedStore.ListSelected])
 
 const handleOpenFile = (file: IStateDownFile | null) => {
-  if (file && isCloudDownload(file)) return
   downedStore.mOpenUploadedFile(file, [...downedStore.ListSelected], false)
 }
 
 const handleOpenDir = (file: IStateDownFile | null) => {
-  if (file && isCloudDownload(file)) return
   downedStore.mOpenUploadedFile(file, [...downedStore.ListSelected], true)
 }
 
-const isDownloadedVideo = (file: IStateDownFile) => !file.Info.isDir && isLocalVideoPath(resolveDownloadOpenPath(file.Info))
 
 const handleDeleteAll = async () => await downedStore.mDeleteAllDowned()
 
@@ -336,19 +322,15 @@ const handleRightClick = (e: { event: MouseEvent; node: any }) => {
             <div class="fileicon">
               <IconFont :name="item.Info.icon" aria-hidden="true" />
             </div>
-            <div class="filename" @dblclick.stop="!isCloudDownload(item) && handleOpenFile(item)">
-              <div :title="isCloudDownload(item) ? t('down.savedInCloud') : item.Info.localFilePath || t('down.doubleClickOpen')">
+            <div class="filename" @dblclick.stop="handleOpenFile(item)">
+              <div :title="item.Info.localFilePath || t('down.doubleClickOpen')">
                 {{ item.Info.name }}
-                <span v-if='item.Info.offlineProvider' class='cloud-origin' :title='cloudSourceLabel(item)'>
-                  <IconFont name='iconcloud-download' aria-hidden='true' />
-                </span>
-                <span v-if='item.Info.offlineProvider' class='cloud-source'>{{ cloudSourceLabel(item) }}</span>
               </div>
             </div>
             <div class="cell filesize">{{ item.Info.sizestr }}</div>
             <div class='toppanbtn'>
-              <a :title="isDownloadedVideo(item) ? t('down.playVideo') : t('down.openFile')" v-if='!item.Info.ariaRemote && !isCloudDownload(item)' @click="handleOpenFile(item)"><IconFont name="iconwenjian" /></a>&nbsp;&nbsp;
-              <a :title="t('down.openFolder')" v-if='!item.Info.ariaRemote && !isCloudDownload(item)' @click="handleOpenDir(item)"><IconFont name="iconfolder" /></a>&nbsp;&nbsp;
+              <a :title="t('down.openFile')" v-if='!item.Info.ariaRemote' @click="handleOpenFile(item)"><IconFont name="iconwenjian" /></a>&nbsp;&nbsp;
+              <a :title="t('down.openFolder')" v-if='!item.Info.ariaRemote' @click="handleOpenDir(item)"><IconFont name="iconfolder" /></a>&nbsp;&nbsp;
               <a :title="t('file.delete')" @click="handleDelete"><IconFont name="icondelete" /></a>&nbsp;&nbsp;
             </div>
           </div>

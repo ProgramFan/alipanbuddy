@@ -1,21 +1,10 @@
 import DebugLog from '../utils/debuglog'
 import message from '../utils/message'
 import AliHttp, { IUrlRespData } from './alihttp'
-import { IAliFileItem, IAliGetFileModel } from './alimodels'
+import { IAliFileItem } from './alimodels'
 import AliDirFileList, { IAliFileResp } from './dirfilelist'
-import { listProviderItems } from '../drive/providerList'
-import UserDAL from '../user/userdal'
-import { resolveDriveProvider } from '../utils/driveProvider'
 
 export default class AliTrash {
-
-  private static appendProviderItems(dir: IAliFileResp, items: IAliGetFileModel[]) {
-    for (const item of items) {
-      if (dir.itemsKey.has(item.file_id)) continue
-      dir.items.push(item)
-      dir.itemsKey.add(item.file_id)
-    }
-  }
 
   static async ApiTrashFileListOnePageForClean(orderby: string, order: string, dir: IAliFileResp): Promise<boolean> {
     const url =
@@ -66,16 +55,6 @@ export default class AliTrash {
       dirName: dirName
     }
 
-    const route = resolveDriveProvider(user_id, drive_id, UserDAL.GetUserToken(user_id)?.tokenfrom)
-    if (!route.isValid) return dir
-    if (route.provider !== 'aliyun' && route.provider !== 'webdav' && route.provider !== 'alist') {
-      const result = await listProviderItems(route.provider, user_id, drive_id, dirID, type !== 'folder')
-      if (!result) return dir
-      dir.items = max > 0 ? result.items.slice(0, max) : result.items
-      dir.itemsKey = new Set(dir.items.map(item => item.file_id))
-      dir.itemsTotal = result.total
-      return dir
-    }
 
     if (!order) order = 'updated_at desc'
     const orders = order.split(' ')
@@ -149,15 +128,6 @@ export default class AliTrash {
   }
 
   static async ApiFileListOnePageAria(orderby: string, order: string, dir: IAliFileResp) {
-    const route = resolveDriveProvider(dir.m_user_id, dir.m_drive_id, UserDAL.GetUserToken(dir.m_user_id)?.tokenfrom)
-    if (!route.isValid) return false
-    if (route.provider !== 'aliyun' && route.provider !== 'webdav' && route.provider !== 'alist') {
-      const result = await listProviderItems(route.provider, dir.m_user_id, dir.m_drive_id, dir.dirID, true)
-      if (!result) return false
-      AliTrash.appendProviderItems(dir, result.items)
-      dir.next_marker = ''
-      return true
-    }
     const url = 'adrive/v3/file/list'
     const postdata = {
       drive_id: dir.m_drive_id,

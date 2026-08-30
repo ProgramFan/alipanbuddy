@@ -30,7 +30,6 @@ export interface FootState {
   taskList: AsyncModel[]
 
 
-  audioUrl: string
 
   rightWidth: number
 
@@ -62,7 +61,6 @@ const useFootStore = defineStore('foot', {
     taskVisible: false,
     sponsorVisible: false,
     taskList: [],
-    audioUrl: '',
     rightWidth: 301,
     panDirInfo: '',
     uploadingInfo: '',
@@ -94,7 +92,6 @@ const useFootStore = defineStore('foot', {
       return ''
     },
     GetInfo(state: FootState): string {
-      if (state.audioUrl) return ''
       const appTab = useAppStore().appTab
       const appPage = useAppStore().GetAppTabMenu
       if (appTab == 'pan') return state.panDirInfo
@@ -184,9 +181,6 @@ const useFootStore = defineStore('foot', {
       this.downloadTotalSpeed = title
     },
 
-    mSaveAudioUrl(url: string) {
-      this.audioUrl = url
-    },
 
     mSaveLoading(title: string) {
       this.loadingInfo = title

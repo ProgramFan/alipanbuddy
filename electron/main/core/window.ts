@@ -12,7 +12,6 @@ export const AppWindow: {
   previewWindows: Set<BrowserWindow>
   uploadWindow: BrowserWindow | undefined
   downloadWindow: BrowserWindow | undefined
-  readerWindow: BrowserWindow | undefined
   appTray: Tray | undefined
   winWidth: number
   winHeight: number
@@ -22,7 +21,6 @@ export const AppWindow: {
   previewWindows: new Set(),
   uploadWindow: undefined,
   downloadWindow: undefined,
-  readerWindow: undefined,
   appTray: undefined,
   winWidth: 0,
   winHeight: 0,
@@ -138,7 +136,7 @@ export function createMainWindow() {
     }
   })
 
-  AppWindow.mainWindow.on('closed', (event: any) => {
+  AppWindow.mainWindow.on('closed', () => {
     app.quit()
   })
 
@@ -162,32 +160,10 @@ export function createMainWindow() {
 
   AppWindow.mainWindow.webContents.on('render-process-gone', function(event, details) {
     if (details.reason == 'crashed' || details.reason == 'oom' || details.reason == 'killed') {
-      ShowErrorAndRelaunch('(⊙o⊙)？小白羊遇到错误崩溃了', details.reason)
+      ShowErrorAndRelaunch('(⊙o⊙)？小白羊遇到错误崩溃了', String(details.reason))
     }
   })
 
-}
-
-async function openDefaultAppSettings() {
-  if (is.windows()) {
-    try {
-      await shell.openExternal('ms-settings:defaultapps')
-      return
-    } catch {
-      // Fall through to the platform-neutral instructions below.
-    }
-  }
-
-  const { dialog } = await import('electron')
-  const isMac = is.macOS()
-  await dialog.showMessageBox({
-    type: 'info',
-    title: '设置默认应用',
-    message: isMac ? '请在 Finder 中选择 BoxPlayer 作为文件打开方式' : '请在系统中选择 BoxPlayer 作为默认应用',
-    detail: isMac
-      ? '在 Finder 中选中视频、音频或书籍文件，按 ⌘I，在“打开方式”中选择 BoxPlayer；如需应用到同类文件，点击“全部更改…”。'
-      : '请在系统设置或文件管理器中，将所需的视频、音频或书籍格式关联到 BoxPlayer。'
-  })
 }
 
 export function createTray() {
@@ -201,40 +177,6 @@ export function createTray() {
           AppWindow.mainWindow.focus()
         } else {
           createMainWindow()
-        }
-      }
-    },
-    {
-      label: '系统默认应用设置',
-      click: () => void openDefaultAppSettings()
-    },
-    {
-      label: '安装命令行工具',
-      click: async function() {
-        const { ipcMain, dialog } = await import('electron')
-        const win = AppWindow.mainWindow
-        try {
-          const result = await win?.webContents.executeJavaScript(
-            `window.TvBoxInvoke('InstallCli', {})`
-          )
-          if (result?.ok) {
-            dialog.showMessageBox({
-              type: 'info',
-              title: '安装成功',
-              message: result.message || '命令行工具已安装',
-              detail: (result.paths || []).join('\n'),
-            })
-          } else if (result?.needsElevation) {
-            dialog.showMessageBox({
-              type: 'warning',
-              title: '权限不足',
-              message: result.error,
-            })
-          } else {
-            dialog.showErrorBox('安装失败', result?.error || '未知错误')
-          }
-        } catch (e: any) {
-          dialog.showErrorBox('安装失败', e?.message || '未知错误')
         }
       }
     },
@@ -520,72 +462,3 @@ ipcMain.on('EnsureTransferWorker', (_event, type: unknown) => {
   if (type === 'upload') createUpload()
   else if (type === 'download') createDownload()
 })
-
-export function createReaderWindow(bookData: any) {
-  if (AppWindow.readerWindow && !AppWindow.readerWindow.isDestroyed()) {
-    AppWindow.readerWindow.focus()
-    AppWindow.readerWindow.webContents.send('setPage', { page: 'PageBookReader', data: bookData })
-    return
-  }
-
-  const display = screen.getPrimaryDisplay()
-  const { width: screenWidth, height: screenHeight } = display.workAreaSize
-  const winWidth = Math.min(Math.round(screenWidth * 0.75), 1200)
-  const winHeight = Math.min(Math.round(screenHeight * 0.85), 900)
-
-  AppWindow.readerWindow = new BrowserWindow({
-    show: false,
-    width: winWidth,
-    height: winHeight,
-    minWidth: 680,
-    minHeight: 500,
-    center: true,
-    icon: getStaticPath('icon_256x256.ico'),
-    useContentSize: true,
-    frame: false,
-    transparent: false,
-    title: 'BoxPlayer 阅读器',
-    backgroundColor: '#1a1a1a',
-    webPreferences: {
-      spellcheck: false,
-      devTools: true,
-      webviewTag: true,
-      nodeIntegration: true,
-      nodeIntegrationInWorker: true,
-      sandbox: false,
-      webSecurity: false,
-      allowRunningInsecureContent: true,
-      contextIsolation: false,
-      backgroundThrottling: false,
-      enableWebSQL: true,
-      disableBlinkFeatures: 'OutOfBlinkCors,SameSiteByDefaultCookies,CookiesWithoutSameSiteMustBeSecure',
-      preload: getAsarPath('dist/electron/preload/index.js')
-    }
-  })
-
-  AppWindow.readerWindow.removeMenu()
-
-  if (DEBUGGING) {
-    AppWindow.readerWindow.loadURL(process.env.VITE_DEV_SERVER_URL!, { userAgent: ua, httpReferrer: Referer })
-  } else {
-    AppWindow.readerWindow.loadURL('file://' + getAsarPath('dist/main.html'), { userAgent: ua, httpReferrer: Referer })
-  }
-
-  AppWindow.readerWindow.on('ready-to-show', () => {
-    AppWindow.readerWindow!.webContents.send('setPage', { page: 'PageBookReader', data: bookData })
-    AppWindow.readerWindow!.show()
-  })
-
-  AppWindow.readerWindow.on('closed', () => {
-    AppWindow.readerWindow = undefined
-  })
-
-  handleWinCmd(AppWindow.readerWindow)
-
-  AppWindow.readerWindow.webContents.on('will-navigate', (e, url) => {
-    e.preventDefault()
-    if (!url.includes(process.env.VITE_DEV_SERVER_URL || '')) {
-      shell.openExternal(url)
-    }
-  })
-}

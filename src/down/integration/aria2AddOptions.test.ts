@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { buildAriaAddOptions, resolveProviderDownloadSplit, shouldCheckExistingDownloadTarget } from './aria2AddOptions'
+import { buildAriaAddOptions } from './aria2AddOptions'
 
 describe('buildAriaAddOptions', () => {
-  it('keeps HTTP-only options on URI downloads', () => {
+  it('builds HTTP download options', () => {
     expect(buildAriaAddOptions({
       gid: 'g1',
       dir: '/tmp',
@@ -10,8 +10,7 @@ describe('buildAriaAddOptions', () => {
       referer: 'https://www.aliyundrive.com/drive',
       userAgent: 'Chrome',
       headers: ['Authorization: Bearer token'],
-      outFileName: 'movie.mkv',
-      sourceType: 'url'
+      outFileName: 'movie.mkv'
     })).toEqual({
       gid: 'g1',
       dir: '/tmp',
@@ -23,51 +22,7 @@ describe('buildAriaAddOptions', () => {
     })
   })
 
-  it('does not pass HTTP-only options to local torrent tasks', () => {
-    expect(buildAriaAddOptions({
-      gid: 'g1',
-      dir: '/tmp',
-      split: 4,
-      referer: 'https://www.aliyundrive.com/drive',
-      userAgent: 'Chrome',
-      headers: ['User-Agent: Chrome', 'Authorization: Bearer token'],
-      outFileName: 'movie.mkv',
-      sourceType: 'torrent'
-    })).toEqual({
-      gid: 'g1',
-      dir: '/tmp',
-      split: 4
-    })
-  })
-
-  it('passes selected torrent file indexes to BT tasks', () => {
-    expect(buildAriaAddOptions({
-      gid: 'g1',
-      dir: '/tmp',
-      split: 4,
-      referer: '',
-      userAgent: '',
-      headers: [],
-      outFileName: '',
-      sourceType: 'torrent',
-      selectFile: '1,3'
-    })).toEqual({
-      gid: 'g1',
-      dir: '/tmp',
-      split: 4,
-      'select-file': '1,3'
-    })
-  })
-
-  it('allows BT tasks to resume when their target directory already exists', () => {
-    expect(shouldCheckExistingDownloadTarget('magnet')).toBe(false)
-    expect(shouldCheckExistingDownloadTarget('torrent')).toBe(false)
-    expect(shouldCheckExistingDownloadTarget('url')).toBe(true)
-  })
-
-  it('uses one connection for Quark signed downloads while preserving the configured split elsewhere', () => {
-    expect(resolveProviderDownloadSplit('quark', 8)).toBe(1)
-    expect(resolveProviderDownloadSplit('drive115', 8)).toBe(1)
-    expect(resolveProviderDownloadSplit('aliyun', 8)).toBe(8)
+  it('omits empty referer, user agent and headers', () => {
+    expect(buildAriaAddOptions({ gid: 'g1', dir: '/tmp', split: 1, referer: '', userAgent: '', headers: [], outFileName: 'a.bin' })).toEqual({ gid: 'g1', dir: '/tmp', split: 1, out: 'a.bin' })
   })
 })

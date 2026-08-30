@@ -1,5 +1,5 @@
 <script setup lang='ts'>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import {
   KeyboardState,
   MouseState,
@@ -7,7 +7,6 @@ import {
   useDowningStore,
   useKeyboardStore,
   useMouseStore,
-  useUserStore,
   useUploadingStore,
   useWinStore
 } from '../store'
@@ -24,39 +23,17 @@ import {
 import { Tooltip as AntdTooltip } from 'ant-design-vue'
 import { TestButton } from '../utils/mosehelper'
 import { xorWith } from 'lodash'
-import UrlDownloadModal from './UrlDownloadModal.vue'
 import TaskDetailDrawer from './TaskDetailDrawer.vue'
-import TorrentFileSelector from './TorrentFileSelector.vue'
-import DragDropZone from '../components/DragDropZone.vue'
-import UserDAL from '../user/userdal'
-import { getCloudDownloadSourceLabel } from './cloudDownloadSource'
-import { IStateDownFile } from './DownDAL'
 import { t } from '../i18n'
 
 const viewlist = ref()
 const inputsearch = ref()
-const urlDownloadVisible = ref(false)
 const taskDetailVisible = ref(false)
 const taskDetailGid = ref('')
-const torrentSelectorVisible = ref(false)
-const torrentSelectorGid = ref('')
 
 const appStore = useAppStore()
 const winStore = useWinStore()
 const downingStore = useDowningStore()
-const userStore = useUserStore()
-const selectedHasLocalTask = computed(() => downingStore.ListDataShow.some(item => downingStore.ListSelected.has(item.DownID) && !item.Info.offlineProvider))
-const focusedIsCloudTask = computed(() => {
-  const key = downingStore.ListFocusKey || [...downingStore.ListSelected][0]
-  return !!downingStore.ListDataShow.find(item => item.DownID === key)?.Info.offlineProvider
-})
-const accountNames = ref<Record<string, string>>({})
-const cloudSourceLabel = (item: IStateDownFile) => getCloudDownloadSourceLabel(item.Info, accountNames.value[item.Info.user_id])
-
-onMounted(async () => {
-  const users = await UserDAL.GetUserListFromDB().catch(() => [])
-  accountNames.value = Object.fromEntries(users.filter((user) => user?.user_id).map((user) => [user.user_id, user.nick_name || user.user_name || user.name || user.user_id]))
-})
 const isDowning = computed(() => downingStore.ListDataDowningCount > 0)
 watch(isDowning, (value, oldValue) => {
   if (value !== oldValue && window.WebToElectron) {
@@ -232,25 +209,6 @@ const handleRightClick = (e: { event: MouseEvent; node: any }) => {
   onShowRightMenu('downingrightmenu', e.event.clientX, e.event.clientY)
 }
 
-const focusedIsBT = computed(() => {
-  const key = downingStore.ListFocusKey || [...downingStore.ListSelected][0]
-  if (!key) return false
-  const item = downingStore.ListDataShow.find((i: any) => i.DownID === key)
-  const st = item?.Info?.sourceType
-  return st === 'magnet' || st === 'torrent' || st === 'torrent-url'
-})
-
-const handleUrlDownload = () => {
-  dropPrefilledUrl.value = ''
-  urlDownloadVisible.value = true
-}
-
-const dropPrefilledUrl = ref('')
-const handleDropUrl = (url: string) => {
-  dropPrefilledUrl.value = url
-  urlDownloadVisible.value = true
-}
-
 const handleTaskDetail = () => {
   const selected = [...downingStore.ListSelected]
   const key = selected[0] || downingStore.ListFocusKey
@@ -261,19 +219,9 @@ const handleTaskDetail = () => {
   taskDetailVisible.value = true
 }
 
-const handleTorrentFiles = () => {
-  const selected = [...downingStore.ListSelected]
-  const key = selected[0] || downingStore.ListFocusKey
-  if (!key) return
-  const item = downingStore.ListDataShow.find((i: any) => i.DownID === key)
-  if (!item) return
-  torrentSelectorGid.value = item.Info?.GID || ''
-  torrentSelectorVisible.value = true
-}
 </script>
 
 <template>
-  <DragDropZone style='display: contents' @drop-url='handleDropUrl'>
   <div style="height: 7px"></div>
   <div class='toppanbtns' style='height: 26px'>
     <div style="min-height: 26px; max-width: 100%; flex-shrink: 0; flex-grow: 0">
@@ -297,11 +245,11 @@ const handleTorrentFiles = () => {
   <div style='height: 14px'></div>
   <div class='toppanbtns' style='height: 26px'>
     <div class='toppanbtn' v-show='downingStore.IsListSelected'>
-      <a-button v-if='selectedHasLocalTask' type='text' size='small' tabindex='-1' @click='handleStart'><IconFont name="iconstart" />{{ t('transfer.start') }}
+      <a-button type='text' size='small' tabindex='-1' @click='handleStart'><IconFont name="iconstart" />{{ t('transfer.start') }}
       </a-button>
-      <a-button v-if='selectedHasLocalTask' type='text' size='small' tabindex='-1' @click='handleStop'><IconFont name="iconpause" />{{ t('transfer.pause') }}
+      <a-button type='text' size='small' tabindex='-1' @click='handleStop'><IconFont name="iconpause" />{{ t('transfer.pause') }}
       </a-button>
-      <a-button v-if='selectedHasLocalTask' type='text' size='small' tabindex='-1' @click='handleTop'><IconFont name="iconyouxian" />{{ t('transfer.prioritize') }}
+      <a-button type='text' size='small' tabindex='-1' @click='handleTop'><IconFont name="iconyouxian" />{{ t('transfer.prioritize') }}
       </a-button>
       <a-button type='text' size='small' tabindex='-1' @click='handleDelete'><IconFont name="icondelete" />{{ t('common.delete') }}
       </a-button>
@@ -313,14 +261,8 @@ const handleTorrentFiles = () => {
       </a-button>
       <a-button type='text' size='small' tabindex='-1' @click='handleDeleteAll'><IconFont name="icondelete" />{{ t('transfer.deleteAll') }}
       </a-button>
-      <a-button type='text' size='small' tabindex='-1' @click='handleUrlDownload'>
-        <IconFont name="iconcloud-download" />{{ t('transfer.newDownload') }}
-      </a-button>
     </div>
     <div class='toppanbtn' v-show='!downingStore.IsListSelected'>
-      <a-button type='text' size='small' tabindex='-1' @click='handleUrlDownload'>
-        <IconFont name="iconcloud-download" />{{ t('transfer.newDownload') }}
-      </a-button>
       <a-button type='text' size='small' tabindex='-1' @click='handleStartAll'><IconFont name="iconstart" />{{ t('transfer.startAll') }}
       </a-button>
       <a-button type='text' size='small' tabindex='-1' @click='handleStopAll'><IconFont name="iconpause" />{{ t('transfer.pauseAll') }}
@@ -427,10 +369,6 @@ const handleTorrentFiles = () => {
             <div class='filename'>
               <div :title='item.Info.localFilePath'>
                 {{ item.Info.name }}
-                <span v-if='item.Info.offlineProvider' class='cloud-origin' :title='cloudSourceLabel(item)'>
-                  <IconFont name='iconcloud-download' aria-hidden='true' />
-                </span>
-                <span v-if='item.Info.offlineProvider' class='cloud-source'>{{ cloudSourceLabel(item) }}</span>
               </div>
             </div>
             <div class='cell filesize'>{{ item.Info.sizestr }}</div>
@@ -454,15 +392,15 @@ const handleTorrentFiles = () => {
     <a-dropdown id='downingrightmenu' class='rightmenu' :popup-visible='true' tabindex='-1' :draggable='false'
                 style='z-index: -1; left: -200px; opacity: 0'>
       <template #content>
-        <a-doption v-if='!focusedIsCloudTask' @click='handleStart'>
+        <a-doption @click='handleStart'>
           <template #icon><IconFont name="iconstart" /></template>
           <template #default>{{ t('transfer.start') }}</template>
         </a-doption>
-        <a-doption v-if='!focusedIsCloudTask' @click='handleStop'>
+        <a-doption @click='handleStop'>
           <template #icon><IconFont name="iconpause" /></template>
           <template #default>{{ t('transfer.pause') }}</template>
         </a-doption>
-        <a-doption v-if='!focusedIsCloudTask' @click='handleTop'>
+        <a-doption @click='handleTop'>
           <template #icon><IconFont name="iconyouxian" /></template>
           <template #default>{{ t('transfer.prioritize') }}</template>
         </a-doption>
@@ -470,21 +408,14 @@ const handleTorrentFiles = () => {
           <template #icon><IconFont name="icondelete" /></template>
           <template #default>{{ t('common.delete') }}</template>
         </a-doption>
-        <a-doption v-if='!focusedIsCloudTask' @click='handleTaskDetail'>
+        <a-doption @click='handleTaskDetail'>
           <template #icon><IconFont name="iconinfo" /></template>
           <template #default>{{ t('transfer.taskDetail') }}</template>
-        </a-doption>
-        <a-doption v-if='focusedIsBT' @click='handleTorrentFiles'>
-          <template #icon><IconFont name="iconfile" /></template>
-          <template #default>{{ t('common.select') }}{{ t('transfer.file') }}</template>
         </a-doption>
       </template>
     </a-dropdown>
   </div>
-  <UrlDownloadModal v-model:visible="urlDownloadVisible" :initial-url="dropPrefilledUrl" />
   <TaskDetailDrawer v-model:visible="taskDetailVisible" :gid="taskDetailGid" />
-  <TorrentFileSelector v-model:visible="torrentSelectorVisible" :gid="torrentSelectorGid" />
-  </DragDropZone>
 </template>
 
 <style scoped>

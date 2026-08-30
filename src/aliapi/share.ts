@@ -8,9 +8,6 @@ import { useSettingStore } from '../store'
 import { IAliFileItem, IAliShareAnonymous, IAliShareBottleFish, IAliShareFileItem, IAliShareItem } from './alimodels'
 import getFileIcon from './fileicon'
 import { IAliBatchResult } from './models'
-import UserDAL from '../user/userdal'
-import { resolveDriveProvider } from '../utils/driveProvider'
-import { cancelProviderShares, getProviderShareAnonymous, getProviderShareFiles, getProviderShareToken, getProviderShareUpdateNotice, getSharedProvider, saveProviderShareFiles, updateProviderShares } from '../drive/providerShare'
 
 export interface IAliShareFileResp {
   items: IAliShareFileItem[]
@@ -36,8 +33,6 @@ export default class AliShare {
 
   static async ApiShareFileCheckAvailable(user_id: string, drive_id: string, file_id_list: string[]) {
     if (!user_id || !drive_id || !file_id_list) return []
-    const route = resolveDriveProvider(user_id, drive_id, UserDAL.GetUserToken(user_id)?.tokenfrom)
-    if (!route.isValid || route.provider !== 'aliyun') return []
     const url = 'adrive/v2/share_link/check_available'
     const postData = { drive_id, file_id_list }
     const resp = await AliHttp.Post(url, postData, user_id, '')
@@ -50,8 +45,6 @@ export default class AliShare {
   }
 
   static async ApiGetShareAnonymous(share_id: string, share_pwd = ''): Promise<IAliShareAnonymous> {
-    const providerShare = getProviderShareAnonymous(share_id, share_pwd)
-    if (providerShare) return providerShare
     const share: IAliShareAnonymous = {
       shareinfo: {
         share_id: share_id,
@@ -123,8 +116,6 @@ export default class AliShare {
 
 
   static async ApiGetShareToken(share_id: string, pwd: string): Promise<string> {
-    const providerToken = getProviderShareToken(share_id, pwd)
-    if (providerToken) return providerToken
     if (!share_id) return '，分享链接错误'
     const url = 'v2/share_link/get_share_token'
     const postData = { share_id: share_id, share_pwd: pwd }
@@ -163,21 +154,6 @@ export default class AliShare {
 
 
   static async ApiShareFileList(share_id: string, share_token: string, dirID: string): Promise<IAliShareFileResp> {
-    const providerFiles = getProviderShareFiles(share_id, share_token, dirID)
-    if (providerFiles) {
-      const resp = await providerFiles
-      if (resp.error) message.warning(resp.error, 2)
-      return {
-        items: resp.items,
-        itemsKey: new Set(resp.items.map(item => item.file_id)),
-        punished_file_count: 0,
-        next_marker: resp.next_marker,
-        m_user_id: '',
-        m_share_id: share_id,
-        dirID,
-        dirName: ''
-      }
-    }
     const dir: IAliShareFileResp = {
       items: [],
       itemsKey: new Set(),
@@ -270,9 +246,6 @@ export default class AliShare {
 
   static async ApiCreatShare(user_id: string, drive_id: string, expiration: string, share_pwd: string, share_name: string, file_id_list: string[], isFolder = false): Promise<string | IAliShareItem> {
     if (!user_id || !drive_id || file_id_list.length == 0) return '创建分享链接失败数据错误'
-    const route = resolveDriveProvider(user_id, drive_id, UserDAL.GetUserToken(user_id)?.tokenfrom)
-    if (!route.isValid) return route.error
-    if (route.provider !== 'aliyun') return '请通过网盘分享入口创建链接'
     const url = 'adrive/v2/share_link/create'
     const postData = { drive_id, expiration, share_pwd, share_name, file_id_list }
     const resp = await AliHttp.Post(url, postData, user_id, '')
@@ -298,8 +271,6 @@ export default class AliShare {
   }
 
   static async ApiCreatShareBatch(user_id: string, drive_id: string, expiration: string, share_pwd: string, file_id_list: string[]): Promise<IAliBatchResult> {
-    const route = resolveDriveProvider(user_id, drive_id, UserDAL.GetUserToken(user_id)?.tokenfrom)
-    if (!route.isValid || route.provider !== 'aliyun') return { count: 0, error: [], reslut: [], async_task: [] }
     const batchList: string[] = []
     for (let i = 0, maxi = file_id_list.length; i < maxi; i++) {
       const postData: any = {
@@ -323,14 +294,6 @@ export default class AliShare {
 
 
   static async ApiCancelShareBatch(user_id: string, share_idList: string[]): Promise<string[]> {
-    const route = resolveDriveProvider(user_id, '', UserDAL.GetUserToken(user_id)?.tokenfrom)
-    if (!route.isValid) return []
-    const result = await cancelProviderShares(route.provider, user_id, share_idList)
-    if (result) return result
-    if (route.provider !== 'aliyun') {
-      message.info('当前网盘类型不支持')
-      return []
-    }
     const batchList = ApiBatchMaker('/share_link/cancel', share_idList, (share_id: string) => {
       return { share_id: share_id }
     })
@@ -340,19 +303,6 @@ export default class AliShare {
 
   static async ApiUpdateShareBatch(user_id: string, share_idList: string[], expirationList: string[], share_pwdList: string[], share_nameList: string[] | undefined): Promise<UpdateShareModel[]> {
     if (!share_idList || share_idList.length == 0) return []
-    const route = resolveDriveProvider(user_id, '', UserDAL.GetUserToken(user_id)?.tokenfrom)
-    if (!route.isValid) return []
-    const notice = getProviderShareUpdateNotice(route.provider)
-    if (notice) {
-      message.info(notice)
-      return []
-    }
-    const providerResult = await updateProviderShares(route.provider, user_id, share_idList, expirationList, share_pwdList, share_nameList)
-    if (providerResult) return providerResult as UpdateShareModel[]
-    if (route.provider !== 'aliyun') {
-      message.info('当前网盘类型不支持')
-      return []
-    }
     const batchList: string[] = []
     if (share_nameList) {
       for (let i = 0, maxi = share_idList.length; i < maxi; i++) {
@@ -400,12 +350,7 @@ export default class AliShare {
 
   static async ApiSaveShareFilesBatch(share_id: string, share_token: string, user_id: string, drive_id: string, parent_file_id: string, file_idList: string[]): Promise<string> {
     if (!share_id || !share_token || !user_id || !drive_id || !parent_file_id) return 'error'
-    const route = resolveDriveProvider(user_id, drive_id, UserDAL.GetUserToken(user_id)?.tokenfrom)
-    if (!route.isValid) return 'error'
     if (!file_idList || file_idList.length == 0) return 'success'
-    const sharedProvider = getSharedProvider(share_id)
-    if (sharedProvider !== 'unknown' && sharedProvider !== route.provider) return 'error'
-    if (route.provider !== 'aliyun') return saveProviderShareFiles(route.provider, share_id, share_token, user_id, parent_file_id, file_idList) || 'error'
     if (parent_file_id.includes('root')) parent_file_id = 'root'
     const batchList: string[] = []
     for (let i = 0, maxi = file_idList.length; i < maxi; i++) {

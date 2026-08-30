@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useAppStore } from '../store'
-import SettingPlay from './SettingPlay.vue'
-import SettingMediaServerPlayback from './SettingMediaServerPlayback.vue'
-import SettingDanmaku from './SettingDanmaku.vue'
 import SettingPan from './SettingPan.vue'
 import SettingUI from './SettingUI.vue'
 import SettingAccount from './SettingAccount.vue'
@@ -13,10 +10,8 @@ import SettingUpload from './SettingUpload.vue'
 import SettingAria from './SettingAria.vue'
 import SettingLog from './SettingLog.vue'
 import SettingProxy from './SettingProxy.vue'
-import SettingWebDav from './SettingWebDav.vue'
 import SettingSecurity from './SettingSecurity.vue'
 import SettingDownloadAdvanced from './SettingDownloadAdvanced.vue'
-import SettingAPI from './SettingAPI.vue'
 import { t } from '../i18n'
 
 const appStore = useAppStore()
@@ -79,16 +74,11 @@ const locateSettingSearchResult = (result: { element: HTMLElement }) => {
 const sectionMeta: Record<string, { title: string }> = {
   SettingUI: { title: 'settings.app' },
   SettingAccount: { title: 'settings.account' },
-  SettingAPI: { title: 'settings.ai' },
   SettingSecurity: { title: 'settings.security' },
-  SettingPlay: { title: 'settings.player' },
-  SettingMediaServerPlayback: { title: 'nav.mediaServer' },
-  SettingDanmaku: { title: 'settings.danmaku' },
   SettingPan: { title: 'settings.pan' },
   SettingDown: { title: 'settings.download' },
   SettingDownloadAdvanced: { title: 'settings.downloadAdvanced' },
   SettingUpload: { title: 'settings.upload' },
-  SettingWebDav: { title: 'settings.webDav' },
   SettingDebug: { title: 'settings.advanced' },
   SettingProxy: { title: 'settings.proxy' },
   SettingAria: { title: 'settings.remoteAria' },
@@ -116,18 +106,13 @@ onMounted(() => {
     'SettingUI',
     'SettingAccount',
     'SettingSecurity',
-    'SettingPlay',
-    'SettingMediaServerPlayback',
-    'SettingDanmaku',
     'SettingPan',
     'SettingDown',
     'SettingDownloadAdvanced',
     'SettingUpload',
-    'SettingWebDav',
     'SettingDebug',
     'SettingProxy',
     'SettingAria',
-    'SettingAPI',
     'SettingLog'
   ]
 
@@ -166,27 +151,11 @@ onUnmounted(() => {
           <template #icon><IconFont name="iconrobot" /></template>
           {{ t('settings.account') }}
         </a-menu-item>
-        <a-menu-item key="SettingAPI">
-          <template #icon><IconFont name="iconlock" /></template>
-          {{ t('settings.ai') }}
-        </a-menu-item>
         <a-menu-item key="SettingSecurity">
           <template #icon><IconFont name="iconchrome" /></template>
           {{ t('settings.security') }}
         </a-menu-item>
         <div class="settings-menu-group">{{ t('settings.group.playback') }}</div>
-        <a-menu-item key="SettingPlay">
-          <template #icon><IconFont name="iconshipin" /></template>
-          {{ t('settings.player') }}
-        </a-menu-item>
-        <a-menu-item key="SettingMediaServerPlayback">
-          <template #icon><IconFont name="iconshipin" /></template>
-          {{ t('nav.mediaServer') }}
-        </a-menu-item>
-        <a-menu-item key="SettingDanmaku">
-          <template #icon><IconFont name="iconshipin" /></template>
-          {{ t('settings.danmaku') }}
-        </a-menu-item>
         <div class="settings-menu-group">{{ t('settings.group.driveTransfer') }}</div>
         <a-menu-item key="SettingPan">
           <template #icon><IconFont name="iconfile-folder" /></template>
@@ -203,10 +172,6 @@ onUnmounted(() => {
         <a-menu-item key="SettingUpload">
           <template #icon><IconFont name="iconupload" /></template>
           {{ t('settings.upload') }}
-        </a-menu-item>
-        <a-menu-item key='SettingWebDav'>
-          <template #icon><IconFont name="iconchuanshu2" /></template>
-          {{ t('settings.webDav') }}
         </a-menu-item>
         <div class="settings-menu-group">{{ t('settings.group.system') }}</div>
         <a-menu-item key="SettingDebug">
@@ -249,16 +214,11 @@ onUnmounted(() => {
 
         <section id="SettingUI" class="settings-section"><div class="settings-section-header"><h2>{{ t(sectionMeta.SettingUI.title as Parameters<typeof t>[0]) }}</h2></div><SettingUI /></section>
 <!--        <section id="SettingAccount" class="settings-section"><div class="settings-section-header"><h2>{{ t(sectionMeta.SettingAccount.title as Parameters<typeof t>[0]) }}</h2></div><SettingAccount /></section>-->
-        <section id="SettingAPI" class="settings-section"><div class="settings-section-header"><h2>{{ t(sectionMeta.SettingAPI.title as Parameters<typeof t>[0]) }}</h2></div><SettingAPI /></section>
         <section id="SettingSecurity" class="settings-section"><div class="settings-section-header"><h2>{{ t(sectionMeta.SettingSecurity.title as Parameters<typeof t>[0]) }}</h2></div><SettingSecurity /></section>
-        <section id="SettingPlay" class="settings-section"><div class="settings-section-header"><h2>{{ t(sectionMeta.SettingPlay.title as Parameters<typeof t>[0]) }}</h2></div><SettingPlay /></section>
-        <section id="SettingMediaServerPlayback" class="settings-section"><div class="settings-section-header"><h2>{{ t(sectionMeta.SettingMediaServerPlayback.title as Parameters<typeof t>[0]) }}</h2></div><SettingMediaServerPlayback /></section>
-        <section id="SettingDanmaku" class="settings-section"><div class="settings-section-header"><h2>{{ t(sectionMeta.SettingDanmaku.title as Parameters<typeof t>[0]) }}</h2></div><SettingDanmaku /></section>
         <section id="SettingPan" class="settings-section"><div class="settings-section-header"><h2>{{ t(sectionMeta.SettingPan.title as Parameters<typeof t>[0]) }}</h2></div><SettingPan /></section>
         <section id="SettingDown" class="settings-section"><div class="settings-section-header"><h2>{{ t(sectionMeta.SettingDown.title as Parameters<typeof t>[0]) }}</h2></div><SettingDown /></section>
         <section id="SettingDownloadAdvanced" class="settings-section"><div class="settings-section-header"><h2>{{ t(sectionMeta.SettingDownloadAdvanced.title as Parameters<typeof t>[0]) }}</h2></div><SettingDownloadAdvanced /></section>
         <section id="SettingUpload" class="settings-section"><div class="settings-section-header"><h2>{{ t(sectionMeta.SettingUpload.title as Parameters<typeof t>[0]) }}</h2></div><SettingUpload /></section>
-        <section id='SettingWebDav' class="settings-section"><div class="settings-section-header"><h2>{{ t(sectionMeta.SettingWebDav.title as Parameters<typeof t>[0]) }}</h2></div><SettingWebDav /></section>
         <section id="SettingDebug" class="settings-section"><div class="settings-section-header"><h2>{{ t(sectionMeta.SettingDebug.title as Parameters<typeof t>[0]) }}</h2></div><SettingDebug /></section>
         <section id="SettingProxy" class="settings-section"><div class="settings-section-header"><h2>{{ t(sectionMeta.SettingProxy.title as Parameters<typeof t>[0]) }}</h2></div><SettingProxy /></section>
         <section id="SettingAria" class="settings-section"><div class="settings-section-header"><h2>{{ t(sectionMeta.SettingAria.title as Parameters<typeof t>[0]) }}</h2></div><SettingAria /></section>

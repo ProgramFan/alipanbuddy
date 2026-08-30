@@ -13,38 +13,11 @@ import { Sleep } from '../../utils/format'
 import { treeSelectToExpand } from '../../utils/antdtree'
 import AliTrash from '../../aliapi/trash'
 import { fileiconfn } from '../pantreestore'
-import { GetDriveID, GetDriveType, isBaiduUser, isBoxUser, isCloud139User, isCloud189User, isCloud123User, isDrive115User, isDropboxUser, isGoogleUser, isGuangyaUser, isOneDriveUser, isPikPakUser, isQuarkUser } from '../../aliapi/utils'
+import { GetDriveID, GetDriveType } from '../../aliapi/utils'
 import { IAliGetDirModel } from '../../aliapi/alimodels'
-import { apiCloud123DirectoryFileList, mapCloud123FileToAliModel } from '../../cloud123/dirfilelist'
-import { apiDrive115FileList, mapDrive115FileToAliModel } from '../../cloud115/dirfilelist'
-import { apiBaiduFileList, mapBaiduFileToAliModel } from '../../cloudbaidu/dirfilelist'
-import { apiPikPakFileList, mapPikPakFileToAliModel } from '../../pikpak/dirfilelist'
-import { apiDropboxFileList, mapDropboxFileToAliModel } from '../../dropbox/dirfilelist'
-import { apiOneDriveFileList, mapOneDriveItemToAliModel } from '../../onedrive/dirfilelist'
-import { apiBoxFileList, mapBoxItemToAliModel } from '../../box/dirfilelist'
-import { apiGoogleFileList, apiGoogleSharedDriveFileList, apiGoogleSharedDrives, getGoogleSharedDriveIdForFile, mapGoogleFileToAliModel } from '../../google/dirfilelist'
-import { apiQuarkFileList, mapQuarkFileToAliModel } from '../../quark/dirfilelist'
-import { apiCloud139FileList, mapCloud139FileToAliModel } from '../../cloud139/dirfilelist'
-import { apiCloud189FileList, mapCloud189FileToAliModel } from '../../cloud189/dirfilelist'
-import { apiGuangyaFileList, mapGuangyaFileToAliModel } from '../../guangya/dirfilelist'
 
 const iconfolder = h(IconFont, { name: 'iconfile-folder' })
 const foldericonfn = () => iconfolder
-
-const isSingleRootDriveUser = (userId: string) => {
-  return isCloud123User(userId) ||
-    isDrive115User(userId) ||
-    isBaiduUser(userId) ||
-    isPikPakUser(userId) ||
-    isDropboxUser(userId) ||
-    isOneDriveUser(userId) ||
-    isBoxUser(userId) ||
-    isGoogleUser(userId) ||
-    isQuarkUser(userId) ||
-    isCloud139User(userId) ||
-    isCloud189User(userId) ||
-    isGuangyaUser(userId)
-}
 
 const props = defineProps({
   visible: {
@@ -80,7 +53,7 @@ const props = defineProps({
   }
 })
 
-const isScopedDrivePicker = () => props.selecttype === 'selectdir' && !!props.initialUserId && !!props.initialDriveId && !isSingleRootDriveUser(user_id.value)
+const isScopedDrivePicker = () => props.selecttype === 'selectdir' && !!props.initialUserId && !!props.initialDriveId
 
 const okLoading = ref(false)
 const pantreeStore = usePanTreeStore()
@@ -110,16 +83,15 @@ const handleOpen = async () => {
   okLoading.value = true
   user_id.value = props.initialUserId || pantreeStore.user_id
   drive_id.value = props.initialDriveId || pantreeStore.drive_id
-  const isSingleRootDrive = isSingleRootDriveUser(user_id.value)
   const isScopedDrive = isScopedDrivePicker()
   const driveType = GetDriveType(user_id.value, drive_id.value)
-  const expandedKeys: string[] = isSingleRootDrive || isScopedDrive ? [driveType.key] : ['backup_root', 'resource_root']
+  const expandedKeys: string[] = isScopedDrive ? [driveType.key] : ['backup_root', 'resource_root']
   const selectid = props.selectid || localStorage.getItem('selectpandir-' + drive_id.value) || ''
   if (selectid) {
     let backup_data: IAliGetDirModel[] = []
     let resource_data: IAliGetDirModel[] = []
     let data: IAliGetDirModel[] = []
-    if (isSingleRootDrive || isScopedDrive) {
+    if (isScopedDrive) {
       const cloudDriveId = GetDriveID(user_id.value, driveType.key) || drive_id.value
       data = TreeStore.GetDirPath(cloudDriveId, selectid)
     } else {
@@ -154,13 +126,13 @@ const handleOpen = async () => {
       treeref.value?.treeRef?.scrollTo({ key: selectid, offset: 100, align: 'top' })
     }, 400)
   } else {
-    if (isSingleRootDrive || isScopedDrive) {
+    if (isScopedDrive) {
       selectFile.value = {
         drive_id: drive_id.value,
         name: driveType.title,
         file_id: driveType.key,
         parent_file_id: '',
-        path: driveType.key === 'baidu_root' ? '/' : '',
+        path: '',
         description: '',
         isDir: true
       }
@@ -181,7 +153,7 @@ const handleOpen = async () => {
   treeExpandedKeys.value = expandedKeys
   // 网盘数据
   const flag = props.selecttype === 'select'
-  if (isSingleRootDrive || isScopedDrive) {
+  if (isScopedDrive) {
     const cloudDriveId = GetDriveID(user_id.value, driveType.key) || drive_id.value
     treeData.value = PanDAL.GetPanTreeAllNode(user_id.value, cloudDriveId, treeExpandedKeys.value, !flag, flag)
   } else {
@@ -208,43 +180,29 @@ const handleClose = () => {
     name: driveType.title,
     file_id: driveType.key,
     parent_file_id: '',
-    path: driveType.key === 'baidu_root' ? '/' : '',
+    path: '',
     description: '',
     isDir: true
   }
-  if (isSingleRootDriveUser(pantreeStore.user_id)) {
-    treeData.value = [{
-      __v_skip: true,
-      key: driveType.key,
-      drive_id: pantreeStore.drive_id,
-      parent_file_id: '',
-      title: driveType.title,
-      namesearch: '',
-      isLeaf: false,
-      icon: foldericonfn,
-      children: []
-    }]
-  } else {
-    treeData.value = [{
-      __v_skip: true,
-      key: 'backup_root',
-      parent_file_id: '',
-      title: '备份盘',
-      namesearch: '',
-      isLeaf: false,
-      icon: foldericonfn,
-      children: []
-    }, {
-      __v_skip: true,
-      key: 'resource_root',
-      parent_file_id: '',
-      title: '资源盘',
-      namesearch: '',
-      isLeaf: false,
-      icon: foldericonfn,
-      children: []
-    }]
-  }
+  treeData.value = [{
+    __v_skip: true,
+    key: 'backup_root',
+    parent_file_id: '',
+    title: '备份盘',
+    namesearch: '',
+    isLeaf: false,
+    icon: foldericonfn,
+    children: []
+  }, {
+    __v_skip: true,
+    key: 'resource_root',
+    parent_file_id: '',
+    title: '资源盘',
+    namesearch: '',
+    isLeaf: false,
+    icon: foldericonfn,
+    children: []
+  }]
   treeExpandedKeys.value = []
   treeSelectedKeys.value = []
 }
@@ -302,371 +260,6 @@ const handleTreeSelect = (keys: any[], info: {
 
 const apiLoad = (key: any) => {
   const onlyDirs = props.selecttype !== 'select'
-  if (isCloud123User(user_id.value)) {
-    const parentFileId = String(key).includes('root') ? '0' : String(key)
-    return apiCloud123DirectoryFileList(user_id.value, parentFileId, false)
-      .then((list) => {
-        const addList: TreeNodeData[] = []
-        for (let i = 0, maxi = list.length; i < maxi; i++) {
-          const mapped = mapCloud123FileToAliModel(list[i])
-          if (!mapped.isDir) {
-            if (onlyDirs) continue
-            if (props.category && mapped.category !== props.category) continue
-            if (props.extFilter && !props.extFilter.test(mapped.ext)) continue
-          }
-          addList.push({
-            __v_skip: true,
-            key: mapped.file_id,
-            parent_file_id: mapped.parent_file_id,
-            path: mapped.path || '',
-            title: mapped.name,
-            children: [],
-            isDir: mapped.isDir,
-            isLeaf: !mapped.isDir,
-            description: mapped.description,
-            icon: mapped.isDir ? foldericonfn : () => fileiconfn(mapped.icon)
-          } as TreeNodeData)
-        }
-        autoExpand(addList)
-        return addList
-      })
-      .catch(() => {
-        return [] as TreeNodeData[]
-      })
-  }
-  if (isDrive115User(user_id.value)) {
-    const parentCid = String(key).includes('root') ? '0' : String(key)
-    return apiDrive115FileList(user_id.value, parentCid, 200, 0, true)
-      .then((list) => {
-        const addList: TreeNodeData[] = []
-        for (let i = 0, maxi = list.length; i < maxi; i++) {
-          const mapped = mapDrive115FileToAliModel(list[i], drive_id.value)
-          if (!mapped.isDir) {
-            if (onlyDirs) continue
-            if (props.category && mapped.category !== props.category) continue
-            if (props.extFilter && !props.extFilter.test(mapped.ext)) continue
-          }
-          addList.push({
-            __v_skip: true,
-            key: mapped.file_id,
-            parent_file_id: mapped.parent_file_id,
-            path: mapped.path || '',
-            title: mapped.name,
-            children: [],
-            isDir: mapped.isDir,
-            isLeaf: !mapped.isDir,
-            description: mapped.description,
-            icon: mapped.isDir ? foldericonfn : () => fileiconfn(mapped.icon)
-          } as TreeNodeData)
-        }
-        autoExpand(addList)
-        return addList
-      })
-      .catch(() => {
-        return [] as TreeNodeData[]
-      })
-  }
-  if (isBaiduUser(user_id.value)) {
-    const parentPath = key.includes('root') ? '/' : key
-    return apiBaiduFileList(user_id.value, parentPath, 'name', 0, 1000)
-      .then((list) => {
-        const addList: TreeNodeData[] = []
-        for (let i = 0, maxi = list.length; i < maxi; i++) {
-          const mapped = mapBaiduFileToAliModel(list[i], drive_id.value, '/')
-          if (!mapped.isDir) {
-            if (onlyDirs) continue
-            if (props.category && mapped.category !== props.category) continue
-            if (props.extFilter && !props.extFilter.test(mapped.ext)) continue
-          }
-          addList.push({
-            __v_skip: true,
-            key: mapped.path || mapped.file_id,
-            parent_file_id: mapped.parent_file_id,
-            path: mapped.path || '',
-            title: mapped.name,
-            children: [],
-            isDir: mapped.isDir,
-            isLeaf: !mapped.isDir,
-            description: mapped.description,
-            icon: mapped.isDir ? foldericonfn : () => fileiconfn(mapped.icon)
-          } as TreeNodeData)
-        }
-        autoExpand(addList)
-        return addList
-      })
-      .catch(() => {
-        return [] as TreeNodeData[]
-      })
-  }
-  if (isPikPakUser(user_id.value)) {
-    const parentId = key.includes('root') ? 'pikpak_root' : key
-    return apiPikPakFileList(user_id.value, parentId, 100)
-      .then(({ items: list }) => {
-        const addList: TreeNodeData[] = []
-        for (let i = 0, maxi = list.length; i < maxi; i++) {
-          const mapped = mapPikPakFileToAliModel(list[i], drive_id.value, parentId)
-          if (!mapped.isDir) {
-            if (onlyDirs) continue
-            if (props.category && mapped.category !== props.category) continue
-            if (props.extFilter && !props.extFilter.test(mapped.ext)) continue
-          }
-          addList.push({
-            __v_skip: true,
-            key: mapped.file_id,
-            parent_file_id: mapped.parent_file_id,
-            path: mapped.path || '',
-            title: mapped.name,
-            children: [],
-            isDir: mapped.isDir,
-            isLeaf: !mapped.isDir,
-            description: mapped.description,
-            icon: mapped.isDir ? foldericonfn : () => fileiconfn(mapped.icon)
-          } as TreeNodeData)
-        }
-        autoExpand(addList)
-        return addList
-      })
-      .catch(() => {
-        return [] as TreeNodeData[]
-      })
-  }
-  if (isDropboxUser(user_id.value)) {
-    const parentId = key.includes('root') ? 'dropbox_root' : key
-    return apiDropboxFileList(user_id.value, parentId, 500)
-      .then((list) => {
-        const addList: TreeNodeData[] = []
-        for (let i = 0, maxi = list.length; i < maxi; i++) {
-          const mapped = mapDropboxFileToAliModel(list[i], drive_id.value, parentId)
-          if (!mapped.isDir) {
-            if (onlyDirs) continue
-            if (props.category && mapped.category !== props.category) continue
-            if (props.extFilter && !props.extFilter.test(mapped.ext)) continue
-          }
-          addList.push({
-            __v_skip: true,
-            key: mapped.file_id,
-            parent_file_id: mapped.parent_file_id,
-            path: mapped.path || '',
-            title: mapped.name,
-            children: [],
-            isDir: mapped.isDir,
-            isLeaf: !mapped.isDir,
-            description: mapped.description,
-            icon: mapped.isDir ? foldericonfn : () => fileiconfn(mapped.icon)
-          } as TreeNodeData)
-        }
-        autoExpand(addList)
-        return addList
-      })
-      .catch(() => {
-        return [] as TreeNodeData[]
-      })
-  }
-  if (isOneDriveUser(user_id.value)) {
-    const parentId = key.includes('root') ? 'onedrive_root' : key
-    return apiOneDriveFileList(user_id.value, parentId)
-      .then((list) => {
-        const addList: TreeNodeData[] = []
-        for (let i = 0, maxi = list.length; i < maxi; i++) {
-          const mapped = mapOneDriveItemToAliModel(list[i], drive_id.value, parentId)
-          if (!mapped.isDir) {
-            if (onlyDirs) continue
-            if (props.category && mapped.category !== props.category) continue
-            if (props.extFilter && !props.extFilter.test(mapped.ext)) continue
-          }
-          addList.push({
-            __v_skip: true,
-            key: mapped.file_id,
-            parent_file_id: mapped.parent_file_id,
-            path: mapped.path || '',
-            title: mapped.name,
-            children: [],
-            isDir: mapped.isDir,
-            isLeaf: !mapped.isDir,
-            description: mapped.description,
-            icon: mapped.isDir ? foldericonfn : () => fileiconfn(mapped.icon)
-          } as TreeNodeData)
-        }
-        autoExpand(addList)
-        return addList
-      })
-      .catch(() => {
-        return [] as TreeNodeData[]
-      })
-  }
-  if (isBoxUser(user_id.value)) {
-    const parentId = key.includes('root') ? 'box_root' : key
-    return apiBoxFileList(user_id.value, parentId, 500)
-      .then((list) => {
-        const addList: TreeNodeData[] = []
-        for (let i = 0, maxi = list.length; i < maxi; i++) {
-          const mapped = mapBoxItemToAliModel(list[i], drive_id.value, parentId)
-          if (!mapped.isDir) {
-            if (onlyDirs) continue
-            if (props.category && mapped.category !== props.category) continue
-            if (props.extFilter && !props.extFilter.test(mapped.ext)) continue
-          }
-          addList.push({
-            __v_skip: true,
-            key: mapped.file_id,
-            parent_file_id: mapped.parent_file_id,
-            path: mapped.path || '',
-            title: mapped.name,
-            children: [],
-            isDir: mapped.isDir,
-            isLeaf: !mapped.isDir,
-            description: mapped.description,
-            icon: mapped.isDir ? foldericonfn : () => fileiconfn(mapped.icon)
-          } as TreeNodeData)
-        }
-        autoExpand(addList)
-        return addList
-      })
-      .catch(() => {
-        return [] as TreeNodeData[]
-      })
-  }
-  if (isGoogleUser(user_id.value)) {
-    if (key === 'google_shared') return Promise.resolve([] as TreeNodeData[])
-    if (key === 'google_shared_drives') return apiGoogleSharedDrives(user_id.value).then((drives) => drives.map((drive) => ({ __v_skip: true, key: `google_shared_drive:${drive.id}`, parent_file_id: key, title: drive.name, children: [], isDir: true, isLeaf: false, description: `google_shared_drive:${drive.id}`, icon: foldericonfn } as TreeNodeData)))
-    const sharedDriveId = key.startsWith('google_shared_drive:') ? key.slice('google_shared_drive:'.length) : getGoogleSharedDriveIdForFile(key)
-    const parentId = key.includes('root') ? 'google_root' : key
-    const request = sharedDriveId ? apiGoogleSharedDriveFileList(user_id.value, sharedDriveId, key.startsWith('google_shared_drive:') ? 'root' : key) : apiGoogleFileList(user_id.value, parentId)
-    return request.then((list) => {
-      const addList = list.map((item) => mapGoogleFileToAliModel(item, drive_id.value, parentId)).filter((item) => item.isDir).map((item) => ({ __v_skip: true, key: item.file_id, parent_file_id: item.parent_file_id, path: item.path || '', title: item.name, children: [], isDir: true, isLeaf: false, description: item.description, icon: foldericonfn } as TreeNodeData))
-      autoExpand(addList)
-      return addList
-    }).catch(() => [] as TreeNodeData[])
-  }
-  if (isQuarkUser(user_id.value)) {
-    const parentId = key.includes('root') ? '0' : key
-    return apiQuarkFileList(user_id.value, parentId, 100, 1)
-      .then((resp) => {
-        const addList: TreeNodeData[] = []
-        const list = resp.items || []
-        for (let i = 0, maxi = list.length; i < maxi; i++) {
-          const mapped = mapQuarkFileToAliModel(list[i], drive_id.value, parentId)
-          if (!mapped.isDir) {
-            if (onlyDirs) continue
-            if (props.category && mapped.category !== props.category) continue
-            if (props.extFilter && !props.extFilter.test(mapped.ext)) continue
-          }
-          addList.push({
-            __v_skip: true,
-            key: mapped.file_id,
-            parent_file_id: mapped.parent_file_id,
-            path: mapped.path || '',
-            title: mapped.name,
-            children: [],
-            isDir: mapped.isDir,
-            isLeaf: !mapped.isDir,
-            description: mapped.description,
-            icon: mapped.isDir ? foldericonfn : () => fileiconfn(mapped.icon)
-          } as TreeNodeData)
-        }
-        autoExpand(addList)
-        return addList
-      })
-      .catch(() => {
-        return [] as TreeNodeData[]
-      })
-  }
-  if (isCloud139User(user_id.value)) {
-    const parentId = key.includes('root') ? '/' : key
-    return apiCloud139FileList(user_id.value, parentId, 100)
-      .then((list) => {
-        const addList: TreeNodeData[] = []
-        for (let i = 0, maxi = list.length; i < maxi; i++) {
-          const mapped = mapCloud139FileToAliModel(list[i], drive_id.value, parentId)
-          if (!mapped.isDir) {
-            if (onlyDirs) continue
-            if (props.category && mapped.category !== props.category) continue
-            if (props.extFilter && !props.extFilter.test(mapped.ext)) continue
-          }
-          addList.push({
-            __v_skip: true,
-            key: mapped.file_id,
-            parent_file_id: mapped.parent_file_id,
-            path: mapped.path || '',
-            title: mapped.name,
-            children: [],
-            isDir: mapped.isDir,
-            isLeaf: !mapped.isDir,
-            description: mapped.description,
-            icon: mapped.isDir ? foldericonfn : () => fileiconfn(mapped.icon)
-          } as TreeNodeData)
-        }
-        autoExpand(addList)
-        return addList
-      })
-      .catch(() => {
-        return [] as TreeNodeData[]
-      })
-  }
-  if (isCloud189User(user_id.value)) {
-    const parentId = key.includes('root') ? '-11' : key
-    return apiCloud189FileList(user_id.value, parentId, 1000)
-      .then((list) => {
-        const addList: TreeNodeData[] = []
-        for (let i = 0, maxi = list.length; i < maxi; i++) {
-          const mapped = mapCloud189FileToAliModel(list[i], drive_id.value, parentId)
-          if (!mapped.isDir) {
-            if (onlyDirs) continue
-            if (props.category && mapped.category !== props.category) continue
-            if (props.extFilter && !props.extFilter.test(mapped.ext)) continue
-          }
-          addList.push({
-            __v_skip: true,
-            key: mapped.file_id,
-            parent_file_id: mapped.parent_file_id,
-            path: mapped.path || '',
-            title: mapped.name,
-            children: [],
-            isDir: mapped.isDir,
-            isLeaf: !mapped.isDir,
-            description: mapped.description,
-            icon: mapped.isDir ? foldericonfn : () => fileiconfn(mapped.icon)
-          } as TreeNodeData)
-        }
-        autoExpand(addList)
-        return addList
-      })
-      .catch(() => {
-        return [] as TreeNodeData[]
-      })
-  }
-  if (isGuangyaUser(user_id.value)) {
-    const parentId = key.includes('root') ? 'guangya_root' : key
-    return apiGuangyaFileList(user_id.value, parentId, 200)
-      .then((list) => {
-        const addList: TreeNodeData[] = []
-        for (let i = 0, maxi = list.length; i < maxi; i++) {
-          const mapped = mapGuangyaFileToAliModel(list[i], drive_id.value, parentId)
-          if (!mapped.isDir) {
-            if (onlyDirs) continue
-            if (props.category && mapped.category !== props.category) continue
-            if (props.extFilter && !props.extFilter.test(mapped.ext)) continue
-          }
-          addList.push({
-            __v_skip: true,
-            key: mapped.file_id,
-            parent_file_id: mapped.parent_file_id,
-            path: mapped.path || '',
-            title: mapped.name,
-            children: [],
-            isDir: mapped.isDir,
-            isLeaf: !mapped.isDir,
-            description: mapped.description,
-            icon: mapped.isDir ? foldericonfn : () => fileiconfn(mapped.icon)
-          } as TreeNodeData)
-        }
-        autoExpand(addList)
-        return addList
-      })
-      .catch(() => {
-        return [] as TreeNodeData[]
-      })
-  }
   const aliKey = key.includes('root') ? 'root' : key
   return AliTrash.ApiDirFileListNoLock(user_id.value, selectFile.value.drive_id, aliKey, '', 'name ASC')
     .then((resp) => {
@@ -749,7 +342,7 @@ const handleTreeExpand = (keys: any[], info: {
       if (isScopedDrivePicker()) {
         // 资源盘目标目录由 Ant Tree 懒加载；替换整棵缓存树会让当前事件节点失效。
         return
-      } else if (props.selecttype !== 'select' && props.selecttype !== 'offline' && !isSingleRootDriveUser(user_id.value)) { // 仅显示文件夹
+      } else if (props.selecttype !== 'select') { // 仅显示文件夹
         let backupPan: TreeNodeData[] = []
         let resourcePan: TreeNodeData[] = []
         if (!useSettingStore().securityHideBackupDrive) {
@@ -864,7 +457,7 @@ const handleOK = () => {
     message.error('请选择一个文件')
     return
   }
-  if ((props.selecttype === 'offline' || props.selecttype === 'selectdir') && !selectFile.value.isDir) {
+  if (props.selecttype === 'selectdir' && !selectFile.value.isDir) {
     message.error('请选择一个文件夹')
     return
   }
