@@ -19,7 +19,6 @@
   },
   "bundle": {
     "active": true,
-    "createUpdaterArtifacts": false,
     "targets": [
       "deb",
       "rpm",
@@ -87,15 +86,5 @@
       }
     }
   },
-  "plugins": {
-    "updater": {
-      "pubkey": "",
-      "endpoints": [
-        "https://github.com/programfan/alipanbuddy/releases/latest/download/latest.json"
-      ],
-      "windows": {
-        "installMode": "passive"
-      }
-    }
-  }
+  "plugins": {}
 }

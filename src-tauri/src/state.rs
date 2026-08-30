@@ -10,7 +10,6 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::oneshot;
 
 use crate::aria::AriaEngine;
-use crate::update::AutoUpdate;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
@@ -45,7 +44,6 @@ pub struct AppState {
     pub keep_awake: Mutex<KeepAwakeHandle>,
     pub http_proxy: Mutex<String>,
     pub always_on_top: Mutex<HashMap<String, bool>>,
-    pub update: AutoUpdate,
     pub last_resize: Mutex<std::time::Instant>,
     pub rpc_client: reqwest::Client,
     /// loopback body server (crate::bridge)
@@ -74,7 +72,6 @@ impl AppState {
             keep_awake: Mutex::new(KeepAwakeHandle(None)),
             http_proxy: Mutex::new(String::new()),
             always_on_top: Mutex::new(HashMap::new()),
-            update: AutoUpdate::default(),
             last_resize: Mutex::new(std::time::Instant::now()),
             rpc_client: reqwest::Client::builder().no_proxy().timeout(std::time::Duration::from_secs(3)).build().unwrap_or_default(),
             bridge_port: Mutex::new(0),

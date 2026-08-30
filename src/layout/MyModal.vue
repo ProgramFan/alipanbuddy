@@ -21,17 +21,12 @@ import ArchivePasswordModal from '../pan/topbtns/ArchivePasswordModal.vue'
 import UploadModal from '../pan/topbtns/UploadModal.vue'
 import DownloadModal from '../pan/topbtns/DownloadModal.vue'
 import MoveToAlbumModal from '../pan/topbtns/MoveToAlbumModal.vue'
-import ShowUpdateLog from '../pan/topbtns/ShowUpdateLog.vue'
 import PostModal from '../pan/topbtns/PostModal.vue'
 import UserRewardSpace from '../user/UserRewardSpace.vue'
 import PasswordModal from '../pan/topbtns/PasswordModal.vue'
-import UpdateModal from '../pan/topbtns/ShowUpdateModal.vue'
-import ShowUpdateModal from '../pan/topbtns/ShowUpdateModal.vue'
 
 export default defineComponent({
   components: {
-    ShowUpdateModal,
-    UpdateModal,
     PasswordModal,
     UserRewardSpace,
     UserSpaceModal,
@@ -54,7 +49,6 @@ export default defineComponent({
     ArchivePasswordModal,
     UploadModal,
     DownloadModal,
-    ShowUpdateLog,
     PostModal
   },
   setup() {
@@ -143,10 +137,6 @@ export default defineComponent({
                      :category='modalStore.modalData.category'
                      :extFilter='modalStore.modalData.extFilter'
                      :callback='modalStore.modalData.callback' />
-
-  <ShowUpdateLog :visible="modalStore.modalName == 'showupdatelog'" />
-  <ShowUpdateModal :visible="modalStore.modalName == 'showupdate'"
-                   :verData='modalStore.modalData.verData || {}' />
 
 
   <PostModal :visible="modalStore.modalName == 'showpostmodal'"

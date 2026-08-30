@@ -3,12 +3,9 @@ import { getPkgVersion } from '../utils/utils'
 import axios, { AxiosResponse } from 'axios'
 import { IShareSiteGroupModel, IShareSiteModel, useServerStore, useSettingStore } from '../store'
 import ShareDAL from '../share/share/ShareDAL'
-import { modalShowPost, modalUpdate } from '../utils/modal'
+import { modalShowPost } from '../utils/modal'
 import message from '../utils/message'
-import path from '../utils/path'
-import { getArch } from '../utils/electronhelper'
 import DebugLog from '../utils/debuglog'
-import { buildUpdateProxyUrl } from '../utils/updateProxy'
 
 export interface IServerRespData {
   state: string
@@ -17,51 +14,9 @@ export interface IServerRespData {
   [k: string]: any
 }
 
-export interface IServerVerData {
-  version: string
-  verName: string
-  verUrl: string
-  verInfo: string
-  verHtml: string
-  fileExt: string
-  fileSize: number
-}
-
 export default class ServerHttp {
   static baseApi = b64decode('aHR0cDovLzEyMS41LjE0NC44NDo1MjgyLw==')
   static configUrl = b64decode('aHR0cHM6Ly9naXRlZS5jb20vYXBpL3Y1L3JlcG9zL3poYW5uYW8vcmVzb3VyY2UvY29udGVudHMvc2hhcmVTaXRlQ29uZmlnLmpzb24=')
-  static updateUrl = 'https://api.github.com/repos/programfan/alipanbuddy/releases/latest'
-
-  static compareVer(version1: string, version2: string): number {
-    // Split version strings into arrays of numbers
-    const v1Parts = version1.split('.').map(Number)
-    const v2Parts = version2.split('.').map(Number)
-
-    // Pad the shorter version with zeros to make their lengths equal
-    const maxLength = Math.max(v1Parts.length, v2Parts.length)
-    v1Parts.push(...Array(maxLength - v1Parts.length).fill(0))
-    v2Parts.push(...Array(maxLength - v2Parts.length).fill(0))
-
-    // Compare each part of the version numbers
-    for (let i = 0; i < maxLength; i++) {
-      if (v1Parts[i] > v2Parts[i]) {
-        return 1
-      } else if (v1Parts[i] < v2Parts[i]) {
-        return -1
-      }
-    }
-
-    // Version numbers are equal
-    return 0
-  }
-
-  static getInstalledVersion(): string {
-    let version = getPkgVersion().replaceAll('v', '').trim()
-    window.WebPlatformSync?.((data: { appVersion?: string }) => {
-      if (typeof data?.appVersion === 'string' && data.appVersion) version = data.appVersion.replaceAll('v', '').trim()
-    })
-    return version
-  }
 
   static async Post(postData: any, isfirst = true): Promise<IServerRespData> {
     const url = ServerHttp.baseApi + 'xby2'
@@ -183,73 +138,5 @@ export default class ServerHttp {
       }).catch((err: any) => {
       DebugLog.mSaveDanger('CheckConfigUpgrade', err)
     })
-  }
-
-  static async CheckUpgrade(showMessage: boolean = true): Promise<void> {
-    const settingStore = useSettingStore()
-    axios
-      .get(ServerHttp.updateUrl, {
-        withCredentials: false,
-        responseType: 'json',
-        timeout: 30000
-      })
-      .then(async (response: AxiosResponse) => {
-        console.log('CheckUpgrade', response)
-        if (!response.data || !response.data.assets || !response.data.html_url) {
-          showMessage && message.error('获取新版本出错')
-          return
-        }
-        let tagName = response.data.tag_name  // 版本号
-        let remoteVer = tagName.replaceAll('v', '').trim()
-        let verHtml = response.data.html_url // 详情
-        let verInfo = response.data.body // 日志
-        let verData: IServerVerData = {
-          version: remoteVer,
-          verName: '',
-          verUrl: '',
-          verInfo: verInfo,
-          verHtml: verHtml,
-          fileExt: '',
-          fileSize: 0
-        }
-        let assets = response.data.assets     // 文件
-        const arch = (getArch() || '').toLowerCase()
-        const platform = window.platform
-        function isMatchingAsset(fileName: string): boolean {
-          const name = fileName.toLowerCase()
-          if (platform === 'win32') {
-            if (!name.endsWith('.exe') && !name.endsWith('.msi')) return false
-            return arch ? name.includes(arch) : true
-          }
-          if (platform === 'darwin') return name.endsWith('.dmg')
-          if (platform === 'linux') return name.endsWith('.appimage') || name.endsWith('.deb') || name.endsWith('.rpm')
-          return false
-        }
-
-        for (let asset of assets) {
-          if (isMatchingAsset(asset.name)) {
-            verData.fileSize = asset.size
-            verData.fileExt = path.extname(asset.name)
-            verData.verUrl = asset.browser_download_url
-            verData.verName = asset.name
-          }
-        }
-        if (remoteVer) {
-          const configVer = this.getInstalledVersion()
-          if (settingStore.uiUpdateProxyEnable) {
-            verData.verUrl = buildUpdateProxyUrl(settingStore.uiUpdateProxyUrl, verData.verUrl)
-          }
-          if (this.compareVer(remoteVer, configVer) > 0) {
-            // 打开更新弹窗
-            modalUpdate(verData)
-          } else if (showMessage) {
-            message.info('已经是最新版 ' + configVer, 6)
-          }
-        }
-      })
-      .catch((err: any) => {
-        showMessage && message.info('检查更新失败，请检查网络是否正常')
-        // DebugLog.mSaveDanger('CheckUpgrade', err)
-      })
   }
 }

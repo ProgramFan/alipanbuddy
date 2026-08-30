@@ -90,7 +90,3 @@ pub fn read_setting(user_data: &Path) -> Option<serde_json::Value> {
 pub fn setting_bool(user_data: &Path, key: &str) -> bool {
     read_setting(user_data).and_then(|v| v.get(key).and_then(|b| b.as_bool())).unwrap_or(false)
 }
-
-pub fn setting_string(user_data: &Path, key: &str) -> String {
-    read_setting(user_data).and_then(|v| v.get(key).and_then(|b| b.as_str()).map(|s| s.to_string())).unwrap_or_default()
-}

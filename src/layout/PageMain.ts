@@ -12,7 +12,6 @@ import UploadingDAL from '../transfer/uploadingdal'
 import { Sleep } from '../utils/format'
 import { invoke } from '../tauri/invoke'
 import cache from '../utils/cache'
-import message from '../utils/message'
 import { startBackgroundStartupTasks } from '../utils/startupTask'
 
 export function PageMain() {
@@ -44,15 +43,6 @@ export function PageMain() {
             window.MainProxyPort = String(port)
             window.MainProxyServer = { port }
             if (port !== wantPort) settingStore.updateStore({ debugProxyPort: String(port) })
-          }
-        },
-        {
-          label: 'CheckUpgrade',
-          run: async () => {
-            await Sleep(1500)
-            if (!useSettingStore().uiLaunchAutoCheckUpdate) return
-            const state = await window.AutoUpdateCheck?.(false)
-            if (state?.status === 'downloading') message.info(state.version ? `发现新版本 ${state.version}，正在后台下载` : '发现新版本，正在后台下载')
           }
         },
         {

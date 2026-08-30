@@ -17,13 +17,10 @@ export interface SettingState {
   uiHiddenTopTabs: string[]
   uiImageMode: string
   uiExitOnClose: boolean
-  uiLaunchAutoCheckUpdate: boolean
   uiLaunchMaximized: boolean
   uiLaunchAutoSign: boolean
   uiLaunchStart: boolean
   uiLaunchStartShow: boolean
-  uiUpdateProxyEnable: boolean
-  uiUpdateProxyUrl: string
 
   // 账户设置
   uiEnableOpenApiType: string
@@ -149,13 +146,10 @@ const setting: SettingState = {
   uiHiddenTopTabs: [],
   uiImageMode: 'fill',
   uiExitOnClose: false,
-  uiLaunchAutoCheckUpdate: false,
   uiLaunchMaximized: false,
   uiLaunchAutoSign: false,
   uiLaunchStart: false,
   uiLaunchStartShow: false,
-  uiUpdateProxyEnable: false,
-  uiUpdateProxyUrl: 'https://gh-proxy.com',
 
   // 账户设置
   uiEnableOpenApiType: 'inline',
@@ -289,13 +283,10 @@ function _loadSetting(val: any) {
   setting.uiHiddenTopTabs = Array.isArray(val.uiHiddenTopTabs) ? val.uiHiddenTopTabs.filter((tab: unknown) => typeof tab === 'string' && ['pan', 'share', 'rss'].includes(tab)) : []
   setting.uiImageMode = defaultValue(val.uiImageMode, ['fill', 'width', 'web'])
   setting.uiExitOnClose = defaultBool(val.uiExitOnClose, false)
-  setting.uiLaunchAutoCheckUpdate = defaultBool(val.uiLaunchAutoCheckUpdate, false)
   setting.uiLaunchMaximized = defaultBool(val.uiLaunchMaximized, false)
   setting.uiLaunchAutoSign = defaultBool(val.uiLaunchAutoSign, false)
   setting.uiLaunchStart = defaultBool(val.uiLaunchStart, false)
   setting.uiLaunchStartShow = defaultBool(val.uiLaunchStartShow, false)
-  setting.uiUpdateProxyEnable = defaultBool(val.uiUpdateProxyEnable, false)
-  setting.uiUpdateProxyUrl = defaultString(val.uiUpdateProxyUrl, 'https://gh-proxy.com')
 
   // 账户设置
   setting.uiEnableOpenApiType = defaultValue(val.uiEnableOpenApiType, ['inline', 'custom'])
@@ -421,10 +412,6 @@ export function LoadSetting() {
       settingstr = json
       const val = JSON.parse(settingstr)
       _loadSetting(val)
-      if (setting.uiUpdateProxyUrl === 'https://mirror.ghproxy.com') {
-        setting.uiUpdateProxyUrl = 'https://gh-proxy.com'
-        SaveSetting()
-      }
       useAppStore().toggleTheme(setting.uiTheme)
     } else {
       SaveSetting()

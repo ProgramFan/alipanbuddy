@@ -5,8 +5,6 @@ import MySwitch from '../layout/MySwitch.vue'
 import { openExternal } from '../utils/electronhelper'
 import { Code2 } from 'lucide-vue-next'
 import { getPkgVersion } from '../utils/utils'
-import { modalUpdateLog } from '../utils/modal'
-import message from '../utils/message'
 import { t } from '../i18n'
 
 const platform = window.platform
@@ -35,32 +33,6 @@ onMounted(() => {
 })
 const getAppVersion = computed(() => installedAppVersion.value)
 
-const verLoading = ref(false)
-const handleCheckVer = async () => {
-  verLoading.value = true
-  try {
-    const state = await window.AutoUpdateCheck?.(true)
-    if (!state || state.status === 'unsupported') {
-      message.info('后台更新仅支持已打包的桌面版本')
-    } else if (state.status === 'downloading') {
-      message.info(state.version ? `新版本 ${state.version} 正在后台下载` : '新版本正在后台下载')
-    } else if (state.status === 'downloaded') {
-      message.success(state.version ? `新版本 ${state.version} 已下载，退出 App 后即可更新` : '新版本已下载，退出 App 后即可更新')
-    } else if (state.status === 'up-to-date') {
-      message.info(`已经是最新版 ${getAppVersion.value}`, 6)
-    } else if (state.status === 'error') {
-      message.error('检查更新失败，请检查网络是否正常')
-    } else {
-      message.info('正在检查更新')
-    }
-  } finally {
-    verLoading.value = false
-  }
-}
-const handleUpdateLog = () => {
-  modalUpdateLog()
-}
-
 function openSupport() {
   openExternal('https://xbyvideohub.com/support/')
 }
@@ -80,14 +52,8 @@ function openSupport() {
       </div>
     </div>
     <div class='settings-app-actions'>
-      <a-button type='outline' status='success' size='small' @click='handleUpdateLog'>
-        {{ t('settings.changelog') }}
-      </a-button>
       <a-button type='outline' status='warning' size='small' @click='openSupport'>
         {{ t('settings.submitFeedback') }}
-      </a-button>
-      <a-button type='outline' size='small' :loading='verLoading' @click='handleCheckVer'>
-        {{ t('settings.checkUpdates') }}
       </a-button>
     </div>
     <div class='settingspace'></div>
@@ -148,14 +114,6 @@ function openSupport() {
       </div>
     </template>
     <div class='settingspace'></div>
-    <div class='settinghead'>{{ t('settings.update') }}</div>
-    <div class='settingrow'>
-      <MySwitch :value='settingStore.uiLaunchAutoCheckUpdate'
-                @update:value='cb({ uiLaunchAutoCheckUpdate: $event })'>
-        {{ t('settings.checkOnStart') }}
-      </MySwitch>
-    </div>
-    <div class='settingspace'></div>
     <div class='settinghead'>{{ t('settings.autoSign') }}</div>
     <div class='settingrow'>
       <MySwitch :value='settingStore.uiLaunchAutoSign' @update:value='cb({ uiLaunchAutoSign: $event })'>
@@ -178,20 +136,6 @@ function openSupport() {
           </div>
         </template>
       </a-popover>
-    </div>
-    <div class='settingspace'></div>
-    <div class='settinghead'>{{ t('settings.updateProxy') }}</div>
-    <div class='settingrow'>
-      <MySwitch :value='settingStore.uiUpdateProxyEnable' @update:value='cb({ uiUpdateProxyEnable: $event })'>
-        {{ t('settings.enableUpdateProxy') }}
-      </MySwitch>
-      <div class='settingrow' v-if="settingStore.uiUpdateProxyEnable">
-        <a-input v-model.trim='settingStore.uiUpdateProxyUrl'
-                 allow-clear
-                 :style="{ width: '280px' }"
-                 :placeholder="t('settings.updateProxy')"
-                 @update:model-value='cb({ uiUpdateProxyUrl: $event })' />
-      </div>
     </div>
   </div>
 </template>

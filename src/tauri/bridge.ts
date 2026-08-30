@@ -160,21 +160,6 @@ function installWindowApi() {
   window.WebReload = () => location.reload()
   window.WebRelaunch = () => invoke('relaunch_app').catch(() => {})
   window.WebRelaunchAria = () => invoke<number>('aria_rpc_port').catch(() => 16800)
-  window.AutoUpdateGetState = () => invoke('auto_update_get_state').catch(() => ({ status: 'unsupported' }))
-  window.AutoUpdateCheck = (force = false) => invoke('auto_update_check', { force: !!force }).catch(() => ({ status: 'error' }))
-  window.AutoUpdateInstall = () => invoke<boolean>('auto_update_install').catch(() => false)
-  window.AutoUpdateOnStateChanged = (callback: (state: any) => void) => {
-    let unlisten: UnlistenFn | undefined
-    let disposed = false
-    listen('AutoUpdate:StateChanged', (event) => callback(event.payload)).then((fn) => {
-      if (disposed) fn()
-      else unlisten = fn
-    })
-    return () => {
-      disposed = true
-      if (unlisten) unlisten()
-    }
-  }
   window.WebSetProgressBar = (data: any) => {
     const progress = data && data.pro ? Number(data.pro) : -1
     invoke('set_progress_bar', { progress, mode: data?.mode || 'normal' }).catch(() => {})

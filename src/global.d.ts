@@ -30,10 +30,6 @@ declare global {
     WebOpenWindow: any
     WebShowOpenDialogSync: any
     WebPlatformSync: any
-    AutoUpdateGetState?: () => Promise<any>
-    AutoUpdateCheck?: (force?: boolean) => Promise<any>
-    AutoUpdateInstall?: () => Promise<boolean>
-    AutoUpdateOnStateChanged?: (callback: (state: any) => void) => () => void
     MainProxyServer: any
     MainProxyHost: any
     MainProxyPort: any

@@ -104,9 +104,6 @@ pnpm run secrets:generate   # 生成 src/secrets.generated.ts（已 ignore，已
 「设置 → 账户设置 → OpenAPI 授权」中选择“自定义凭据”，填入自己在
 [阿里云盘开放平台](https://www.aliyundrive.com/developer) 申请的 client id / secret。
 
-自动更新需要 Tauri 签名密钥：`pnpm tauri signer generate` 生成后，把公钥写入 `src-tauri/tauri.conf.json` 的
-`plugins.updater.pubkey`，并在 CI 中提供 `TAURI_SIGNING_PRIVATE_KEY`。
-
 ---
 
 ## 项目结构

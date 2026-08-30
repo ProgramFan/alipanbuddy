@@ -1,6 +1,5 @@
 import { IAliGetFileModel, IAliShareItem } from '../aliapi/alimodels'
 import { useModalStore, usePanFileStore, useSettingStore } from '../store'
-import { IServerVerData } from '../aliapi/server'
 import usePanTreeStore from '../pan/pantreestore'
 import UploadingDAL from '../transfer/uploadingdal'
 
@@ -103,14 +102,6 @@ export function modalUpload(file_id: string, filelist: string[], ispic: boolean 
 
 export function modalDownload(istree: boolean) {
   useModalStore().showModal('download', { istree })
-}
-
-export function modalUpdateLog() {
-  useModalStore().showModal('showupdatelog', {})
-}
-
-export function modalUpdate(verData: IServerVerData) {
-  useModalStore().showModal('showupdate', { verData })
 }
 
 export function modalShowPost(msg: string, msgid: string) {

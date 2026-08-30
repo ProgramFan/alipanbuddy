@@ -4,7 +4,6 @@ mod commands;
 mod paths;
 mod state;
 mod tray;
-mod update;
 mod windows;
 
 use tauri::{Manager, RunEvent};
@@ -27,7 +26,6 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, Some(vec!["--autostart"])))
-        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_os::init())
@@ -55,9 +53,6 @@ pub fn run() {
             commands::system::set_launch_at_login,
             commands::system::aria_rpc_port,
             commands::system::aria_restart,
-            commands::system::auto_update_get_state,
-            commands::system::auto_update_check,
-            commands::system::auto_update_install,
             commands::window::main_window_cmd,
             commands::window::window_cmd,
             commands::window::open_page_window,
@@ -108,7 +103,6 @@ pub fn run() {
             let resource_dir = paths::resource_dir(&handle);
             log::info!("user data: {}", user_data.display());
             app.manage(AppState::new(user_data.clone(), resource_dir));
-            app.state::<AppState>().update.init(&handle);
             {
                 let state = app.state::<AppState>();
                 match tauri::async_runtime::block_on(bridge::start(state.body_store.clone())) {
@@ -127,16 +121,12 @@ pub fn run() {
                 log::warn!("tray: {err}");
             }
 
-            // aria2c + update check start a little after the UI, like the Electron version did.
+            // aria2c starts a little after the UI, like the Electron version did.
             let delayed = handle.clone();
             tauri::async_runtime::spawn(async move {
                 tokio::time::sleep(std::time::Duration::from_secs(3)).await;
                 if let Err(err) = aria::ensure_running(&delayed) {
                     log::warn!("aria2c: {err}");
-                }
-                if paths::setting_bool(&delayed.state::<AppState>().user_data, "uiLaunchAutoCheckUpdate") {
-                    let state = delayed.state::<AppState>();
-                    let _ = state.update.check(&delayed, false).await;
                 }
             });
             Ok(())

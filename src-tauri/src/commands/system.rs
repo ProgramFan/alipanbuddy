@@ -14,7 +14,6 @@ use tauri_plugin_opener::OpenerExt;
 use crate::commands::proxy;
 use crate::paths;
 use crate::state::{AppState, KeepAwakeHandle};
-use crate::update::AutoUpdateState;
 use crate::windows;
 
 #[derive(Serialize)]
@@ -369,21 +368,4 @@ pub fn aria_rpc_port(app: AppHandle) -> Result<u16, String> {
 #[tauri::command]
 pub fn aria_restart(app: AppHandle) -> Result<u16, String> {
     crate::aria::restart(&app)
-}
-
-#[tauri::command]
-pub fn auto_update_get_state(app: AppHandle) -> AutoUpdateState {
-    app.state::<AppState>().update.get_state()
-}
-
-#[tauri::command]
-pub async fn auto_update_check(app: AppHandle, force: Option<bool>) -> AutoUpdateState {
-    let handle = app.clone();
-    let state = handle.state::<AppState>();
-    state.update.check(&app, force.unwrap_or(false)).await
-}
-
-#[tauri::command]
-pub fn auto_update_install(app: AppHandle) -> bool {
-    app.state::<AppState>().update.install(&app)
 }

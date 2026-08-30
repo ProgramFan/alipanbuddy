@@ -32,11 +32,10 @@ purpose — do not reintroduce provider abstractions or feature gates for them.
 
 ```
 src-tauri/                Rust application (Tauri 2)
-  src/lib.rs              builder: plugins, command registry, setup (windows, tray, aria2c, update check), exit hooks
+  src/lib.rs              builder: plugins, command registry, setup (windows, tray, aria2c), exit hooks
   src/windows.rs          main / hidden upload+download worker / preview windows, login + share-site browser windows
   src/commands/           #[tauri::command]s: fs_*, file_sha1/upload_part/flowenc_*, proxy_*, window/system commands
   src/aria.rs             bundled aria2c sidecar lifecycle (RPC port 16800+, secret S4znWTaZYQi3cpRNb)
-  src/update.rs           tauri-plugin-updater state machine (AutoUpdate:StateChanged events)
   src/paths.rs            user-data dir (Electron `userData` semantics, `userdir.config` override, one-time migration)
   crates/boxcore/         GTK-free core with unit tests: flowenc (aes-ctr/rc4-md5), namecodec, proxy (axum), upload,
                           hashing, fsx, aria args, speed limiter
@@ -85,6 +84,6 @@ static/engine/            aria2c binaries per platform/arch + aria2.conf (copied
   `src/secrets.generated.ts`. Without them the OpenAPI (second login step) needs custom credentials entered in
   设置 → 账户设置 → OpenAPI 授权.
 - **Vitest**: Node environment only, explicit test directory list in `vitest.config.ts` (not glob patterns). Add new test dirs to config.
-- **Updater**: `plugins.updater.pubkey` in tauri.conf.json is empty until a key pair is generated
-  (`pnpm tauri signer generate`); CI only creates updater artifacts when `TAURI_SIGNING_PRIVATE_KEY` is set.
+- **No auto-updater**: the app is private (every user brings their own Aliyun developer credentials), so there is
+  no update check, updater plugin or release feed — do not reintroduce them.
 - **CI**: Manual trigger only via `.github/workflows/release.yml` (tauri-apps/tauri-action matrix), publishes draft GitHub Release

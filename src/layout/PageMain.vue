@@ -49,19 +49,9 @@ const winStore = useWinStore()
 const keyboardStore = useKeyboardStore()
 const mouseStore = useMouseStore()
 const footStore = useFootStore()
-let removeAutoUpdateStateListener: (() => void) | undefined
 let shareClipboardTimer: number | undefined
 let lastShareClipboardSignature = ''
 let shareClipboardPromptOpen = false
-
-function syncAutoUpdateState(state: { status?: string; percent?: number; version?: string }) {
-  const status = state.status === 'downloading' || state.status === 'downloaded' || state.status === 'error' ? state.status : 'idle'
-  footStore.updateStore({
-    updateDownloadProgress: status === 'downloading' ? Math.max(0, Math.min(100, state.percent ?? 0)) : status === 'downloaded' ? 100 : 0,
-    updateDownloadStatus: status,
-    updateDownloadVersion: state.version || ''
-  })
-}
 
 function checkClipboardShareLink() {
   if (document.visibilityState !== 'visible' || shareClipboardPromptOpen) return
@@ -103,11 +93,6 @@ function scheduleClipboardShareCheck() {
 
 function handleDocumentVisibilityChange() {
   if (document.visibilityState === 'visible') scheduleClipboardShareCheck()
-}
-
-async function handleInstallUpdate() {
-  const installed = await window.AutoUpdateInstall?.()
-  if (!installed) message.warning('更新尚未下载完成')
 }
 
 const sidebarTabs = new Set(['pan', 'down', 'share', 'rss', 'setting'])
@@ -271,12 +256,6 @@ onMounted(() => {
     onHideRightMenu()
   }, 300)
   window.addEventListener('click', onHideRightMenu, { passive: true })
-  window.AutoUpdateGetState?.().then((state) => {
-    syncAutoUpdateState(state)
-  })
-  removeAutoUpdateStateListener = window.AutoUpdateOnStateChanged?.((state) => {
-    syncAutoUpdateState(state)
-  })
   shareClipboardTimer = window.setTimeout(checkClipboardShareLink, 800)
 })
 
@@ -288,7 +267,6 @@ onUnmounted(() => {
   window.removeEventListener('focus', scheduleClipboardShareCheck)
   document.removeEventListener('visibilitychange', handleDocumentVisibilityChange)
   window.removeEventListener('click', onHideRightMenu)
-  removeAutoUpdateStateListener?.()
 })
 </script>
 <template>
@@ -387,17 +365,6 @@ onUnmounted(() => {
               {{ footStore.downloadTotalSpeed }}
             </span>
           </div>
-
-          <div class='footerBar fix update-progress-foot' v-show="footStore.updateDownloadStatus === 'downloading'" :title="`${t('footer.newVersion')} ${Math.round(footStore.updateDownloadProgress)}%`">
-            <svg aria-hidden='true' class='update-progress-ring' viewBox='0 0 20 20'>
-              <circle class='update-progress-track' cx='10' cy='10' fill='none' r='8' stroke-width='2' />
-              <circle class='update-progress-value' cx='10' cy='10' fill='none' r='8' stroke-width='2' :style='{ strokeDashoffset: 50.27 * (1 - footStore.updateDownloadProgress / 100) }' />
-            </svg>
-            <span class='update-progress-label'>{{ Math.round(footStore.updateDownloadProgress) }}%</span>
-          </div>
-          <button class='footerBar fix update-progress-foot update-ready-foot' v-show="footStore.updateDownloadStatus === 'downloaded'" :title="`${footStore.updateDownloadVersion || t('footer.newVersion')} 已下载，点击重启安装`" @click='handleInstallUpdate'>
-            {{ footStore.updateDownloadVersion || t('footer.newVersion') }} · 安装
-          </button>
 
           <div class='footerBar fix'>
             <span class='footAria' :title="t('footer.ariaConnected')" v-if='footStore.ariaInfo'> {{ footStore.ariaInfo }} </span>
@@ -1511,33 +1478,6 @@ a {
 .footerBar .iconfont {
   font-size: 14px;
   line-height: 24px;
-}
-
-.update-progress-foot {
-  gap: 5px;
-}
-
-.update-progress-ring {
-  width: 16px;
-  height: 16px;
-  transform: rotate(-90deg);
-}
-
-.update-progress-track {
-  stroke: rgba(255, 255, 255, 0.2);
-}
-
-.update-progress-value {
-  stroke: #00d9bd;
-  stroke-linecap: round;
-  stroke-dasharray: 50.27;
-  transition: stroke-dashoffset 0.2s ease;
-}
-
-.update-progress-label {
-  min-width: 28px;
-  color: rgba(255, 255, 255, 0.88);
-  font-variant-numeric: tabular-nums;
 }
 
 #footLoading .arco-icon-loading {

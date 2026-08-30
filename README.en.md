@@ -73,8 +73,6 @@ pnpm run build:mac | build:linux | build:windows | build:windows:arm64
 
 Aliyun Drive OpenAPI client id / secret live in `.env.local` (see `.env.example`); `pnpm run secrets:generate` writes `src/secrets.generated.ts` (git-ignored, existing values are never overwritten with empty ones) and runs automatically before `dev`, `build`, and `test`. Builds without built-in credentials can still log in: pick "Custom credentials" under Settings → Account → OpenAPI Authorization and enter your own client id / secret from the [Aliyun Drive developer portal](https://www.aliyundrive.com/developer).
 
-Auto update needs a Tauri signing key pair (`pnpm tauri signer generate`): put the public key into `plugins.updater.pubkey` in `src-tauri/tauri.conf.json` and provide `TAURI_SIGNING_PRIVATE_KEY` in CI.
-
 See [README.md](./README.md) for the project layout.
 
 ---

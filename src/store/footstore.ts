@@ -50,10 +50,6 @@ export interface FootState {
   picSpaceInfo: string
 
   ariaInfo: string
-
-  updateDownloadProgress: number
-  updateDownloadStatus: 'idle' | 'downloading' | 'downloaded' | 'error'
-  updateDownloadVersion: string
 }
 
 const useFootStore = defineStore('foot', {
@@ -70,10 +66,7 @@ const useFootStore = defineStore('foot', {
     loadingInfo: '',
     panSpaceInfo: '',
     picSpaceInfo: '',
-    ariaInfo: '',
-    updateDownloadProgress: 0,
-    updateDownloadStatus: 'idle',
-    updateDownloadVersion: ''
+    ariaInfo: ''
   }),
 
   getters: {
@@ -188,10 +181,6 @@ const useFootStore = defineStore('foot', {
 
     mSaveAriaInfo(title: string) {
       this.ariaInfo = title
-    },
-
-    mSaveUpdateDownloadProgress(progress: number) {
-      this.updateDownloadProgress = progress
     },
 
     mSaveUserInfo(token: ITokenInfo) {
