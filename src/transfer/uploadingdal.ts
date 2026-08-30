@@ -7,9 +7,8 @@ import { CheckWindowsBreakPath, FileSystemErrorMessage } from '../utils/filehelp
 import { humanSize, humanSizeSpeed } from '../utils/format'
 import message from '../utils/message'
 import UploadingData from './uploadingdata'
-import path from 'node:path'
-import fspromises from 'fs/promises'
-import { Stats } from 'fs'
+import path from '../utils/path'
+import fs, { type StatInfo } from '../tauri/fs'
 
 export default class UploadingDAL {
 
@@ -254,13 +253,13 @@ export default class UploadingDAL {
       if (CheckWindowsBreakPath(filePath)) continue
       const filePathLower = filePath.toLowerCase()
       plist.push(
-        fspromises
+        fs
           .lstat(filePath)
-          .then((stat: Stats) => {
-            if (stat.isSymbolicLink()) return
-            const isDir = stat.isDirectory()
+          .then((stat: StatInfo) => {
+            if (stat.isSymlink) return
+            const isDir = stat.isDirectory
             if (!isDir) {
-              if (!stat.isFile()) return
+              if (!stat.isFile) return
               // 过滤自定义忽略的文件
               for (let j = 0; j < formax; j++) {
                 if (filePathLower.endsWith(ingoredList[j])) return
@@ -309,7 +308,7 @@ export default class UploadingDAL {
               name: baseName,
               size: stat.size,
               sizeStr: isDir ? '' : humanSize(stat.size),
-              mtime: stat.mtime.getTime(),
+              mtime: stat.mtimeMs,
               isDir: isDir,
               IsRoot: true,
               uploaded_is_rapid: false,

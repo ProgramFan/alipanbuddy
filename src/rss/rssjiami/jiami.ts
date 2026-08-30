@@ -1,11 +1,10 @@
 import { FileSystemErrorMessage } from '../../utils/filehelper'
 import DebugLog from '../../utils/debuglog'
 import message from '../../utils/message'
-import fsPromises from 'fs/promises'
-import path from 'path'
+import fs from '../../tauri/fs'
+import { invoke } from '../../tauri/invoke'
+import path from '../../utils/path'
 import { decodeName, encodeName } from '../../module/flow-enc/utils'
-import fs from 'fs'
-import FlowEnc from '../../module/flow-enc'
 
 export async function DoJiaMi(mode: string,
                               encType: string,
@@ -22,16 +21,19 @@ export async function DoJiaMi(mode: string,
     return 0
   } else {
     const start = Date.now()
+    // flowenc_file only knows the two settings ciphers; RssJiaMi passes 'aesctr' | 'rc4md5' straight through
+    const alg: 'aesctr' | 'rc4md5' = encType === 'rc4md5' ? 'rc4md5' : 'aesctr'
     // 输出文件
-    if (!fs.existsSync(outPath)) {
-      fs.mkdirSync(outPath)
+    if (!(await fs.exists(outPath))) {
+      await fs.mkdir(outPath, { recursive: true })
     }
     // 临时文件
     const tempDir = path.join(outPath, '.temp')
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir)
+    if (!(await fs.exists(tempDir))) {
+      await fs.mkdir(tempDir, { recursive: true })
     }
-    let promiseArr = []
+    let promiseArr: Promise<void>[] = []
+    let count = 0
     for (const fileInfo of fileList) {
       const { filePath, size } = fileInfo
       const file = filePath.toLowerCase().trimEnd()
@@ -64,22 +66,23 @@ export async function DoJiaMi(mode: string,
         }
         const outFilePath = path.join(outPath, relativePath)
         const outFilePathTemp = path.join(tempDir, relativePath)
-        fs.writeFileSync(outFilePath, '')
-        fs.writeFileSync(outFilePathTemp, '')
+        await fs.mkdir(path.dirname(outFilePath), { recursive: true })
+        await fs.mkdir(path.dirname(outFilePathTemp), { recursive: true })
+        await fs.writeTextFile(outFilePath, '')
+        await fs.writeTextFile(outFilePathTemp, '')
         // 开始加密
         if (size === 0) {
           continue
         }
-        const flowEnc = new FlowEnc(password, encType, size)
-        const writeStream = fs.createWriteStream(outFilePathTemp)
-        const readStream = fs.createReadStream(filePath)
-        const promise = new Promise<void>((resolve, reject) => {
-          readStream.pipe(mode === 'enc' ? flowEnc.encryptTransform() : flowEnc.decryptTransform()).pipe(writeStream)
-          readStream.on('end', () => {
-            fs.renameSync(outFilePathTemp, outFilePath)
-            resolve()
+        // the Rust side reproduces `new FlowEnc(password, encType, size)` + encrypt/decrypt transform (symmetric stream cipher)
+        const promise = invoke<number>('flowenc_file', { alg, password, src: filePath, dst: outFilePathTemp })
+          .then(() => fs.rename(outFilePathTemp, outFilePath))
+          .then(() => {
+            count++
           })
-        })
+          .catch((err: any) => {
+            DebugLog.mSaveDanger('XM flowenc ' + (err?.message || '') + filePath)
+          })
         promiseArr.push(promise)
         if (promiseArr.length > 50) {
           await Promise.all(promiseArr)
@@ -90,16 +93,16 @@ export async function DoJiaMi(mode: string,
       }
     }
     await Promise.all(promiseArr)
-    fs.rmSync(tempDir, { recursive: true })
+    await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {})
     const time = ((Date.now() - start) / 1000).toFixed(2) + 's'
-    return { count: promiseArr.length, time }
+    return { count, time }
   }
 }
 
 async function GetAllFiles(dir: string, breakSmall: boolean, fileList: any[]) {
   if (!dir.endsWith(path.sep)) dir = dir + path.sep
   try {
-    const childFiles = await fsPromises.readdir(dir).catch((err: any) => {
+    const childFiles = await fs.readDir(dir).catch((err: any) => {
       err = FileSystemErrorMessage(err.code, err.message)
       DebugLog.mSaveDanger('XM GetAllFiles文件失败：' + dir, err)
       message.error('跳过文件夹：' + err + ' ' + dir)
@@ -109,33 +112,33 @@ async function GetAllFiles(dir: string, breakSmall: boolean, fileList: any[]) {
     let allTask: Promise<void>[] = []
     const dirList: string[] = []
     for (let i = 0, maxi = childFiles.length; i < maxi; i++) {
-      const name = childFiles[i] as string
+      const name = childFiles[i].name
       if (name.startsWith('.')) continue
       if (name.startsWith('#')) continue
       const item = dir + name
       allTask.push(
-        fsPromises
+        fs
           .lstat(item)
-          .then((stat: any) => {
-            if (stat.isDirectory()) dirList.push(item)
-            else if (stat.isSymbolicLink()) {
+          .then((stat) => {
+            if (stat.isDirectory) dirList.push(item)
+            else if (stat.isSymlink) {
               // donothing
-            } else if (stat.isFile()) {
+            } else if (stat.isFile) {
               if (!breakSmall || stat.size > 5 * 1024 * 1024) {
                 fileList.push({ filePath: item, size: stat.size })
               }
             }
           })
-          .catch()
+          .catch(() => {})
       )
       if (allTask.length > 10) {
-        await Promise.all(allTask).catch()
+        await Promise.all(allTask).catch(() => {})
         allTask = []
       }
     }
 
     if (allTask.length > 0) {
-      await Promise.all(allTask).catch()
+      await Promise.all(allTask).catch(() => {})
       allTask = []
     }
 

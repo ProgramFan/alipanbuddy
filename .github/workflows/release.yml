@@ -24,7 +24,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1 || \
-            gh release create "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --draft --title "BoxPlayer ${GITHUB_REF_NAME}"
+            gh release create "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --draft --title "AlipanBuddy ${GITHUB_REF_NAME}"
 
   release:
     name: Build Release
@@ -32,7 +32,25 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ windows-latest, ubuntu-latest, macos-14 ]
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            args: --target x86_64-pc-windows-msvc --bundles nsis
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
+            args: --target aarch64-pc-windows-msvc --bundles nsis
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            args: --target x86_64-unknown-linux-gnu --bundles deb,rpm,appimage
+          - os: ubuntu-22.04-arm
+            target: aarch64-unknown-linux-gnu
+            args: --target aarch64-unknown-linux-gnu --bundles deb,rpm,appimage
+          - os: macos-14
+            target: aarch64-apple-darwin
+            args: --target aarch64-apple-darwin --bundles dmg
+          - os: macos-13
+            target: x86_64-apple-darwin
+            args: --target x86_64-apple-darwin --bundles dmg
     runs-on: ${{ matrix.os }}
 
     permissions:
@@ -49,28 +67,24 @@ jobs:
 
       - uses: pnpm/action-setup@v3
         name: Install pnpm
-        id: pnpm-install
         with:
           version: 10.32.1
           run_install: false
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache Rust build
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
 
       - name: Get Pnpm Store Directory
         shell: bash
         run: |
           echo "PNPM_STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
-
-      - name: Get Electron Store Directory
-        shell: bash
-        run: |
-          if [[ "${{ runner.os }}" == "Windows" ]]; then
-            echo "ELECTRON_STORE_PATH=$LOCALAPPDATA\\electron\\cache" >> $GITHUB_ENV
-            echo "ELECTRON_BUILDER_STORE_PATH=$LOCALAPPDATA\\electron-builder\\cache" >> $GITHUB_ENV
-          elif [[ "${{ runner.os }}" == "macOS" ]]; then
-            echo "ELECTRON_STORE_PATH=$HOME/Library/Caches/electron" >> $GITHUB_ENV
-          else
-            echo "ELECTRON_STORE_PATH=$HOME/.cache/electron" >> $GITHUB_ENV
-            echo "ELECTRON_BUILDER_STORE_PATH=$HOME/.cache/electron-builder" >> $GITHUB_ENV
-          fi
 
       - name: Setup Pnpm Cache
         uses: actions/cache@v4
@@ -80,22 +94,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
 
-      - name: Setup Cache Electron
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.ELECTRON_STORE_PATH }}
-          key: ${{ runner.os }}-electron-cache-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-electron-cache-
-
-      - name: Setup Cache Electron Builder
-        uses: actions/cache@v4
-        if: matrix.os != 'macos-14'
-        with:
-          path: ${{ env.ELECTRON_BUILDER_STORE_PATH }}
-          key: ${{ runner.os }}-electron-builder-cache-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-electron-builder-cache-
+      - name: Install Linux dependencies
+        if: startsWith(matrix.os, 'ubuntu')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --fix-missing libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev rpm
 
       - name: Install Dependencies
         run: |
@@ -103,42 +106,36 @@ jobs:
 
       - name: Generate Release Secrets
         env:
-          REQUIRED_RELEASE_SECRETS: ALIYUN_APP_ID,ALIYUN_APP_SECRET,BAIDU_APP_ID,BAIDU_APP_SECRET,CLOUD123_APP_ID,CLOUD123_APP_SECRET,DRIVE115_APP_ID,DRIVE115_APP_SECRET,DROPBOX_APP_KEY,ONEDRIVE_CLIENT_ID,BOX_CLIENT_ID,GOOGLE_CLIENT_ID,GOOGLE_CLIENT_SECRET,PIKPAK_CLIENT_ID,PIKPAK_CLIENT_SECRET,GUANGYA_CLIENT_ID,CLOUD189_APP_ID,BOXPLAYER_AI_API_URL,BOXPLAYER_API_URL,BOXPLAYER_SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,BOXPLAYER_SITE_URL,POSTHOG_PROJECT_API_KEY,POSTHOG_HOST
+          REQUIRED_RELEASE_SECRETS: ALIYUN_APP_ID,ALIYUN_APP_SECRET
           ALIYUN_APP_ID: ${{ secrets.ALIYUN_APP_ID }}
           ALIYUN_APP_SECRET: ${{ secrets.ALIYUN_APP_SECRET }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           node scripts/generate-secrets.mjs --mode=ci --strict
 
-      - name: Install Lib For Pacman Build
-        if: matrix.os == 'ubuntu-latest'
+      - name: Prepare aria2c sidecar
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --fix-missing libarchive-tools
+          node scripts/prepare-sidecars.mjs ${{ matrix.target }}
 
-      - name: Make Aria2c Executable
-        if: matrix.os != 'windows-latest'
-        run: |
-          chmod -R 777 ./static/engine/
-
-      - name: Build Electron App
-        uses: paneron/action-electron-builder@v1.8.1
+      - name: Build Tauri App
+        uses: tauri-apps/tauri-action@v0
         env:
-          ALIYUN_APP_ID: ${{ secrets.ALIYUN_APP_ID }}
-          ALIYUN_APP_SECRET: ${{ secrets.ALIYUN_APP_SECRET }}
-          CSC_LINK: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          SKIP_VERSION_BUMP: true
-          NODE_OPTIONS: --max-old-space-size=6144
         with:
-          package_manager: pnpm
-          release: true           # 自动创建 Release
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+          releaseName: AlipanBuddy ${{ github.ref_name }}
+          releaseDraft: true
+          prerelease: true
+          includeUpdaterJson: true
+          updaterJsonKeepUniversal: false
+          args: ${{ matrix.args }} ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' && '--config {"bundle":{"createUpdaterArtifacts":true}}' || '' }}
 
   finalize-release:
     name: Finalize Release
@@ -192,7 +189,7 @@ jobs:
           fi
           gh release edit "${GITHUB_REF_NAME}" \
             --repo "${GITHUB_REPOSITORY}" \
-            --title "BoxPlayer ${GITHUB_REF_NAME}" \
+            --title "AlipanBuddy ${GITHUB_REF_NAME}" \
             --notes-file release-notes.md \
             --prerelease \
             --draft=false

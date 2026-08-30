@@ -36,9 +36,6 @@ const Rss = defineAsyncComponent(() => import('../rss/index.vue'))
 const Share = defineAsyncComponent(() => import('../share/index.vue'))
 const Down = defineAsyncComponent(() => import('../down/index.vue'))
 
-const wechatPayImage = 'images/wechat_pay.jpg'
-const alipayImage = 'images/alipay.jpg'
-const cryptoDonationAddress = '0xb0a3f7254e97a8bd398b1ab7f70eb48b0dc68eaf'
 const panVisible = ref(true)
 const sidebarVisibility = ref<Record<'down' | 'share' | 'rss' | 'setting', boolean>>({
   down: true,
@@ -84,8 +81,8 @@ function checkClipboardShareLink() {
   Modal.confirm({
     title: isEnglish ? `${share.providerName} share link detected` : `检测到${share.providerName}分享链接`,
     content: share.canImport
-      ? (isEnglish ? 'View this share in BoxPlayer and choose files to save?' : '是否在 BoxPlayer 中查看并选择要保存的文件？')
-      : (isEnglish ? `BoxPlayer cannot directly save ${share.providerName} share links yet. Open it in your browser?` : `BoxPlayer 暂不支持直接转存${share.providerName}分享链接，是否使用浏览器打开？`),
+      ? (isEnglish ? 'View this share in AlipanBuddy and choose files to save?' : '是否在 神行云盘助手 中查看并选择要保存的文件？')
+      : (isEnglish ? `AlipanBuddy cannot directly save ${share.providerName} share links yet. Open it in your browser?` : `神行云盘助手 暂不支持直接转存${share.providerName}分享链接，是否使用浏览器打开？`),
     okText: share.canImport ? (isEnglish ? 'View and save' : '查看并保存') : (isEnglish ? 'Open link' : '打开链接'),
     cancelText: isEnglish ? 'Ignore' : '忽略',
     onOk: () => {
@@ -125,11 +122,6 @@ const handleToggleSidebar = () => {
     const tab = appStore.appTab as keyof typeof sidebarVisibility.value
     sidebarVisibility.value = { ...sidebarVisibility.value, [tab]: !sidebarVisibility.value[tab] }
   }
-}
-
-const handleCopyCryptoDonationAddress = () => {
-  copyToClipboard(cryptoDonationAddress)
-  message.success(t('footer.cryptoCopied'))
 }
 
 const handleThemeClick = (val: any) => {
@@ -188,11 +180,6 @@ const handleMinClick = (_e: any) => {
 }
 const handleMaxClick = (_e: any) => {
   if (window.WebToElectron) window.WebToElectron({ cmd: 'maxsize' })
-}
-
-const handleHelpPage = () => {
-  const ourl = B64decode(useServerStore().helpUrl)
-  if (ourl) openExternal(ourl)
 }
 
 
@@ -462,43 +449,6 @@ onUnmounted(() => {
               </div>
             </template>
           </a-popover>
-          <a-popover trigger='hover' position='top' class='sponsor-popover'>
-            <div class='footerBar fix footer-sponsor-button' :title="t('footer.sponsorApp')">
-              <IconFont name="iconbiaozhang" />
-              <span>{{ t('footer.sponsorApp') }}</span>
-            </div>
-            <template #content>
-              <div class='sponsor-qrcode-panel'>
-                <div class='sponsor-qrcode-item'>
-                  <img :src='wechatPayImage' :alt="t('footer.wechatRewardCode')" />
-                  <span>{{ t('footer.wechat') }}</span>
-                </div>
-                <div class='sponsor-qrcode-item'>
-                  <img :src='alipayImage' :alt="t('footer.alipayRewardCode')" />
-                  <span>{{ t('footer.alipay') }}</span>
-                </div>
-              </div>
-              <div class='sponsor-crypto-panel'>
-                <div class='sponsor-crypto-title' :title="t('footer.cryptoDonation')">{{ t('footer.cryptoDonation') }}</div>
-                <div class='sponsor-crypto-address' :title='cryptoDonationAddress'>{{ cryptoDonationAddress }}</div>
-                <a-button
-                  type='primary'
-                  size='mini'
-                  long
-                  tabindex='-1'
-                  :title="t('footer.copyCryptoAddress')"
-                  @click='handleCopyCryptoDonationAddress'
-                >
-                  <template #icon><IconFont name="iconcopy" /></template>
-                  {{ t('footer.copyAddress') }}
-                </a-button>
-              </div>
-            </template>
-          </a-popover>
-          <div class='footerBar fix' :title="t('footer.project')" style='margin: 0; cursor: pointer' @click='handleHelpPage'>
-            <IconFont name="iconrss" />
-            {{ t('footer.project') }}
-          </div>
         </div>
       </div>
       <MyModal />
@@ -577,78 +527,14 @@ body {
   height: 24px;
 }
 
-.sponsor-popover .arco-popover-popup-content {
-  padding: 12px;
-}
 
-.sponsor-qrcode-panel {
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 14px;
-}
 
-.sponsor-qrcode-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  color: var(--color-text-2);
-  font-size: 13px;
-  line-height: 18px;
-}
 
-.sponsor-qrcode-item img {
-  display: block;
-  width: 220px;
-  height: 220px;
-  object-fit: contain;
-  background: #fff;
-  border: 1px solid var(--color-border-2);
-  border-radius: 6px;
-}
 
-.sponsor-crypto-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  width: 100%;
-  max-width: 454px;
-  margin-top: 12px;
-  padding-top: 10px;
-  border-top: 1px solid var(--color-border-2);
-}
 
-.sponsor-crypto-title {
-  color: var(--color-text-1);
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 18px;
-}
 
-.sponsor-crypto-address {
-  width: 100%;
-  padding: 6px 8px;
-  color: var(--color-text-2);
-  font-family: monospace;
-  font-size: 12px;
-  line-height: 18px;
-  word-break: break-all;
-  background: var(--color-fill-2);
-  border: 1px solid var(--color-border-2);
-  border-radius: 6px;
-  user-select: text;
-}
 
-.sponsor-crypto-panel .iconfont {
-  font-size: 14px !important;
-}
 
-.footer-sponsor-button {
-  margin: 0;
-  cursor: pointer;
-  gap: 4px;
-}
 
 #xbyhead2 .arco-menu-horizontal {
   width: 0;

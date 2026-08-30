@@ -1,5 +1,5 @@
 import { IAliGetFileModel } from '../aliapi/alimodels'
-import path from 'path'
+import path from '../utils/path'
 import TreeStore from '../store/treestore'
 import { useDownedStore, useDowningStore, useFootStore, useSettingStore, useUserStore } from '../store'
 import { ClearFileName } from '../utils/filehelper'
@@ -17,7 +17,7 @@ import {
 import { humanSize, humanSizeSpeed } from '../utils/format'
 import { Howl } from 'howler'
 import DBDown from '../utils/dbdown'
-import fsPromises from 'fs/promises'
+import fs from '../tauri/fs'
 import { DecodeEncName } from '../aliapi/utils'
 import { getEncType } from '../utils/proxyhelper'
 import { SHA256 } from 'crypto-js'
@@ -90,6 +90,8 @@ export interface IAriaDownProgress {
 
 /** 存盘的时机：默认 10 时进行 */
 let SaveTimeWait = 0
+/** 正在移动/校验的已完成任务，避免异步重命名期间被下一次速度事件重复处理 */
+const hashingDownIDs = new Set<string>()
 const sound = new Howl({
   src: ['./audio/download_finished.mp3'], // 音频文件路径
   autoplay: false, // 是否自动播放
@@ -315,7 +317,7 @@ export default class DownDAL {
   /**
    * 速度事件方法
    */
-  static mSpeedEvent(list: IAriaDownProgress[]) {
+  static async mSpeedEvent(list: IAriaDownProgress[]) {
     const downingStore = useDowningStore()
     const settingStore = useSettingStore()
     const DowningList: IStateDownFile[] = downingStore.ListDataRaw
@@ -353,8 +355,10 @@ export default class DownDAL {
         Down.FailedCode = errorState.failedCode
         Down.FailedMessage = errorState.failedMessage
         if (isComplete) {
+          if (hashingDownIDs.has(DownID)) continue
+          hashingDownIDs.add(DownID)
           downingStore.mUpdateDownState(downingItem, 'valid')
-          const check = AriaHashFile(downingItem)
+          const check = await AriaHashFile(downingItem).finally(() => hashingDownIDs.delete(DownID))
           if (check.Check) {
             if (useSettingStore().downFinishAudio && !sound.playing()) {
               sound.play()
@@ -428,9 +432,9 @@ export default class DownDAL {
           let tmpFilePath1 = filePath + '.td.aria2'
           let tmpFilePath2 = filePath + '.td'
           const tmpFilePath3 = filePath + '.td.json'
-          await fsPromises.rm(tmpFilePath1, { recursive: true })
-          await fsPromises.rm(tmpFilePath2, { recursive: true })
-          await fsPromises.rm(tmpFilePath3, { recursive: true })
+          await fs.rm(tmpFilePath1, { recursive: true, force: true })
+          await fs.rm(tmpFilePath2, { recursive: true, force: true })
+          await fs.rm(tmpFilePath3, { recursive: true, force: true })
         }
       } catch (e) {
       }

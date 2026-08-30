@@ -2,26 +2,23 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-describe('release workflow notes', () => {
-  it('never publishes an empty release body', () => {
-    const workflow = readFileSync(resolve(process.cwd(), '.github/workflows/release.yml'), 'utf8')
+describe('release workflow', () => {
+  const workflow = readFileSync(resolve(process.cwd(), '.github/workflows/release.yml'), 'utf8')
 
-    expect(workflow).toContain('git log --format="- %s (%h)"')
-    expect(workflow).toContain('if [[ ! -s release-notes.md ]]')
-    expect(workflow).toContain('Release notes are empty; refusing to publish')
+  it('packages the app with tauri-action on every desktop platform', () => {
+    expect(workflow).toContain('tauri-apps/tauri-action')
+    expect(workflow).toContain('matrix')
+    expect(workflow).toContain('windows')
+    expect(workflow).toContain('ubuntu')
+    expect(workflow).toContain('macos')
   })
 
-  it('refreshes Ubuntu package indexes before installing Pacman build tooling', () => {
-    const workflow = readFileSync(resolve(process.cwd(), '.github/workflows/release.yml'), 'utf8')
-
-    expect(workflow).toContain('sudo apt-get update')
-    expect(workflow).toContain('sudo apt-get install -y --fix-missing libarchive-tools')
+  it('installs dependencies from the locked pnpm lockfile', () => {
+    expect(workflow).toContain('pnpm install --frozen-lockfile')
   })
 
-  it('keeps tagged builds as prereleases until the promotion workflow is run', () => {
-    const workflow = readFileSync(resolve(process.cwd(), '.github/workflows/release.yml'), 'utf8')
-
-    expect(workflow).toContain('--prerelease')
-    expect(workflow).not.toContain('-F make_latest=true')
+  it('generates the secrets strictly and prepares the aria2c sidecars before building', () => {
+    expect(workflow).toContain('node scripts/generate-secrets.mjs --mode=ci --strict')
+    expect(workflow).toContain('node scripts/prepare-sidecars.mjs')
   })
 })

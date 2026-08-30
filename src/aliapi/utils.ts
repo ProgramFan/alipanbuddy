@@ -7,11 +7,14 @@ import AliFile from './file'
 import { IAliBatchResult } from './models'
 
 import { SHA256 } from 'crypto-js'
-import { ecdsaSign, publicKeyCreate } from 'secp256k1'
+import type * as Secp256k1 from 'secp256k1'
+// @ts-ignore the pure-JS build ships no typings of its own; it exposes exactly the 'secp256k1' API
+import * as secp256k1Elliptic from 'secp256k1/elliptic'
+const { ecdsaSign, publicKeyCreate } = secp256k1Elliptic as typeof Secp256k1
 import { IAliFileItem, IAliGetFileModel } from './alimodels'
 import { decodeName, encodeName } from '../module/flow-enc/utils'
-import path from 'path'
-import mime from 'mime-types'
+import path from '../utils/path'
+import mime from '../utils/mime'
 import { getEncPassword, getEncType } from '../utils/proxyhelper'
 import { getDriveId, getDriveType } from '../drive/context'
 

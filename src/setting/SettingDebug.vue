@@ -4,7 +4,8 @@ import AppCache from '../utils/appcache'
 import MySwitch from '../layout/MySwitch.vue'
 import { getUserData, openExternal } from '../utils/electronhelper'
 import message from '../utils/message'
-import { createProxyServer, getIPAddress } from '../utils/proxyhelper'
+import { getLocalIp } from '../utils/proxyhelper'
+import { invoke } from '../tauri/invoke'
 import { Sleep } from '../utils/format'
 import { onMounted, ref } from 'vue'
 import { t } from '../i18n'
@@ -27,9 +28,9 @@ const getSafeProxyPort = () => {
 const handleJumpPath = () => {
   openExternal(userData)
 }
-const handleResetHost = () => {
+const handleResetHost = async () => {
   if (settingStore.debugProxyHost.includes('127')) {
-    let localIp = getIPAddress()
+    const localIp = await getLocalIp()
     cb({ debugProxyHost: localIp })
   } else {
     cb({ debugProxyHost: '127.0.0.1' })
@@ -38,24 +39,20 @@ const handleResetHost = () => {
 
 const handleResetPort = async () => {
   // 重启软件服务
-  if (window.MainProxyServer) {
-    const debugProxyPort = getSafeProxyPort()
-    const loadingKey = 'proxyServer' + Date.now().toString()
-    message.loading(t('settings.debug.restartLoading'), 60, loadingKey)
-    await window.MainProxyServer.close()
-    createProxyServer(debugProxyPort).catch(err => {
-      message.error(t('settings.debug.restartFailed'), 3, loadingKey)
-    }).then(async (debugProxyServer: any) => {
-      window.MainProxyPort = debugProxyPort
-      window.MainProxyServer = debugProxyServer
-      window.MainProxyServer.on('close', async () => {
-        await Sleep(2000)
-        window.MainProxyServer = await createProxyServer(window.MainProxyPort)
-      })
-      cb({ debugProxyPort: debugProxyPort.toString() })
-      await Sleep(2000)
-      message.success(t('settings.debug.restartDone'), 3, loadingKey)
-    })
+  if (!window.MainProxyServer) return
+  const debugProxyPort = getSafeProxyPort()
+  const loadingKey = 'proxyServer' + Date.now().toString()
+  message.loading(t('settings.debug.restartLoading'), 60, loadingKey)
+  try {
+    await invoke('proxy_stop').catch(() => {})
+    const port = await invoke<number>('proxy_start', { port: debugProxyPort })
+    window.MainProxyPort = String(port)
+    window.MainProxyServer = { port }
+    cb({ debugProxyPort: String(port) })
+    await Sleep(2000)
+    message.success(t('settings.debug.restartDone'), 3, loadingKey)
+  } catch {
+    message.error(t('settings.debug.restartFailed'), 3, loadingKey)
   }
 }
 

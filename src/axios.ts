@@ -1,5 +1,6 @@
 import axios from 'axios'
-import { performance } from 'perf_hooks'
+import { tauriAxiosAdapter } from './tauri/http'
+import { isTauri } from './tauri/invoke'
 
 let QPS = 5
 // 校准本地和服务端之间的时间差
@@ -34,10 +35,7 @@ const qpsController = () => async (config: any) => {
 
   qpsMap.set(config.url, { count, ts })
   // 计算休眠时间：
-  // 由于本地服务器和远程服务器之间可能存在时间差会发生这种情况：
-  // 前5个请求在10:00:00.200时发送过去后，此时本地时间可能到了10:00:00.900到来的第六请求由于超出了QPS=5的限制，会休眠100ms
-  // 但是由于本地和服务端时间差的问题，第六个休眠100ms后发送了请求，服务端的时间可能才是10:00:00.950，导致了QPS超限报错
-  // 所以，这里添加一个OFFSET偏移值来纠正本地和服务端之间的时间差问题，默认为50ms，若出现QPS超限，请酌情增大此值
+  // 由于本地服务器和远程服务器之间可能存在时间差，添加 OFFSET 偏移值来纠正，若出现 QPS 超限，请酌情增大此值
   let sleep = ts - now
   sleep = sleep > 0 ? sleep + OFFSET : 0
   // 让当前的请求睡一会儿再请求
@@ -49,4 +47,6 @@ const qpsController = () => async (config: any) => {
 
 axios.interceptors.request.use(qpsController())
 axios.defaults.withCredentials = false
+// Every request (including `import axios from 'axios'` elsewhere) goes through the Rust HTTP client.
+if (isTauri()) axios.defaults.adapter = tauriAxiosAdapter
 export default axios

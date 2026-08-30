@@ -1,3 +1,5 @@
+import './polyfills'
+import './axios'
 import { createApp } from 'vue'
 import App from './App.vue'
 import ArcoVue from '@arco-design/web-vue'
@@ -7,21 +9,20 @@ import message from './utils/message'
 import DebugLog from './utils/debuglog'
 import { PageMain } from './layout/PageMain'
 import { WorkerPage } from './workerpage/workercmd'
-import ServerHttp from './aliapi/server'
 import { setLocale } from './i18n'
 import UserDAL from './user/userdal'
+import IconFont from './components/IconFont.vue'
+import { getPageContext, getThemeState, initBridge, listen, markWorkerReady, parsePageRoute, type WorkerKind } from './tauri/bridge'
+import { installProxyUrlResolver } from './tauri/proxyResolver'
+import { installDragDropUpload } from './tauri/dragDrop'
 
 window.onerror = function (errorMessage, scriptURI, lineNo, columnNo, error) {
   try {
-    if (errorMessage
-      && typeof errorMessage === 'string') {
-      if (errorMessage.indexOf('ResizeObserver') >= 0
-        || errorMessage.indexOf('listen EADDRINUSE') >= 0
-        || errorMessage.indexOf('connect ENOENT') >= 0) {
+    if (errorMessage && typeof errorMessage === 'string') {
+      if (errorMessage.indexOf('ResizeObserver') >= 0 || errorMessage.indexOf('listen EADDRINUSE') >= 0 || errorMessage.indexOf('connect ENOENT') >= 0) {
         return true
       }
     }
-    // DebugLog.mSaveDanger('onerror')
     if (typeof errorMessage === 'string') {
       DebugLog.mSaveDanger(errorMessage)
       message.error('onerror ' + errorMessage)
@@ -41,8 +42,6 @@ window.addEventListener('unhandledrejection', function (event) {
       event.preventDefault()
       return
     }
-
-    // DebugLog.mSaveDanger('unhandledrejection')
     const reason = event.reason
     if (reason && reason.message) {
       if (/no supported source/i.test(reason.message)) {
@@ -60,117 +59,68 @@ window.addEventListener('unhandledrejection', function (event) {
   event.preventDefault()
 })
 
-const app = createApp(App)
-import IconFont from './components/IconFont.vue'
-app.component('IconFont', IconFont)
-app.config.errorHandler = function (err: any, vm, info) {
-  try {
-    if (typeof err === 'string') {
-      DebugLog.mSaveDanger('errorHandler', err)
-      message.error('errorHandler ' + err, 1)
-    } else {
-      DebugLog.mSaveDanger('errorHandler', err)
-      if (err && err.message) message.error('errorHandler ' + err.message, 1)
-    }
-  } catch {}
-  return true
-}
-app.use(ArcoVue, {})
-app.use(store)
-const settingStore = useSettingStore()
-setLocale(settingStore.uiLanguage)
-settingStore.$subscribe((_mutation, state) => setLocale(state.uiLanguage))
-app.mount('#app')
+async function bootstrap() {
+  // Platform info + window.* bridge must exist before any store/module touches them.
+  await initBridge()
 
-
-window.WinMsgToMain = function (event: any) {
-  if (window.MainPort) window.MainPort.postMessage(event)
-}
-const pendingUploadEvents: any[] = []
-const pendingDownloadEvents: any[] = []
-window.WinMsgToUpload = function (event: any) {
-  if (window.UploadPort) {
-    window.UploadPort.postMessage(event)
-    return
+  const app = createApp(App)
+  app.component('IconFont', IconFont)
+  app.config.errorHandler = function (err: any, vm, info) {
+    try {
+      if (typeof err === 'string') {
+        DebugLog.mSaveDanger('errorHandler', err)
+        message.error('errorHandler ' + err, 1)
+      } else {
+        DebugLog.mSaveDanger('errorHandler', err)
+        if (err && err.message) message.error('errorHandler ' + err.message, 1)
+      }
+    } catch {}
+    return true
   }
-  pendingUploadEvents.push(event)
-  window.Electron.ipcRenderer.send('EnsureTransferWorker', 'upload')
-}
-window.WinMsgToDownload = function (event: any) {
-  if (window.DownloadPort) {
-    window.DownloadPort.postMessage(event)
-    return
-  }
-  pendingDownloadEvents.push(event)
-  window.Electron.ipcRenderer.send('EnsureTransferWorker', 'download')
-}
-
-window.Electron.ipcRenderer.on('setPort', (_event: any, args: any) => {
-  const [port] = _event.ports
-  window.MainPort = port
-  port.onmessage = (event: any) => {
-    Promise.resolve().then(() => {
-      try {
-        if (window.WinMsg) window.WinMsg(event.data)
-      } catch {}
-    })
-  }
-})
-window.Electron.ipcRenderer.on('setUploadPort', (_event: any, args: any) => {
-  const [port] = _event.ports
-  window.UploadPort = port
-  port.onmessage = (event: any) => {
-    Promise.resolve().then(() => {
-      try {
-        if (window.WinMsg) window.WinMsg(event.data)
-      } catch {}
-    })
-  }
-  while (pendingUploadEvents.length) window.UploadPort.postMessage(pendingUploadEvents.shift())
-})
-window.Electron.ipcRenderer.on('setDownloadPort', (_event: any, args: any) => {
-  const [port] = _event.ports
-  window.DownloadPort = port
-  port.onmessage = (event: any) => {
-    Promise.resolve().then(() => {
-      try {
-        if (window.WinMsg) window.WinMsg(event.data)
-      } catch {}
-    })
-  }
-  while (pendingDownloadEvents.length) window.DownloadPort.postMessage(pendingDownloadEvents.shift())
-})
-
-window.Electron.ipcRenderer.on('setPage', async (_event: any, args: any) => {
-  console.log('setPage', args.page, args)
-  const appStore = useAppStore()
+  app.use(ArcoVue, {})
+  app.use(store)
   const settingStore = useSettingStore()
-  if (args.appTheme && settingStore) appStore.toggleTheme(args.appTheme)
+  setLocale(settingStore.uiLanguage)
+  settingStore.$subscribe((_mutation, state) => setLocale(state.uiLanguage))
+  app.mount('#app')
 
-  const pageUserId = String(args?.data?.user_id || '')
-  if (pageUserId) await UserDAL.GetUserTokenFromDB(pageUserId)
+  const appStore = useAppStore()
+  try {
+    const { theme, dark } = await getThemeState()
+    if (theme) appStore.toggleTheme(theme)
+    appStore.toggleDark(!!dark)
+  } catch {}
+  await listen<{ theme?: string; dark: boolean }>('setTheme', (event) => {
+    const args = event.payload || ({} as any)
+    if (args.theme) appStore.toggleTheme(args.theme)
+    appStore.toggleDark(!!args.dark)
+  })
 
-  if (args.page == 'PageMain') {
+  const route = parsePageRoute()
+  if (route.page === 'PageWorker') {
+    const kind = (route.type === 'download' ? 'download' : 'upload') as WorkerKind
+    WorkerPage(kind)
+    appStore.togglePage('PageWorker')
+    await markWorkerReady(kind)
+  } else if (route.page === 'PageImage') {
+    const ctx = await getPageContext()
+    const pageUserId = String(ctx?.data?.user_id || '')
+    if (pageUserId) await UserDAL.GetUserTokenFromDB(pageUserId)
+    if (ctx?.theme) appStore.toggleTheme(ctx.theme)
+    appStore.pageImage = ctx?.data
+    appStore.togglePage('PageImage')
+  } else {
+    installProxyUrlResolver()
+    installDragDropUpload()
     PageMain()
     window.IsMainPage = true
-  } else if (args.page == 'PageWorker') {
-    WorkerPage(args.data.type)
-  } else if (args.page == 'PageImage') {
-    appStore.pageImage = args.data
+    appStore.togglePage('PageMain')
   }
-  if (args.page) appStore.togglePage(args.page)
-})
+}
 
-window.Electron.ipcRenderer.on('setTheme', (_event: any, args: any) => {
-  const appStore = useAppStore()
-  if (args.theme) appStore.toggleTheme(args.theme)
-  appStore.toggleDark(args.dark)
+bootstrap().catch((err: any) => {
+  console.error('bootstrap failed', err)
+  try {
+    DebugLog.mSaveDanger('bootstrap', err)
+  } catch {}
 })
-
-window.Electron.ipcRenderer.on('showUpdateModal', () => {
-  ServerHttp.CheckUpgrade(false).catch(() => {})
-})
-
-try {
-  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
-} catch {}

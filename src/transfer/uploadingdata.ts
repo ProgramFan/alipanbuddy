@@ -8,7 +8,7 @@ import { MapValueToArray } from '../utils/utils'
 import { throttle } from '../utils/debounce'
 import { SetProgressBar } from '../utils/electronhelper'
 import AliAlbum from '../aliapi/album'
-import path from 'node:path'
+import path from '../utils/path'
 
 const UploadingTaskList = new Map<number, IStateUploadTask>()
 const UploadingInfoList = new Map<number, IStateUploadInfo>()

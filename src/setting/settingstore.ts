@@ -3,7 +3,8 @@ import DebugLog from '../utils/debuglog'
 import { getUserDataPath } from '../utils/electronhelper'
 import { useAppStore } from '../store'
 import PanDAL from '../pan/pandal'
-import { existsSync, readFileSync, writeFileSync } from 'fs'
+import fs from '../tauri/fs'
+import { getPreloadedSettingJson } from '../tauri/bridge'
 import { detectSystemLocale } from '../i18n'
 
 declare type ProxyType = 'none' | 'http' | 'https' | 'socks4' | 'socks4a' | 'socks5' | 'socks5h'
@@ -405,13 +406,19 @@ function _loadSetting(val: any) {
 }
 
 let settingstr = ''
+/** JSON text pushed in by the main window (`SettingRefresh`); takes precedence over the backend-preloaded `setting.config`. */
+let appliedSettingJson: string | null = null
 
+/** Stores the JSON that the next `LoadSetting()` (e.g. `useSettingStore().$reset()`) will parse. */
+export function ApplySettingJson(json: string) {
+  if (typeof json === 'string' && json) appliedSettingJson = json
+}
 
 export function LoadSetting() {
   try {
-    const settingConfig = getUserDataPath('setting.config')
-    if (settingConfig && existsSync(settingConfig)) {
-      settingstr = readFileSync(settingConfig, 'utf-8')
+    const json = appliedSettingJson !== null ? appliedSettingJson : getPreloadedSettingJson()
+    if (json) {
+      settingstr = json
       const val = JSON.parse(settingstr)
       _loadSetting(val)
       if (setting.uiUpdateProxyUrl === 'https://mirror.ghproxy.com') {
@@ -464,8 +471,8 @@ function SaveSetting() {
     // console.log('SaveSetting', saveStr)
     if (saveStr != settingstr) {
       const settingConfig = getUserDataPath('setting.config')
-      writeFileSync(settingConfig, saveStr, 'utf-8')
       settingstr = saveStr
+      if (settingConfig) fs.writeTextFile(settingConfig, saveStr).catch((err: any) => DebugLog.mSaveDanger('SaveSettingToJson', err))
     }
   } catch (err: any) {
     DebugLog.mSaveDanger('SaveSettingToJson', err)
@@ -502,8 +509,8 @@ const useSettingStore = defineStore('setting', {
       if (Object.hasOwn(partial, 'uiTheme')) window.WebSaveTheme({ theme: setting.uiTheme })
       window.MainProxyHost = setting.debugProxyHost
       window.MainProxyPort = setting.debugProxyPort
-      window.WinMsgToUpload({ cmd: 'SettingRefresh' })
-      window.WinMsgToDownload({ cmd: 'SettingRefresh' })
+      window.WinMsgToUpload({ cmd: 'SettingRefresh', setting: settingstr })
+      window.WinMsgToDownload({ cmd: 'SettingRefresh', setting: settingstr })
     },
     updateFileColor(key: string, title: string) {
       if (!key) return

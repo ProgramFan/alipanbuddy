@@ -1,5 +1,6 @@
 <script setup lang='ts'>
-import { computed, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import type { UnlistenFn } from '@tauri-apps/api/event'
 import { IShareSiteModel, useServerStore, useWinStore } from '../../store'
 import { B64decode } from '../../utils/format'
 import { modalDaoRuShareLink } from '../../utils/modal'
@@ -7,18 +8,28 @@ import message from '../../utils/message'
 import { openExternal } from '../../utils/electronhelper'
 import ServerHttp from '../../aliapi/server'
 import DebugLog from '../../utils/debuglog'
+import { invoke } from '../../tauri/invoke'
+import { listen } from '../../tauri/bridge'
 
 const serverStore = useServerStore()
 const winStore = useWinStore()
 const itemHeight = computed(() => (winStore.height - 24 - 20 - 42 - 77).toString() + 'px')
 
-const onLoading = ref(true)
-const content = ref()
-const webview = ref()
 const hideLeft = ref(false)
 const siteUrl = ref('')
 
+// The site is shown in the separate Tauri window labelled 'site' (Tauri has no embedded webview element);
+// it reports navigations through 'site-navigation' and its closing through 'site-closed'.
+let siteListeners: Promise<UnlistenFn[]> | null = null
+
 const emits = defineEmits(['hideLeft'])
+
+const openSiteWindow = (url: string) => {
+  invoke('open_site_window', { url }).catch((err: any) => {
+    DebugLog.mSaveWarning('open_site_window failed ' + (err?.message || err))
+    message.error('打开网页失败，请使用浏览器打开')
+  })
+}
 
 const handleSite = (item: IShareSiteModel) => {
   if (item.url.startsWith('http')) {
@@ -34,42 +45,36 @@ const handleSite = (item: IShareSiteModel) => {
     siteUrl.value = ''
     return
   }
-  // 动态创建WebView
-  webview.value = document.createElement('webview')
-  webview.value.className = 'site-content'
-  webview.value.id = 'webview'
-  webview.value.setAttribute('src', siteUrl.value)
-  webview.value.setAttribute('allowpopups', '')
-  webview.value.setAttribute('partition', 'site:webview')
-  webview.value.setAttribute('nodeintegration', '')
-  webview.value.setAttribute('disablewebsecurity', '')
-  webview.value.setAttribute('webpreferences', 'allowRunningInsecureContent')
-  content.value.appendChild(webview.value)
-  webview.value.addEventListener('did-start-loading', handleStartLoad)
-  webview.value.addEventListener('new-window', handleSiteShareUrl)
-  webview.value.addEventListener('will-navigate', handleSiteShareUrl)
-  webview.value.addEventListener('will-redirect', handleSiteShareUrl)
+  if (!siteUrl.value) return
+  openSiteWindow(siteUrl.value)
 }
 const handleHideLeft = () => {
   hideLeft.value = !hideLeft.value
   emits('hideLeft', hideLeft.value)
 }
 
+const siteWindowCmd = async (cmd: 'back' | 'forward' | 'reload' | 'clear-cookies') => {
+  if (!siteUrl.value) {
+    message.error('打开网页失败，请手动刷新网页')
+    return false
+  }
+  try {
+    await invoke('site_window_cmd', { cmd })
+    return true
+  } catch (err: any) {
+    DebugLog.mSaveWarning('site_window_cmd ' + cmd + ' failed ' + (err?.message || err))
+    message.error('打开网页失败，请手动刷新网页')
+    return false
+  }
+}
+
 const handleClearCookies = async () => {
-  await window.WebClearCookies({ origin: webview.value.src, storages: ['cookies', 'localstorage'] })
-  message.success('清除Cookies成功')
+  if (await siteWindowCmd('clear-cookies')) message.success('清除Cookies成功')
 }
-
-const handleStartLoad = () => {
-  onLoading.value = true
-  setTimeout(() => onLoading.value = false, 1000)
-}
-
 
 const handleSiteShareUrl = async (event: any) => {
-  console.log('handleSiteShareUrl', event)
   // 获取点击的 URL
-  const url = event.url || ''
+  const url = event?.url || ''
   if (/(aliyundrive|alipan).com\/s\/[0-9a-zA-Z_]{11,}/.test(url)) {
     modalDaoRuShareLink(url)
   }
@@ -77,17 +82,18 @@ const handleSiteShareUrl = async (event: any) => {
 
 const handleClose = () => {
   siteUrl.value = ''
-  if (webview.value) {
-    webview.value.removeEventListener('will-navigate', handleSiteShareUrl)
-    webview.value.removeEventListener('new-window', handleSiteShareUrl)
-    webview.value.removeEventListener('will-redirect', handleSiteShareUrl)
-    webview.value.removeEventListener('did-start-loading', handleStartLoad)
-    content.value.removeChild(webview.value)
-    webview.value = {}
-  }
+  invoke('close_site_window').catch(() => {})
   hideLeft.value = false
   emits('hideLeft', false)
 }
+
+const handleSiteClosed = () => {
+  if (!siteUrl.value) return
+  siteUrl.value = ''
+  hideLeft.value = false
+  emits('hideLeft', false)
+}
+
 const handleRefreshSiteList = () => {
   ServerHttp.CheckConfigUpgrade().catch((err: any) => {
     DebugLog.mSaveDanger('CheckConfigUpgrade', err)
@@ -95,32 +101,37 @@ const handleRefreshSiteList = () => {
 }
 
 const handleRefresh = () => {
-  if (!webview.value) {
-    message.error('打开网页失败，请手动刷新网页')
-    return
-  }
-  webview.value.reloadIgnoringCache()
+  siteWindowCmd('reload')
 }
 
 const handleBack = () => {
-  if (!webview.value) {
-    message.error('打开网页失败，请手动刷新网页')
-    return
-  }
-  if (webview.value.canGoBack()) {
-    webview.value.goBack()
-  }
+  siteWindowCmd('back')
 }
 
 const handleForward = () => {
-  if (!webview.value) {
-    message.error('打开网页失败，请手动刷新网页')
-    return
-  }
-  if (webview.value.canGoForward()) {
-    webview.value.goForward()
-  }
+  siteWindowCmd('forward')
 }
+
+const handleReopen = () => {
+  if (siteUrl.value) openSiteWindow(siteUrl.value)
+}
+
+onMounted(() => {
+  siteListeners = Promise.all([
+    listen<{ url: string }>('site-navigation', (event) => handleSiteShareUrl(event.payload)),
+    listen('site-closed', () => handleSiteClosed())
+  ]).catch((err: any) => {
+    DebugLog.mSaveWarning('site window listen failed ' + (err?.message || err))
+    return [] as UnlistenFn[]
+  })
+})
+
+onUnmounted(() => {
+  const listeners = siteListeners
+  siteListeners = null
+  if (listeners) listeners.then((fns) => fns.forEach((fn) => fn())).catch(() => {})
+  if (siteUrl.value) invoke('close_site_window').catch(() => {})
+})
 </script>
 
 <template>
@@ -170,7 +181,7 @@ const handleForward = () => {
       </a-popconfirm>
     </div>
     <div class='toppanbtn'>
-      <a-button type='text' size='small' tabindex='-1' @click='openExternal(webview.src || siteUrl)'>
+      <a-button type='text' size='small' tabindex='-1' @click='openExternal(siteUrl)'>
         <IconFont name="icondebug" />浏览器打开
       </a-button>
     </div>
@@ -190,8 +201,8 @@ const handleForward = () => {
       </a-button>
     </div>
     <div class='toppanbtn'>
-      <a-button type='text' :loading='onLoading' size='small' tabindex='-1' @click='handleRefresh'>
-        <IconFont name="iconreload-1-icon" v-if='!onLoading' />刷新
+      <a-button type='text' size='small' tabindex='-1' @click='handleRefresh'>
+        <IconFont name="iconreload-1-icon" />刷新
       </a-button>
     </div>
     <div class='toppanbtn'>
@@ -200,7 +211,14 @@ const handleForward = () => {
       </a-button>
     </div>
   </div>
-  <div class='site-content' ref='content' v-show='siteUrl'></div>
+  <div class='site-content' v-show='siteUrl'>
+    <div class='site-content-tip'>
+      <div class='site-content-title'>网站已在独立窗口中打开</div>
+      <div class='site-content-url'>{{ siteUrl }}</div>
+      <div class='site-content-desc'>在独立窗口中点击阿里云盘分享链接会自动弹出导入窗口</div>
+      <a-button type='primary' size='small' tabindex='-1' @click='handleReopen'>显示网站窗口</a-button>
+    </div>
+  </div>
 </template>
 
 <style lang='less'>
@@ -274,9 +292,38 @@ const handleForward = () => {
 
 .site-content {
   display: flex;
+  align-items: center;
+  justify-content: center;
   width: calc(100%);
-  height: calc(100%);
+  height: calc(100% - 44px);
   border: none;
-  overflow: hidden
+  overflow: hidden;
+
+  .site-content-tip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    max-width: 80%;
+    text-align: center;
+    color: var(--color-text-1);
+  }
+
+  .site-content-title {
+    font-size: 18px;
+    font-weight: 500;
+  }
+
+  .site-content-url {
+    font-size: 13px;
+    color: var(--color-text-2);
+    word-break: break-all;
+    user-select: text;
+  }
+
+  .site-content-desc {
+    font-size: 12px;
+    color: var(--color-text-3);
+  }
 }
 </style>

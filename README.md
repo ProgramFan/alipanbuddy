@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="screenshot/icon.svg" alt="BoxPlayer" width="120">
+  <img src="screenshot/icon.svg" alt="AlipanBuddy" width="120">
 </p>
 
-<h1 align="center">BoxPlayer</h1>
+<h1 align="center">神行云盘助手 · AlipanBuddy</h1>
 
 <p align="center">
   中文 · <a href="./README.en.md">English</a>
@@ -21,16 +21,16 @@
 <p align="center">
   <img alt="License" src="https://img.shields.io/github/license/gaozhangmin/aliyunpan?style=flat-square">
   <img alt="Vue" src="https://img.shields.io/badge/Vue-3-42b883?style=flat-square&logo=vuedotjs&logoColor=white">
-  <img alt="Electron" src="https://img.shields.io/badge/Electron-40-47848f?style=flat-square&logo=electron&logoColor=white">
+  <img alt="Tauri" src="https://img.shields.io/badge/Tauri-2-24c8db?style=flat-square&logo=tauri&logoColor=white">
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-ESNext-3178c6?style=flat-square&logo=typescript&logoColor=white">
   <img alt="Platforms" src="https://img.shields.io/badge/macOS%20%7C%20Windows%20%7C%20Linux-desktop-blue?style=flat-square">
 </p>
 
 ---
 
-## BoxPlayer 是什么
+## 神行云盘助手 是什么
 
-BoxPlayer 源自“小白羊网盘”，是一个专注于阿里云盘的跨平台桌面客户端：
+神行云盘助手（AlipanBuddy）源自 BoxPlayer / “小白羊网盘”，是一个专注于阿里云盘的跨平台桌面客户端：
 
 - 多账号登录，备份盘 / 资源盘 / 相册 / 安全盘统一浏览。
 - 文件管理：新建、重命名、移动、复制、收藏、回收站、搜索、属性、压缩包解压。
@@ -63,7 +63,7 @@ BoxPlayer 源自“小白羊网盘”，是一个专注于阿里云盘的跨平�
 macOS 如果提示“文件已损坏”或被 Gatekeeper 拦截，可在确认来源可信后执行：
 
 ```bash
-sudo xattr -d com.apple.quarantine /Applications/BoxPlayer.app
+sudo xattr -d com.apple.quarantine /Applications/alipanbuddy.app
 ```
 
 ---
@@ -74,37 +74,47 @@ sudo xattr -d com.apple.quarantine /Applications/BoxPlayer.app
 
 - Node.js >= 22.12.0
 - pnpm（仓库内不要使用 npm 或 yarn）
+- Rust stable 工具链（`rustup`）
+- Linux 需要 WebKitGTK 开发包：Fedora `webkit2gtk4.1-devel gtk3-devel libsoup3-devel librsvg2-devel libappindicator-gtk3-devel`，
+  Debian/Ubuntu `libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf`
 - macOS / Windows / Linux
 
 ### 常用命令
 
 ```bash
 pnpm install                       # 安装依赖
-pnpm dev                           # 本地开发（Vite + Electron 热重载）
-CI=true pnpm exec vue-tsc --noEmit # 仅类型检查
+pnpm dev                           # 本地开发（Vite 热重载 + Tauri/Rust）
+pnpm run typecheck                 # 渲染端类型检查（vue-tsc）
+pnpm run typecheck:rust            # Rust 类型检查（cargo check）
 pnpm run test                      # Vitest
-pnpm run build                     # 递增版本号 → 类型检查 → 打包渲染端与主进程
-pnpm run build:electron            # 打包安装包（electron-builder）
-pnpm run build:mac | build:linux | build:windows
+pnpm run test:rust                 # Rust 核心库单元测试（cargo test -p boxcore）
+pnpm run build                     # 递增版本号 → 类型检查 → Vite 打包 → tauri build 生成安装包
+pnpm run build:mac | build:linux | build:windows | build:windows:arm64
 ```
 
 ### 私有配置与密钥
 
-阿里云盘 `client id` / `client secret` 不提交到仓库。将其写入 `.env.local`（参考 `.env.example`），然后：
+阿里云盘 OpenAPI 的 `client id` / `client secret` 不提交到仓库。将其写入 `.env.local`（参考 `.env.example`），然后：
 
 ```bash
-pnpm run secrets:generate   # 生成 src/secrets.generated.ts（已 ignore）
+pnpm run secrets:generate   # 生成 src/secrets.generated.ts（已 ignore，已有值不会被空值覆盖）
 ```
 
-`pnpm dev` / `pnpm run build` / `pnpm run test` 会自动执行该步骤。
+`pnpm dev` / `pnpm run build` / `pnpm run test` 会自动执行该步骤。没有内置凭据的构建也可以使用：在
+「设置 → 账户设置 → OpenAPI 授权」中选择“自定义凭据”，填入自己在
+[阿里云盘开放平台](https://www.aliyundrive.com/developer) 申请的 client id / secret。
+
+自动更新需要 Tauri 签名密钥：`pnpm tauri signer generate` 生成后，把公钥写入 `src-tauri/tauri.conf.json` 的
+`plugins.updater.pubkey`，并在 CI 中提供 `TAURI_SIGNING_PRIVATE_KEY`。
 
 ---
 
 ## 项目结构
 
 ```text
-electron/main/        Electron 主进程：窗口、IPC、自动更新、aria2c 下载引擎
-electron/preload/     预加载脚本（IPC 桥）
+src-tauri/            Tauri（Rust）应用：窗口、托盘、命令、自动更新、aria2c 引擎、本地解密代理
+src-tauri/crates/boxcore/  与 GTK 无关的核心库（加密流、文件名编码、代理、上传、哈希），含单元测试
+src/tauri/            渲染端 ↔ Rust 桥（window.WebXxx API、axios 适配器、fs/hash/upload 封装）
 src/aliapi/           阿里云盘 API：文件、目录、分享、上传、相册、回收站
 src/pan/              文件管理器 UI（目录树、列表、菜单、弹窗）
 src/share/            分享 / 订阅
@@ -112,51 +122,27 @@ src/down/             上传下载任务与 aria2 集成
 src/transfer/         上传队列
 src/workerpage/       上传 / 下载工作窗口
 src/rss/              插件工具（加密、扫描、清理等）
-src/module/flow-enc/  文件加密流
+src/module/flow-enc/  加密文件名编码（文件内容加密在 Rust 中完成）
 src/user/             登录与账号
 src/setting/          设置页
 src/layout/           主布局、图片查看器
 src/store/            Pinia 状态
 src/utils/            通用工具
-shared/               主进程 / 渲染端共享代码
-scripts/              密钥生成、版本工具
+scripts/              密钥生成、aria2c sidecar 准备、版本工具
+static/engine/        各平台 aria2c 可执行文件与 aria2.conf
 ```
 
 ---
 
 ## 技术栈
 
-- Electron 40 · Vue 3 · Vite · TypeScript
+- Tauri 2 (Rust) · Vue 3 · Vite · TypeScript
 - Arco Design Vue · Ant Design Vue
 - Dexie (IndexedDB)
 - aria2c
 
 ---
 
-## 赞助与社区
-
-如果 BoxPlayer 对你有帮助，欢迎赞助支持持续维护。
-
-<p align="center">
-  <img src="public/images/wechat_pay.jpg" width="220" alt="微信赞赏码">
-  <img src="public/images/alipay.jpg" width="220" alt="支付宝赞赏码">
-</p>
-
-USDT / USDC：
-
-```text
-0xb0a3f7254e97a8bd398b1ab7f70eb48b0dc68eaf
-```
-
-微信公众号：
-
-<p align="center">
-  <img src="screenshot/qrcode_wechat.jpg" width="320" alt="小白羊公众号">
-</p>
-
-Telegram：[https://t.me/+wjdFeQ7ZNNE1NmM1](https://t.me/+wjdFeQ7ZNNE1NmM1)
-
----
 
 ## 鸣谢
 

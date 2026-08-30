@@ -235,6 +235,16 @@ export default class UserDAL {
   static async UserLogin(token: ITokenInfo, isInteractive: boolean = false) {
     const loadingKey = 'userlogin_' + Date.now().toString()
     message.loading('加载用户信息中...', 0, loadingKey)
+    try {
+      await UserDAL._UserLogin(token, isInteractive, loadingKey)
+    } catch (err: any) {
+      DebugLog.mSaveDanger('UserLogin ' + (token?.user_id || ''), err)
+      message.error('加载用户信息失败：' + (err?.message || err), 6, loadingKey)
+      throw err
+    }
+  }
+
+  private static async _UserLogin(token: ITokenInfo, isInteractive: boolean, loadingKey: string) {
     const initialUserId = token.user_id
     if (initialUserId) {
       await DB.saveValueString('uiDefaultUser', initialUserId)
@@ -253,7 +263,13 @@ export default class UserDAL {
       ])
     }
     if (isInteractive || !initialUserId) {
-      await withStartupTimeout(refreshAccountInfo(), `账号 ${initialUserId || ''} 用户信息`)
+      // Bounded, but never fatal: a slow endpoint must not leave the user stuck on the login toast.
+      try {
+        await withStartupTimeout(refreshAccountInfo(), `账号 ${initialUserId || ''} 用户信息`, 20_000)
+      } catch (err: any) {
+        DebugLog.mSaveWarning('UserLogin refreshAccountInfo ' + initialUserId, err?.message || err)
+        message.warning('账号信息加载超时，已跳过，稍后自动重试', 5)
+      }
     } else {
       void withStartupTimeout(refreshAccountInfo(), `后台刷新账号 ${initialUserId} 用户信息`)
         .then(() => UserDAL.SaveUserToken(token))
@@ -280,8 +296,16 @@ export default class UserDAL {
     })
     // 已保存账号优先进入网盘，目录和账号资料在后台补全，避免任一网盘阻塞启动。
     const loadPanData = UserDAL.LoadPanData(token)
-    if (isInteractive) await loadPanData
-    else void loadPanData.catch((err: any) => DebugLog.mSaveWarning('UserLogin LoadPanData ' + token.user_id, err?.message || err))
+    if (isInteractive) {
+      try {
+        await withStartupTimeout(loadPanData, `账号 ${token.user_id} 网盘目录`, 30_000)
+      } catch (err: any) {
+        DebugLog.mSaveWarning('UserLogin LoadPanData ' + token.user_id, err?.message || err)
+        message.warning('网盘目录加载失败：' + (err?.message || err), 5)
+      }
+    } else {
+      void loadPanData.catch((err: any) => DebugLog.mSaveWarning('UserLogin LoadPanData ' + token.user_id, err?.message || err))
+    }
     // 刷新所有状态
     PanDAL.aReLoadQuickFile(token.user_id)
     useAppStore().resetTab(useSettingStore().uiDefaultTab || 'pan')

@@ -1,4 +1,4 @@
-import path from 'path'
+import path from '../../utils/path'
 
 export type DownloadTaskStatus =
   | 'active' | 'waiting' | 'paused' | 'error' | 'complete' | 'removed' | string

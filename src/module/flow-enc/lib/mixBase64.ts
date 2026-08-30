@@ -1,5 +1,6 @@
-import crypto from 'crypto'
+import CryptoJS from 'crypto-js'
 import { Buffer } from 'buffer'
+import { wordArrayToBytes } from './bytes'
 
 const source = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-~+'
 
@@ -110,9 +111,9 @@ class MixBase64 {
   }
 
   static initKSA(passwd: string | Buffer): string {
-    let key: string | Buffer = passwd
+    let key: string | Buffer | Uint8Array = passwd
     if (typeof passwd === 'string') {
-      key = crypto.createHash('sha256').update(passwd).digest()
+      key = wordArrayToBytes(CryptoJS.SHA256(passwd))
     }
     const K: any[] = []
     const sbox: any[] = []

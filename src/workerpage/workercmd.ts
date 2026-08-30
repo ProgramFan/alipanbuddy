@@ -1,5 +1,6 @@
 import AliDirList from '../aliapi/dirlist'
 import { useSettingStore } from '../store'
+import { ApplySettingJson } from '../setting/settingstore'
 import TreeStore from '../store/treestore'
 import UserDAL from '../user/userdal'
 import DebugLog from '../utils/debuglog'
@@ -43,6 +44,7 @@ export const WinMsgUpload = function (arg: any) {
   // console.log(arg)
   try {
     if (arg.cmd == 'SettingRefresh') {
+      if (typeof arg.setting === 'string') ApplySettingJson(arg.setting)
       useSettingStore().$reset()
     } else if (arg.cmd == 'ClearUserToken') {
       UserDAL.ClearUserTokenMap()
@@ -93,6 +95,7 @@ export const WinMsgDownload = function (arg: any) {
   // console.log(arg)
   try {
     if (arg.cmd == 'SettingRefresh') {
+      if (typeof arg.setting === 'string') ApplySettingJson(arg.setting)
       useSettingStore().$reset()
     } else if (arg.cmd == 'ClearUserToken') {
       UserDAL.ClearUserTokenMap()

@@ -3,10 +3,8 @@ import { ref } from 'vue'
 import useSettingStore from './settingstore'
 import MySwitch from '../layout/MySwitch.vue'
 import message from '../utils/message'
-/*import HttpsProxyAgent from 'https-proxy-agent'
-import { SocksProxyAgent } from 'socks-proxy-agent'*/
 import AliHttp from '../aliapi/alihttp'
-import nodehttps from 'node:https'
+import axios from '../axios'
 import { t } from '../i18n'
 
 const settingStore = useSettingStore()
@@ -21,34 +19,21 @@ const proxyLoading = ref(false)
 const handleProxyConn = async () => {
   proxyLoading.value = true
 
-  let option = {
-    strictSSL: false,
-    rejectUnauthorized: false,
-    timeout: 5000
-  }
   const proxy = settingStore.getProxy()
   if (proxy) {
-    /*if (settingStore.proxyType.startsWith('http')) {
-      const agenth = HttpsProxyAgent(proxy)
-      option = Object.assign(option, { agent: agenth })
-    } else {
-      const agents = new SocksProxyAgent(proxy)
-      option = Object.assign(option, { agent: agents })
-    }*/
-
-    const result = await new Promise<string>(async (resolve) => {
-      nodehttps
-        .get(AliHttp.baseApi, option, (res: any) => {
-          resolve('success')
-        })
-        .on('error', (e: any) => {
-          let message = e.message || e.code || t('settings.proxy.networkError')
-          message = message.replace('ERR_SSL_INVALID_LIBRARY_(0)', t('settings.proxy.unsupportedCert'))
-          message = message.replace('A "socket" was not created for HTTP request before 5000ms', t('settings.proxy.timeout'))
-          message = message.replace('Client network socket disconnected before secure TLS connection was established', t('settings.proxy.tlsFailed'))
-          resolve(message)
-        })
-    })
+    // let the HTTP adapter (Rust side) know about the proxy before probing
+    settingStore.WebSetProxy()
+    let result = 'success'
+    try {
+      await axios.get(AliHttp.baseApi, { timeout: 5000, validateStatus: () => true })
+    } catch (e: any) {
+      let msg = e?.message || e?.code || t('settings.proxy.networkError')
+      msg = msg.replace('ERR_SSL_INVALID_LIBRARY_(0)', t('settings.proxy.unsupportedCert'))
+      msg = msg.replace('A "socket" was not created for HTTP request before 5000ms', t('settings.proxy.timeout'))
+      msg = msg.replace('timeout of 5000ms exceeded', t('settings.proxy.timeout'))
+      msg = msg.replace('Client network socket disconnected before secure TLS connection was established', t('settings.proxy.tlsFailed'))
+      result = msg
+    }
     if (result == 'success') {
       message.success(t('settings.proxy.success'))
     } else {

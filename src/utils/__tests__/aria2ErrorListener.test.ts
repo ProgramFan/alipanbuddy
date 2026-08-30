@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest'
 
 describe('Aria2 connection errors', () => {
   it('consumes an undefined EventEmitter error and marks the connection offline', async () => {
-    vi.stubGlobal('self', globalThis)
     const { bindAriaErrorListener } = await import('../aria2c')
     let listener: ((error?: unknown) => void) | undefined
     const engine = {

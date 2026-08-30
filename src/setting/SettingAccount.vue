@@ -1,13 +1,15 @@
 <script setup lang='ts'>
+import { computed } from 'vue'
 import message from '../utils/message'
 import UserDAL, { UserTokenMap } from '../user/userdal'
 import { ITokenInfo, useSettingStore } from '../store'
 import { copyToClipboard, openExternal } from '../utils/electronhelper'
 import Db from '../utils/db'
-import fs from 'node:fs'
-import path from 'path'
+import fs from '../tauri/fs'
+import path from '../utils/path'
 import { decodeName, encodeName } from '../module/flow-enc/utils'
 import { localPwd } from '../utils/aria2c'
+import { ALIYUN_APP_ID } from '../secrets.generated'
 import { t } from '../i18n'
 
 const settingStore = useSettingStore()
@@ -15,6 +17,11 @@ const settingStore = useSettingStore()
 const cb = (val: any) => {
   settingStore.updateStore(val)
 }
+
+// Without built-in credentials in this build, the only usable mode is 'custom'.
+const hasBuiltinOpenApi = !!ALIYUN_APP_ID
+const openApiType = computed(() => (hasBuiltinOpenApi ? settingStore.uiEnableOpenApiType || 'inline' : 'custom'))
+const showCustomOpenApi = computed(() => openApiType.value === 'custom')
 
 const openWebUrl = (type: string) => {
   switch (type) {
@@ -58,7 +65,7 @@ const handlerAccountImport = () => {
         let userList: ITokenInfo[] = []
         let uniqueUserIds = new Set()
         for (let filePath of files) {
-          let readData = fs.readFileSync(filePath, 'utf-8')
+          let readData = await fs.readTextFile(filePath)
           let parsedData: any = JSON.parse(<string>decodeName(localPwd, 'aesctr', readData))
           if (Array.isArray(parsedData) && parsedData.every(item => item.hasOwnProperty('access_token'))) {
             let filteredData: ITokenInfo[] = parsedData.filter((item: ITokenInfo) => {
@@ -103,13 +110,17 @@ const handlerAccountExport = () => {
         buttonLabel: t('media.selectFolder'),
         properties: ['openDirectory', 'createDirectory']
       },
-      (result: string[] | undefined) => {
+      async (result: string[] | undefined) => {
         if (result && result[0]) {
-          let exportFile = path.join(result[0], 'user.db')
-          let userList = JSON.stringify(UserDAL.GetUserList())
-          let data = encodeName(localPwd, 'aesctr', userList)
-          fs.writeFileSync(exportFile, data)
-          message.success(t('settings.account.exportSuccess'))
+          try {
+            let exportFile = path.join(result[0], 'user.db')
+            let userList = JSON.stringify(UserDAL.GetUserList())
+            let data = encodeName(localPwd, 'aesctr', userList)
+            await fs.writeTextFile(exportFile, data)
+            message.success(t('settings.account.exportSuccess'))
+          } catch (err: any) {
+            message.error(t('settings.account.exportFailed') + (err?.message ? ' ' + err.message : ''))
+          }
         }
       }
     )
@@ -124,6 +135,40 @@ const handlerAccountExport = () => {
     <div class='settingrow'>
       <a-button type='outline' size='small' tabindex='-1' @click='copyCookies()'>
         {{ t('settings.account.copyCookies') }}
+      </a-button>
+    </div>
+    <div class='settingspace'></div>
+    <div class='settinghead'>{{ t('settings.account.openApi') }}
+      <a-popover position="bottom">
+        <IconFont name="iconbulb" />
+        <template #content>
+          <div>{{ t('settings.account.openApiTip') }}</div>
+        </template>
+      </a-popover>
+    </div>
+    <div v-if='!hasBuiltinOpenApi' class='settingrow'>
+      <a-alert type='warning' banner>{{ t('settings.account.openApiMissingBuiltin') }}</a-alert>
+    </div>
+    <div class='settingrow'>
+      <a-radio-group type='button' tabindex='-1' :model-value='openApiType' @update:model-value='cb({ uiEnableOpenApiType: $event })'>
+        <a-radio tabindex='-1' value='inline' :disabled='!hasBuiltinOpenApi'>{{ t('settings.account.openApiInline') }}</a-radio>
+        <a-radio tabindex='-1' value='custom'>{{ t('settings.account.openApiCustom') }}</a-radio>
+      </a-radio-group>
+    </div>
+    <template v-if='showCustomOpenApi'>
+      <div class='settingrow'>
+        <a-input tabindex='-1' allow-clear :style="{ width: '320px' }" :placeholder="t('settings.account.openApiClientId')" :model-value='settingStore.uiOpenApiClientId' @update:model-value='cb({ uiOpenApiClientId: $event })' />
+      </div>
+      <div class='settingrow'>
+        <a-input-password tabindex='-1' allow-clear :style="{ width: '320px' }" :placeholder="t('settings.account.openApiClientSecret')" :model-value='settingStore.uiOpenApiClientSecret' @update:model-value='cb({ uiOpenApiClientSecret: $event })' />
+      </div>
+    </template>
+    <div class='settingrow'>
+      <span class='settings-openapi-tip'>{{ t('settings.account.openApiTip') }}</span>
+    </div>
+    <div class='settingrow'>
+      <a-button type='outline' size='small' tabindex='-1' @click="openWebUrl('developer')">
+        {{ t('settings.account.openApiApply') }}
       </a-button>
     </div>
     <div class='settingspace'></div>
@@ -153,5 +198,10 @@ const handlerAccountExport = () => {
 </template>
 
 <style scoped>
-
+.settings-openapi-tip {
+  max-width: 580px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--color-text-3);
+}
 </style>

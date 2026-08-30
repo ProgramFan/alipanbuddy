@@ -3,24 +3,27 @@ import DebugLog from '../utils/debuglog'
 import axios from 'axios'
 import AliUpload from './upload'
 import AliUploadHashPool from './uploadhashpool'
-import { getFlowEnc } from '../utils/proxyhelper'
+import { getEncPassword } from '../utils/proxyhelper'
+import { useSettingStore } from '../store'
+import { flowencBytes } from '../tauri/flowenc'
 
 export default class AliUploadMem {
-  
+
   static async UploadMem(user_id: string, drive_id: string, parent_file_id: string, CreatFileName: string, context: string, encType: string = '') {
     const token = await UserDAL.GetUserTokenFromDB(user_id)
     if (!token || !token.access_token) return '账号失效，操作取消'
-    let hash = 'DA39A3EE5E6B4B0D3255BFEF95601890AFD80709' 
+    let hash = 'DA39A3EE5E6B4B0D3255BFEF95601890AFD80709'
     let proof = ''
     let buff = Buffer.from([])
     if (context.length > 0) {
       buff = Buffer.from(context, 'utf-8')
       if (encType) {
-        let flowEnc = getFlowEnc(user_id, buff.length, encType)
-        const encryptedBuff = flowEnc?.encryptBuff(buff)
-        buff = encryptedBuff ? Buffer.from(encryptedBuff) : buff
+        const alg = useSettingStore().securityEncType == 'rc4md5' ? 'rc4md5' : 'aesctr'
+        const password = getEncPassword(user_id, encType)
+        const encryptedBuff = await flowencBytes(alg, password, buff.length, buff)
+        buff = Buffer.from(encryptedBuff)
       }
-      const dd = await AliUploadHashPool.GetBuffHashProof(token!.access_token, buff as Buffer)
+      const dd = await AliUploadHashPool.GetBuffHashProof(token!.access_token, buff)
       hash = dd.sha1
       proof = dd.proof_code
     }

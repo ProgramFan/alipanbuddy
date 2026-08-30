@@ -5,9 +5,22 @@ import { ArrayKeyList } from '../utils/utils'
 import { StartUpload } from './uploader'
 import { useSettingStore } from '../store'
 import AliUploadHashPool from '../aliapi/uploadhashpool'
+import { setUploadSpeedLimit } from '../tauri/upload'
 
 
 export const RuningList: Map<number, IUploadingUI> = new Map()
+
+/** last speed limit (bytes/s, 0 = unlimited) handed to the Rust uploader; -1 = not yet applied */
+let appliedSpeedLimit = -1
+
+function ApplyUploadSpeedLimit(bytesPerSecond: number): void {
+  if (bytesPerSecond == appliedSpeedLimit) return
+  appliedSpeedLimit = bytesPerSecond
+  setUploadSpeedLimit(bytesPerSecond).catch(() => {
+    // retry on the next report
+    if (appliedSpeedLimit == bytesPerSecond) appliedSpeedLimit = -1
+  })
+}
 
 
 export async function UploadCmd(Command: string, IsAll: boolean, UploadIDList: number[], TaskIDList: number[]): Promise<void> {
@@ -76,12 +89,12 @@ let saveTime = 0
 
 export async function UploadReport(): Promise<void> {
   const settingStore = useSettingStore()
+  let speedLimte = 0
   if (settingStore.uploadGlobalSpeed) {
-    let speedLimte = 0
     if (settingStore.uploadGlobalSpeedM == 'MB') speedLimte = settingStore.uploadGlobalSpeed * 1024 * 1024
     else speedLimte = settingStore.uploadGlobalSpeed * 1024
-    window.speedLimte = speedLimte
-  } else window.speedLimte = Number.MAX_VALUE
+  }
+  ApplyUploadSpeedLimit(speedLimte)
 
   
   const saveList: IStateUploadInfo[] = []

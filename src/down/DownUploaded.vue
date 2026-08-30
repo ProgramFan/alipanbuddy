@@ -29,7 +29,8 @@ import AliFile from '../aliapi/file'
 import PanDAL from '../pan/pandal'
 import { humanSize } from '../utils/format'
 import { TestButton } from '../utils/mosehelper'
-import fs from 'node:fs'
+import fs from '../tauri/fs'
+import { openPath, showItemInFolder } from '../utils/electronhelper'
 import { xorWith } from 'lodash'
 import { t } from '../i18n'
 
@@ -199,7 +200,7 @@ const handleSearchEnter = (event: any) => {
   RefreshScroll(viewlist.value.$el)
 }
 
-const onSelectFile = (item: IStateUploadTask | undefined, cmd: string) => {
+const onSelectFile = async (item: IStateUploadTask | undefined, cmd: string) => {
   if (!item) {
     item = uploadedStore.GetSelectedFirst()
   }
@@ -207,9 +208,9 @@ const onSelectFile = (item: IStateUploadTask | undefined, cmd: string) => {
   if (cmd == 'file') {
     const full = item.localFilePath
     try {
-      if (fs.existsSync(full)) {
+      if (await fs.exists(full)) {
         message.loading('Loading...', 2)
-        window.Electron.shell.openPath(full)
+        await openPath(full)
       } else {
         message.error(t('transfer.fileMayDeleted'))
       }
@@ -219,9 +220,9 @@ const onSelectFile = (item: IStateUploadTask | undefined, cmd: string) => {
   if (cmd == 'dir') {
     const full = item.localFilePath
     try {
-      if (fs.existsSync(full)) {
+      if (await fs.exists(full)) {
         message.loading('Loading...', 2)
-        window.Electron.shell.showItemInFolder(full)
+        await showItemInFolder(full)
       } else {
         message.error(t('transfer.folderMayDeleted'))
       }

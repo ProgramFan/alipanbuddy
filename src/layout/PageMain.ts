@@ -10,7 +10,7 @@ import DebugLog from '../utils/debuglog'
 import PanDAL from '../pan/pandal'
 import UploadingDAL from '../transfer/uploadingdal'
 import { Sleep } from '../utils/format'
-import { createProxyServer } from '../utils/proxyhelper'
+import { invoke } from '../tauri/invoke'
 import cache from '../utils/cache'
 import message from '../utils/message'
 import { startBackgroundStartupTasks } from '../utils/startupTask'
@@ -21,7 +21,7 @@ export function PageMain() {
   //useSettingStore().WebSetProxy()
   Promise.resolve()
     .then(async () => {
-      // DebugLog.mSaveSuccess('小白羊启动')
+      // DebugLog.mSaveSuccess('神行云盘助手启动')
       void ShareDAL.aLoadFromDB().catch((err: any) => {
         DebugLog.mSaveDanger('ShareDALLDB', err)
       })
@@ -36,13 +36,14 @@ export function PageMain() {
           label: 'CreateProxyServer',
           run: async () => {
             if (window.MainProxyServer) return
-            window.MainProxyHost = useSettingStore().debugProxyHost
-            window.MainProxyPort = useSettingStore().debugProxyPort
-            window.MainProxyServer = await createProxyServer(window.MainProxyPort)
-            window.MainProxyServer.on('close', async () => {
-              await Sleep(2000)
-              window.MainProxyServer = await createProxyServer(window.MainProxyPort)
-            })
+            const settingStore = useSettingStore()
+            window.MainProxyHost = settingStore.debugProxyHost
+            const wantPort = Number(settingStore.debugProxyPort)
+            // The Rust proxy picks another port when the configured one is busy
+            const port = await invoke<number>('proxy_start', { port: wantPort })
+            window.MainProxyPort = String(port)
+            window.MainProxyServer = { port }
+            if (port !== wantPort) settingStore.updateStore({ debugProxyPort: String(port) })
           }
         },
         {

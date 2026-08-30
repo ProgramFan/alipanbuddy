@@ -1,6 +1,9 @@
 <script setup lang='ts'>
-import { h, ref } from 'vue'
+import { h, onUnmounted, ref } from 'vue'
+import type { UnlistenFn } from '@tauri-apps/api/event'
 import { ITokenInfo, useSettingStore, useUserStore } from '../store'
+import { invoke } from '../tauri/invoke'
+import { listen } from '../tauri/bridge'
 import UserDAL from '../user/userdal'
 import Config from '../config'
 import message from '../utils/message'
@@ -29,9 +32,10 @@ const qrCodeStatusTips = ref()
 
 let loginOpenTimer: any = null
 let aliyunLoginHandled = false
-let aliyunWebviewInitialized = false
-
-const getAliyunLoginWebview = () => document.getElementById('loginiframe') as any
+// Login page runs in the separate Tauri window labelled 'login' (Tauri has no embedded webview element);
+// its navigations are reported through the 'login-navigation' / 'login-closed' events.
+let loginListeners: Promise<UnlistenFn[]> | null = null
+const loginWindowOpen = ref(false)
 
 const clearOpenTimers = () => {
   if (loginOpenTimer) {
@@ -82,109 +86,120 @@ const refreshQrCodeStatus = (codeUrl: string = '', type: string = 'info', tips: 
   qrCodeStatusTips.value = tips
 }
 
+const extractBizExt = (payload: string) => {
+  try {
+    const parsed = JSON.parse(payload)
+    if (parsed?.bizExt) return String(parsed.bizExt)
+  } catch {
+    // Some versions of the login page print a JavaScript object instead of JSON.
+  }
+  const match = payload.match(/["']?bizExt["']?\s*[:=]\s*["']([^"']+)["']/i)
+  return match?.[1] || ''
+}
+
+const closeLoginWindow = () => {
+  loginWindowOpen.value = false
+  invoke('close_login_window').catch(() => {})
+}
+
+const handleLoginPayload = (payload: string) => {
+  try {
+    const parsed = JSON.parse(payload)
+    if (parsed?.code && !aliyunLoginHandled) {
+      aliyunLoginHandled = true
+      loginStepFirst(payload)
+      closeLoginWindow()
+      return true
+    }
+  } catch {
+    // Continue with the legacy bizExt parser below.
+  }
+  const bizExt = extractBizExt(payload)
+  if (aliyunLoginHandled || !bizExt) return false
+  aliyunLoginHandled = true
+  loginStepFirst(JSON.stringify({ bizExt }))
+  closeLoginWindow()
+  return true
+}
+
+const handleLoginNavigation = (url: string) => {
+  if (!url || aliyunLoginHandled) return
+  try {
+    const parsed = new URL(url)
+    const code = parsed.searchParams.get('code') || ''
+    if (code && handleLoginPayload(JSON.stringify({ code }))) return
+    if (!url.includes('bizExt')) return
+    const bizExt = parsed.searchParams.get('bizExt') || new URLSearchParams(parsed.hash.replace(/^#\??/, '')).get('bizExt')
+    if (bizExt) handleLoginPayload(JSON.stringify({ bizExt }))
+  } catch (err: any) {
+    DebugLog.mSaveWarning('Aliyun login callback parse failed ' + (err?.message || err))
+  }
+}
+
+const handleLoginWindowClosed = () => {
+  loginWindowOpen.value = false
+  if (loginCur.value !== 1) return
+  loginLoading.value = false
+  if (!aliyunLoginHandled && useUser.userShowLogin) {
+    message.warning('登录窗口已关闭，请点击“重新打开登录窗口”继续登录')
+  }
+}
+
+const ensureLoginListeners = () => {
+  if (!loginListeners) {
+    loginListeners = Promise.all([
+      listen<{ url: string }>('login-navigation', (event) => handleLoginNavigation(event.payload?.url || '')),
+      listen('login-closed', () => handleLoginWindowClosed())
+    ]).catch((err) => {
+      loginListeners = null
+      throw err
+    })
+  }
+  return loginListeners
+}
+
+const removeLoginListeners = () => {
+  const listeners = loginListeners
+  loginListeners = null
+  if (!listeners) return
+  listeners.then((fns) => fns.forEach((fn) => fn())).catch(() => {})
+}
+
+const openLoginWindow = async (clearData: boolean) => {
+  if (!useUser.userShowLogin) return
+  loginLoading.value = true
+  try {
+    await ensureLoginListeners()
+    await invoke('open_login_window', { url: Config.loginUrl, referer: Config.referer, clearData })
+    loginWindowOpen.value = true
+  } catch (err: any) {
+    loginWindowOpen.value = false
+    message.error(t('login.loginFailed'))
+    DebugLog.mSaveWarning('Aliyun login window open failed ' + (err?.message || err))
+  } finally {
+    if (loginCur.value === 1) loginLoading.value = false
+  }
+}
+
+const handleReopenLoginWindow = () => {
+  aliyunLoginHandled = false
+  refreshStepTips('process', 1)
+  openLoginWindow(false)
+}
+
 const handleOpen = () => {
   clearOpenTimers()
   loginOpenTimer = setTimeout(() => {
     if (!useUser.userShowLogin) return
-    const webview = getAliyunLoginWebview()
-    if (!webview) {
-      message.error(t('login.loginFailed'))
-      return
-    }
-    if (aliyunWebviewInitialized) {
-      loginLoading.value = typeof webview.isLoading === 'function' ? webview.isLoading() : false
-      return
-    }
-    aliyunWebviewInitialized = true
-    if (import.meta.env.DEV) {
-      try {
-        webview.openDevTools({ mode: 'bottom', activate: false })
-      } catch (err: any) {
-        DebugLog.mSaveWarning('Aliyun login webview DevTools open failed ' + (err?.message || err))
-      }
-    }
     aliyunLoginHandled = false
-    const extractBizExt = (payload: string) => {
-      try {
-        const parsed = JSON.parse(payload)
-        if (parsed?.bizExt) return String(parsed.bizExt)
-      } catch {
-        // Some versions of the login page print a JavaScript object instead of JSON.
-      }
-      const match = payload.match(/["']?bizExt["']?\s*[:=]\s*["']([^"']+)["']/i)
-      return match?.[1] || ''
-    }
-    const handleLoginPayload = (payload: string) => {
-      try {
-        const parsed = JSON.parse(payload)
-        if (parsed?.code && !aliyunLoginHandled) {
-          aliyunLoginHandled = true
-          loginStepFirst(payload)
-          try {
-            webview.stop()
-          } catch {
-            // ignore navigation stop errors after the OAuth callback is received
-          }
-          return true
-        }
-      } catch {
-        // Continue with the legacy bizExt parser below.
-      }
-      const bizExt = extractBizExt(payload)
-      if (aliyunLoginHandled || !bizExt) return false
-      aliyunLoginHandled = true
-      loginStepFirst(JSON.stringify({ bizExt }))
-      try {
-        webview.stop()
-      } catch {
-        // ignore navigation stop errors after the login callback is received
-      }
-      return true
-    }
-    const handleLoginNavigation = (event: any) => {
-      const url = event?.url || ''
-      if (!url) return
-      try {
-        const parsed = new URL(url)
-        const code = parsed.searchParams.get('code') || ''
-        if (code && handleLoginPayload(JSON.stringify({ code }))) {
-          event?.preventDefault?.()
-          return
-        }
-        if (!url.includes('bizExt')) return
-        const bizExt = parsed.searchParams.get('bizExt') || new URLSearchParams(parsed.hash.replace(/^#\??/, '')).get('bizExt')
-        if (bizExt && handleLoginPayload(JSON.stringify({ bizExt }))) event?.preventDefault?.()
-      } catch (err: any) {
-        DebugLog.mSaveWarning('Aliyun login callback parse failed ' + (err?.message || err))
-      }
-    }
-    webview.addEventListener('will-navigate', handleLoginNavigation)
-    webview.addEventListener('did-navigate', handleLoginNavigation)
-    webview.addEventListener('did-redirect-navigation', handleLoginNavigation)
-    webview.addEventListener('did-navigate-in-page', handleLoginNavigation)
-    webview.addEventListener('console-message', (e: any) => {
-      const msg = e.message || ''
-      loginLoading.value = false
-      handleLoginPayload(msg)
-    })
-    const load = webview.loadURL(Config.loginUrl, { httpReferrer: Config.referer })
-    if (load?.catch) {
-      load.catch((err: any) => {
-        loginLoading.value = false
-        if (useUser.userShowLogin) DebugLog.mSaveWarning('Aliyun login webview load failed ' + (err?.message || err))
-      })
-    }
-    webview.addEventListener('did-finish-load', () => {
-      loginLoading.value = false
-    })
-    webview.addEventListener('did-fail-load', () => {
-      loginLoading.value = false
-    })
-  }, 1000)
+    openLoginWindow(true)
+  }, 300)
 }
 
 const handleClose = () => {
-  aliyunWebviewInitialized = false
+  closeLoginWindow()
+  removeLoginListeners()
+  aliyunLoginHandled = false
   loginLoading.value = true
   client_id.value = ALIYUN_APP_ID
   client_secret.value = ALIYUN_APP_SECRET
@@ -193,6 +208,13 @@ const handleClose = () => {
   refreshStepTips('process', 1)
   refreshQrCodeStatus()
 }
+
+onUnmounted(() => {
+  clearOpenTimers()
+  clearInterval(intervalId.value)
+  closeLoginWindow()
+  removeLoginListeners()
+})
 
 const loginStepFirst = async (msg: string) => {
   let data: { bizExt?: string; code?: string } = {}
@@ -280,13 +302,7 @@ const loginStepFirst = async (msg: string) => {
         }
       }
       loginToken.value = token
-      if (settingStore.uiEnableOpenApiType === 'custom') {
-        client_id.value = settingStore.uiOpenApiClientId.trim()
-        client_secret.value = settingStore.uiOpenApiClientSecret.trim()
-      } else {
-        client_id.value = ALIYUN_APP_ID
-        client_secret.value = ALIYUN_APP_SECRET
-      }
+      applyOpenApiCredentials()
       refreshStepTips('process', 2)
       loginStepSecond(token)
     } catch (err: any) {
@@ -309,6 +325,13 @@ const loginStepSecond = async (token: ITokenInfo) => {
   }
   loginLoading.value = false
   clearInterval(intervalId.value)
+  if (!client_id.value || !client_secret.value) {
+    // No OpenAPI credentials: neither built into this build nor entered by the user yet.
+    refreshQrCodeStatus('', 'warning', 'OpenAPI 凭据未配置，请填写开发者凭据')
+    refreshStepTips('process', 2)
+    handlerChangeType()
+    return
+  }
   let codeUrl = ''
   try {
     codeUrl = await AliUser.OpenApiQrCodeUrl(client_id.value, client_secret.value, 250, 250)
@@ -357,10 +380,30 @@ const loginStepSecond = async (token: ITokenInfo) => {
   }, 1500)
 }
 
+/**
+ * Picks the OpenAPI client credentials for the second login step: the user's own ones when the
+ * "custom" mode is selected (or when this build has no built-in ALIYUN_APP_ID), else the built-in pair.
+ */
+const applyOpenApiCredentials = () => {
+  const customId = (settingStore.uiOpenApiClientId || '').trim()
+  const customSecret = (settingStore.uiOpenApiClientSecret || '').trim()
+  const preferCustom = settingStore.uiEnableOpenApiType === 'custom' || !ALIYUN_APP_ID || !ALIYUN_APP_SECRET
+  if (preferCustom && customId && customSecret) {
+    client_id.value = customId
+    client_secret.value = customSecret
+  } else if (ALIYUN_APP_ID && ALIYUN_APP_SECRET) {
+    client_id.value = ALIYUN_APP_ID
+    client_secret.value = ALIYUN_APP_SECRET
+  } else {
+    client_id.value = customId
+    client_secret.value = customSecret
+  }
+}
+
 const handlerChangeType = () => {
   clearInterval(intervalId.value)
   refreshQrCodeStatus()
-  if (settingStore.uiEnableOpenApiType === 'custom') {
+  if (settingStore.uiEnableOpenApiType === 'custom' || !ALIYUN_APP_ID || !ALIYUN_APP_SECRET) {
     Modal.open({
       title: t('login.enterDeveloperAccount'),
       bodyStyle: { minWidth: '340px' },
@@ -388,8 +431,9 @@ const handlerChangeType = () => {
       cancelText: t('common.cancel'),
       onBeforeOk: async (e: any) => {
         if (settingStore.uiOpenApiClientId && settingStore.uiOpenApiClientSecret) {
-          client_id.value = settingStore.uiOpenApiClientId
-          client_secret.value = settingStore.uiOpenApiClientSecret
+          if (settingStore.uiEnableOpenApiType !== 'custom') cb({ uiEnableOpenApiType: 'custom' })
+          client_id.value = settingStore.uiOpenApiClientId.trim()
+          client_secret.value = settingStore.uiOpenApiClientSecret.trim()
           handleRefreshQrCodeUrl()
           return true
         } else {
@@ -399,8 +443,7 @@ const handlerChangeType = () => {
       }
     })
   } else {
-    client_id.value = ALIYUN_APP_ID
-    client_secret.value = ALIYUN_APP_SECRET
+    applyOpenApiCredentials()
     handleRefreshQrCodeUrl()
   }
 }
@@ -453,10 +496,12 @@ const loginSuccess = (token: ITokenInfo) => {
             <div class='logincontent'>
             <div id="loginframediv" class="loginframe">
               <a-spin class="loading" :size="32" v-if='loginLoading' :tip="t('common.loading')" />
-              <Webview id="loginiframe" v-show='!loginLoading && loginCur === 1'
-                       plugins nodeintegration disablewebsecurity
-                       webpreferences="allowRunningInsecureContent"
-                       src="about:blank" style="width: 100%; height: 400px; border: none; overflow: hidden" />
+              <div class="loginwindowtip" v-if="loginCur === 1 && !loginLoading">
+                <a-alert banner center :show-icon="false" :type="loginWindowOpen ? 'info' : 'warning'">
+                  {{ loginWindowOpen ? '请在弹出的登录窗口中完成登录，登录后自动返回' : '登录窗口已关闭，请重新打开登录窗口完成登录' }}
+                </a-alert>
+                <a-button type="primary" tabindex="-1" @click="handleReopenLoginWindow">重新打开登录窗口</a-button>
+              </div>
               <div class="qrcodeframe" v-if="loginCur === 2 && !loginLoading">
                 <a-image
                   width='250'
@@ -500,6 +545,14 @@ const loginSuccess = (token: ITokenInfo) => {
       position: relative;
       width: 100%;
       height: 100%
+    }
+
+    .loginwindowtip {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+      padding: 80px 16px 0 16px;
     }
 
     .qrcodeframe {

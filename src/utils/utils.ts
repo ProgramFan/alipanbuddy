@@ -1,10 +1,6 @@
-import { deflateRawSync, inflateRawSync } from 'zlib'
-import crypto from 'crypto'
+import { MD5 } from 'crypto-js'
 import pkg from '../../package.json'
-import { getUserDataPath } from './electronhelper'
-import fs, { stat } from 'node:fs'
-import net from 'net'
-import { Buffer } from 'buffer'
+import { invoke } from '../tauri/invoke'
 
 
 export function ArrayCopyReverse(arr: any[]): any[] {
@@ -85,14 +81,6 @@ export function BlobToBuff(body: Blob): Promise<ArrayBuffer | undefined> {
   })
 }
 
-export function GzipObject(input: object): Buffer {
-  return deflateRawSync(JSON.stringify(input))
-}
-
-export function UnGzipObject(input: Buffer): object {
-  return JSON.parse(inflateRawSync(input).toString())
-}
-
 export function HanToPin(input: string): string {
   if (!input) return ''
   // eslint-disable-next-line no-undef
@@ -146,51 +134,19 @@ export function hashCode(key: string) {
 }
 
 export function md5Code(key: string) {
-  const buffa = Buffer.from(key)
-  const md5a = crypto.createHash('md5').update(buffa).digest('hex')
-  return md5a
+  return MD5(key).toString()
 }
 
 export function getPkgVersion() {
   return pkg.version
 }
 
-export function createTmpFile(content: string, name: string) {
-  let tmpFile = ''
-  try {
-    // 生成临时文件路径
-    tmpFile = getUserDataPath(name)
-    // 向临时文件中写入数据
-    fs.writeFileSync(tmpFile, content)
-  } catch (err) {
-  }
-  return tmpFile
-}
-
-export function delTmpFile(tmpFilePath: string) {
-  stat(tmpFilePath, async (err, stats) => {
-    if (!err) {
-      fs.rmSync(tmpFilePath, { recursive: true })
-    }
-  })
-}
-
+/** Returns `port` when it is free, otherwise the next free port above it (answered by the Rust side). */
 export function portIsOccupied(port: number) {
-  return new Promise<number>((resolve, reject) => {
-    let server = net.createServer().listen(port)
-    server.on('listening', async () => {
-      console.log(`the server is runnint on port ${port}`)
-      server.close()
-      resolve(port) // 返回可用端口
+  return invoke<number>('find_free_port', { port })
+    .then((freePort) => {
+      if (freePort !== port) console.log(`this port ${port} is occupied. using ${freePort}`)
+      return freePort || port
     })
-    server.on('error', (err: any) => {
-      if (err.code === 'EADDRINUSE') {
-        resolve(portIsOccupied(port + 1)) // 如传入端口号被占用则 +1
-        console.log(`this port ${port} is occupied.try another.`)
-      } else {
-        // reject(err)
-        resolve(port)
-      }
-    })
-  })
+    .catch(() => port)
 }

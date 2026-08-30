@@ -1,63 +1,62 @@
-import path from 'path'
+import path from './path'
 import { throttle } from './debounce'
+import { getPlatformInfo, openExternal as bridgeOpenExternal, openPath as bridgeOpenPath, readClipboardText, showItemInFolder as bridgeShowItemInFolder, writeClipboardText } from '../tauri/bridge'
 
+/** Reads the clipboard text. Prefer `getFromClipboardAsync`; this synchronous form only serves the legacy callers. */
 export function getFromClipboard(): string {
-  return window.Electron.clipboard.readText() as string
+  let text = ''
+  readClipboardText()
+    .then((value) => {
+      text = value
+    })
+    .catch(() => {})
+  return text
+}
+
+export function getFromClipboardAsync(): Promise<string> {
+  return readClipboardText().catch(() => '')
 }
 
 export function copyToClipboard(text: string): void {
-  window.Electron.clipboard.writeText(text, 'clipboard')
+  writeClipboardText(text).catch(() => {
+    try {
+      navigator.clipboard?.writeText(text)
+    } catch {}
+  })
 }
+
 export function openExternal(url: string): void {
-  window.Electron.shell.openExternal(url)
+  if (!url) return
+  bridgeOpenExternal(url).catch(() => {})
 }
 
-const ElectronPath = {
-  
-  AppUserData: '',
-  
-  AppResourcesPath: '',
-  
-  AppPlatform: '',
-  
-  AppArch: '',
-  
-  AppExecPath: '',
-
-  AppUserName: '',
-  env: ''
+export function openPath(filePath: string): Promise<void> {
+  return bridgeOpenPath(filePath)
 }
 
+export function showItemInFolder(filePath: string): Promise<void> {
+  return bridgeShowItemInFolder(filePath)
+}
 
-function LoadElectronPath(): void {
-  if (!ElectronPath.AppUserData) {
-    ElectronPath.AppPlatform = process.platform
-    ElectronPath.AppArch = process.arch
-    ElectronPath.AppExecPath = process.execPath
-    ElectronPath.env = JSON.stringify(process.env)
-    ElectronPath.AppUserName = process.env.USERNAME || process.env.USER || ''
-    ElectronPath.AppResourcesPath = (process as any).resourcesPath
-    if (window.WebPlatformSync) {
-      window.WebPlatformSync((data: { appPath: string; execPath: string }) => {
-        ElectronPath.AppUserData = data.appPath
-        ElectronPath.AppExecPath = data.execPath
-        window.Electron.WebPlatformSync = data
-      })
-    }
+export function getPlatform(): string {
+  return getPlatformInfo().platform
+}
 
-    window.Electron.ElectronPath = ElectronPath
-  }
+export function getArch(): string {
+  return getPlatformInfo().arch
+}
+
+export function getAppVersion(): string {
+  return getPlatformInfo().appVersion
 }
 
 export function getUserData(): string {
-  LoadElectronPath()
-  return ElectronPath.AppUserData
+  return getPlatformInfo().appPath
 }
 
 export function getUserDataPath(fileName: string): string {
   try {
-    LoadElectronPath()
-    return path.join(ElectronPath.AppUserData, fileName) as string
+    return path.join(getPlatformInfo().appPath, fileName)
   } catch {
     return ''
   }
@@ -65,17 +64,7 @@ export function getUserDataPath(fileName: string): string {
 
 export function getResourcesPath(fileName: string): string {
   try {
-    LoadElectronPath()
-    return path.join(ElectronPath.AppResourcesPath, fileName) as string
-  } catch {
-    return ''
-  }
-}
-
-export function getAppNewPath(): string {
-  try {
-    LoadElectronPath()
-    return path.join(ElectronPath.AppResourcesPath, 'app.new') as string
+    return path.join(getPlatformInfo().resourcePath, fileName)
   } catch {
     return ''
   }
@@ -90,7 +79,6 @@ const setProgressBar = throttle(() => {
   if (window.WebSetProgressBar) window.WebSetProgressBar({ pro: ProgressBarValue, mode })
 }, 5000)
 
-
 export function SetProgressBar(value: number, by: string): void {
   if (value < 0) value = -1
   if (ProgressBarValue == value && ProgressBarBy == by) return
@@ -98,12 +86,10 @@ export function SetProgressBar(value: number, by: string): void {
   ProgressBarNew = value
   ProgressBarBy = by
   if (value < 0 || (ProgressBarValue < 0 && value > 0)) {
-    
     const mode = value < 0 ? 'none' : ProgressBarBy == 'download' ? 'normal' : 'paused'
     ProgressBarValue = value
     if (window.WebSetProgressBar) window.WebSetProgressBar({ pro: ProgressBarValue, mode: mode })
   } else {
-    
     setProgressBar()
   }
 }

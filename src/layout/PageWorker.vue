@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const handleHideClick = (_e: any) => {
-  window.close()
+  window.WebToWindow({ cmd: 'close' })
 }
 </script>
 <template>

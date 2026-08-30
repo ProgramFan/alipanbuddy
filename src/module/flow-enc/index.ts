@@ -1,66 +1,49 @@
-import MixEnc from './lib/mixEnc'
-import Rc4Md5 from './lib/rc4Md5'
-import AesCTR from './lib/aesCTR'
-import ChaCha20Poly from './lib/chaCha20Poly'
+import CryptoJS from 'crypto-js'
+import { flowencBytes, type FlowEncAlg } from '../../tauri/flowenc'
 
-const cachePasswdOutward: { [key: string]: any } = {}
+const cachePasswdOutward: { [key: string]: string } = {}
 
+/** hex(PBKDF2-SHA256(password, salt, 1000 iterations, 16 bytes)) - identical to the former `crypto.pbkdf2Sync(...).toString('hex')` */
+function pbkdf2Hex(password: string, salt: string): string {
+  return CryptoJS.PBKDF2(password, salt, { keySize: 128 / 32, iterations: 1000, hasher: CryptoJS.algo.SHA256 }).toString(CryptoJS.enc.Hex)
+}
+
+/**
+ * Password container for the AES-CTR / RC4-MD5 flow ciphers.
+ * Only `passwdOutward` (used for file name encoding) is derived in JS; the ciphers themselves run in Rust.
+ */
 class FlowEnc {
-  private encryptFlow: MixEnc | Rc4Md5 | AesCTR | ChaCha20Poly
-  public passwdOutward: any
+  public readonly password: string
+  public readonly encryptType: FlowEncAlg
+  public readonly sizeSalt: number
+  public passwdOutward: string
 
-  constructor(password: string, encryptType: string = 'mix', sizeSalt: number = 0) {
-    let encryptFlow = null
-    if (encryptType === 'mix') {
-      console.log('@@mix', encryptType)
-      encryptFlow = new MixEnc(password, sizeSalt)
-      this.passwdOutward = encryptFlow.passwdOutward
-    }
-    if (encryptType === 'rc4md5') {
-      console.log('@@rc4md5', encryptType, sizeSalt)
-      encryptFlow = new Rc4Md5(password, sizeSalt)
-      this.passwdOutward = encryptFlow.passwdOutward
-    }
+  constructor(password: string, encryptType: string = 'aesctr', sizeSalt: number = 0) {
     if (encryptType === 'aesctr') {
-      console.log('@@AesCTR', encryptType, sizeSalt)
-      encryptFlow = new AesCTR(password, sizeSalt)
-      this.passwdOutward = encryptFlow.passwdOutward
-    }
-    if (encryptType === 'cha20') {
-      console.log('@@ChaCha20Poly', encryptType, sizeSalt)
-      encryptFlow = new ChaCha20Poly(password, sizeSalt)
-      this.passwdOutward = encryptFlow.passwdOutward
-    }
-    if (encryptType === null || encryptFlow === null) {
+      this.passwdOutward = password.length !== 32 ? pbkdf2Hex(password, 'AES-CTR') : ''
+    } else if (encryptType === 'rc4md5') {
+      if (!sizeSalt) throw new Error('salt is null')
+      this.passwdOutward = password.length !== 32 ? pbkdf2Hex(password, 'RC4') : password
+    } else {
       throw new Error('FlowEnc error')
     }
+    this.password = password
+    this.encryptType = encryptType
+    this.sizeSalt = sizeSalt
     cachePasswdOutward[password + encryptType] = this.passwdOutward
-    this.encryptFlow = encryptFlow
   }
 
-  async setPosition(position: number) {
-    await this.encryptFlow.setPositionAsync(position)
+  /** 加密buff (whole buffer, positioned at offset 0) */
+  encryptBuff(data: Uint8Array | Buffer): Promise<Uint8Array> {
+    return flowencBytes(this.encryptType, this.password, this.sizeSalt, data)
   }
 
-  // 加密buff
-  encryptBuff(data: Buffer) {
-    return this.encryptFlow.encrypt(data)
+  /** 解密buff (whole buffer, positioned at offset 0) */
+  decryptBuff(data: Uint8Array | Buffer): Promise<Uint8Array> {
+    return flowencBytes(this.encryptType, this.password, this.sizeSalt, data)
   }
 
-  decryptBuff(data: Buffer) {
-    return this.encryptFlow.decrypt(data)
-  }
-
-  // 加密流转换
-  encryptTransform() {
-    return this.encryptFlow.encryptTransform()
-  }
-
-  decryptTransform() {
-    return this.encryptFlow.decryptTransform()
-  }
-
-  static getPassWdOutward(password: string, encryptType: string) {
+  static getPassWdOutward(password: string, encryptType: string): string {
     const passwdOutward = cachePasswdOutward[password + encryptType]
     if (passwdOutward) {
       return passwdOutward

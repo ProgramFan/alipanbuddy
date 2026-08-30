@@ -55,13 +55,6 @@ AGENT.md
 SKILL_ITERATION_LOG.md
 node_modules/
 
-# stale tsc compile output for ts source files (must be regenerated only via vite-plugin-electron)
-electron/**/*.js
-electron/**/*.d.ts
-electron/**/*.js.map
-electron/**/*.d.ts.map
-!electron/preload/preload-env.d.ts
-!electron/main/**/__tests__/**
 
 # 文档与媒体产物：只保留 README 类 Markdown
 *.md
@@ -71,3 +64,8 @@ electron/**/*.d.ts.map
 *.mp4
 *.mov
 *.py
+
+# Tauri
+src-tauri/target
+src-tauri/gen
+src-tauri/binaries

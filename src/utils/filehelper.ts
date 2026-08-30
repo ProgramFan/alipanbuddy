@@ -1,19 +1,3 @@
-import DebugLog from './debuglog'
-import fspromises from 'fs/promises'
-
-
-export async function OpenFileHandle(filepath: string): Promise<{ handle: any; error: string }> {
-  const result: { handle: any; error: string } = { handle: undefined, error: '' }
-  const fileHandle = await fspromises.open(filepath, 'r').catch((err: any) => {
-    err = FileSystemErrorMessage(err.code, err.message)
-    DebugLog.mSaveDanger('UpOne上传文件失败：' + filepath, err)
-    result.error = err
-    return undefined
-  })
-  if (fileHandle) result.handle = fileHandle
-  return result
-}
-
 export function FileSystemErrorMessage(code: string, message: string): string {
   if (!code && !message) return '读取文件失败'
 

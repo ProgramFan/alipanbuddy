@@ -13,16 +13,13 @@
     "noEmit": true,
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
-    "paths": {
-      "@shared/*": ["shared/*"],
-      "@main/*":   ["electron/main/*"]
-    }
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "types": ["vite/client"]
   },
   "include": [
-    "src",
-    "shared"
+    "src"
   ],
   "exclude": [
-    "shared/__tests__"
+    "src/**/__tests__"
   ]
 }

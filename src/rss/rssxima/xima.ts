@@ -1,9 +1,8 @@
 import { FileSystemErrorMessage } from '../../utils/filehelper'
 import DebugLog from '../../utils/debuglog'
 import message from '../../utils/message'
-import fsPromises from 'fs/promises'
-import { Buffer } from 'buffer'
-import path from 'path'
+import fs from '../../tauri/fs'
+import path from '../../utils/path'
 
 export async function DoXiMa(dirPath: string, breakSmall: boolean, matchExtList: string[]): Promise<number> {
   const fileList: string[] = []
@@ -35,8 +34,8 @@ export async function DoXiMa(dirPath: string, breakSmall: boolean, matchExtList:
       try {
         const rand4 = (i % 255) + 1
         if (rand4 == 200) rand3 = Math.floor(Math.random() * 255)
-        const buff = Buffer.from([0, rand1, rand2, rand3, rand4])
-        fsPromises.appendFile(fileList[i], buff).catch(() => {})
+        const buff = new Uint8Array([0, rand1, rand2, rand3, rand4])
+        fs.appendFile(fileList[i], buff).catch(() => {})
         runCount++
       } catch (err: any) {
         DebugLog.mSaveDanger('XM appendFile' + (err.message || '') + fileList[i])
@@ -49,7 +48,7 @@ export async function DoXiMa(dirPath: string, breakSmall: boolean, matchExtList:
 async function GetAllFiles(dir: string, breakSmall: boolean, fileList: string[]) {
   if (dir.endsWith(path.sep) == false) dir = dir + path.sep
   try {
-    const childfiles = await fsPromises.readdir(dir).catch((err: any) => {
+    const childfiles = await fs.readDir(dir).catch((err: any) => {
       err = FileSystemErrorMessage(err.code, err.message)
       DebugLog.mSaveDanger('XMGetAllFiles文件失败：' + dir, err)
       message.error('跳过文件夹：' + err + ' ' + dir)
@@ -59,22 +58,22 @@ async function GetAllFiles(dir: string, breakSmall: boolean, fileList: string[])
     let allTask: Promise<void>[] = []
     const dirList: string[] = []
     for (let i = 0, maxi = childfiles.length; i < maxi; i++) {
-      const name = childfiles[i] as string
+      const name = childfiles[i].name
       if (name.startsWith('.')) continue
       if (name.startsWith('#')) continue
       const item = dir + name
       allTask.push(
-        fsPromises
+        fs
           .lstat(item)
-          .then((stat: any) => {
-            if (stat.isDirectory()) dirList.push(item)
-            else if (stat.isSymbolicLink()) {
+          .then((stat) => {
+            if (stat.isDirectory) dirList.push(item)
+            else if (stat.isSymlink) {
               // donothing
-            } else if (stat.isFile()) {
+            } else if (stat.isFile) {
               if (breakSmall == false || stat.size > 5 * 1024 * 1024) fileList.push(item)
             }
           })
-          .catch()
+          .catch(() => {})
       )
       if (allTask.length > 10) {
         await Promise.all(allTask).catch(() => {})

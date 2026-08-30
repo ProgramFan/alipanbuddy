@@ -222,10 +222,10 @@ const handleClickJiaMi = async () => {
       <div class="settinghead">:我直接打压缩包不就好了吗？</div>
       <div class="settingrow">
         1.
-        <a-typography-text type="success">加密的文件，使用小白羊下载时会自动解密</a-typography-text>
+        <a-typography-text type="success">加密的文件，使用神行云盘助手下载时会自动解密</a-typography-text>
         <br />
         2.
-        <a-typography-text type="success">加密的视频文件，小白羊支持直接在线播放</a-typography-text>
+        <a-typography-text type="success">加密的视频文件，神行云盘助手支持直接在线播放</a-typography-text>
         <br />
         3.
         <a-typography-text type="success">加密的文件，无法通过其他软件解密查看原始数据</a-typography-text>

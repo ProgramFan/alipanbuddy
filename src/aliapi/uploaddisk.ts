@@ -1,20 +1,15 @@
 import { IUploadingUI } from '../utils/dbupload'
 import DebugLog from '../utils/debuglog'
-import { OpenFileHandle } from '../utils/filehelper'
-import { FileHandle, FileReadResult } from 'fs/promises'
 import { IUploadInfo } from './models'
 import AliUpload from './upload'
 import DBCache from '../utils/dbcache'
 import UserDAL from '../user/userdal'
-import { Sleep } from '../utils/format'
 import AliUploadHashPool from './uploadhashpool'
-import nodehttps from 'https'
-import type { ClientRequest } from 'http'
-import path from 'path'
+import path from '../utils/path'
 import { Howl } from 'howler'
 import { useSettingStore } from '../store'
-import FlowEnc from '../module/flow-enc'
-import { getFlowEnc } from '../utils/proxyhelper'
+import { getEncPassword } from '../utils/proxyhelper'
+import { uploadCancel, uploadPart, type UploadEncryption, type UploadProgress } from '../tauri/upload'
 
 const sound = new Howl({
   src: ['./audio/upload_finished.mp3'], // 音频文件路径
@@ -26,26 +21,33 @@ const filePosMap = new Map<number, number>()
 let UploadSpeedTotal = 0
 export default class AliUploadDisk {
 
+  /** Encryption parameters handed to the Rust uploader (the cipher is applied on the fly while streaming). */
+  static GetUploadEncryption(fileui: IUploadingUI): UploadEncryption | null {
+    if (!fileui.encType) return null
+    const alg = useSettingStore().securityEncType == 'rc4md5' ? 'rc4md5' : 'aesctr'
+    return { alg, password: getEncPassword(fileui.user_id, fileui.encType), fileSize: fileui.File.size }
+  }
+
   static async UploadOneFile(uploadInfo: IUploadInfo, fileui: IUploadingUI): Promise<string> {
-    const flowEnc = getFlowEnc(fileui.user_id, fileui.File.size, fileui.encType)
+    const encryption = AliUploadDisk.GetUploadEncryption(fileui)
     if (uploadInfo.part_info_list.length > 1) {
-      return AliUploadDisk.UploadOneFileBig(uploadInfo, fileui, flowEnc)
+      return AliUploadDisk.UploadOneFileBig(uploadInfo, fileui, encryption)
     }
     const upload_url = uploadInfo.part_info_list[0].upload_url
-    const fileHandle = await OpenFileHandle(path.join(fileui.localFilePath, fileui.File.partPath))
-    if (fileHandle.error) return fileHandle.error
+    const filePath = path.join(fileui.localFilePath, fileui.File.partPath)
     filePosMap.set(fileui.UploadID, 0)
     let isok = ''
     for (let i = 0; i < 3; i++) {
-      isok = await AliUploadDisk.UploadOneFilePartNode(
-        fileui, flowEnc, fileHandle.handle,
+      isok = await AliUploadDisk.UploadOneFilePart(
+        fileui, encryption, filePath,
         0, fileui.File.size, upload_url
       )
       if (isok == 'success') {
         break
       }
+      if (!fileui.IsRunning) break
     }
-    if (fileHandle.handle) await fileHandle.handle.close()
+    if (!fileui.IsRunning && isok !== 'success') return '已暂停'
     if (isok !== 'success') return isok || '分片上传失败，请重试'
     return AliUpload.UploadFileComplete(
       fileui.user_id, fileui.drive_id,
@@ -70,10 +72,9 @@ export default class AliUploadDisk {
       })
   }
 
-  static async UploadOneFileBig(uploadInfo: IUploadInfo, fileui: IUploadingUI, flowEnc: FlowEnc | null): Promise<string> {
+  static async UploadOneFileBig(uploadInfo: IUploadInfo, fileui: IUploadingUI, encryption: UploadEncryption | null): Promise<string> {
     filePosMap.set(fileui.UploadID, 0)
-    const fileHandle = await OpenFileHandle(path.join(fileui.localFilePath, fileui.File.partPath))
-    if (fileHandle.error) return fileHandle.error
+    const filePath = path.join(fileui.localFilePath, fileui.File.partPath)
     const fileSize = fileui.File.size
     for (let i = 0, maxi = uploadInfo.part_info_list.length; i < maxi; i++) {
       let part = uploadInfo.part_info_list[i]
@@ -97,8 +98,8 @@ export default class AliUploadDisk {
         }
         let isok = ''
         for (let j = 0; j < 3; j++) {
-          isok = await AliUploadDisk.UploadOneFilePartNode(
-            fileui, flowEnc, fileHandle.handle,
+          isok = await AliUploadDisk.UploadOneFilePart(
+            fileui, encryption, filePath,
             partStart, partSize, part.upload_url
           )
           if (isok == 'success') {
@@ -109,12 +110,10 @@ export default class AliUploadDisk {
         }
         if (!fileui.IsRunning) break
         if (!part.isupload) {
-          if (fileHandle.handle) await fileHandle.handle.close()
           return isok
         }
       }
     }
-    if (fileHandle.handle) await fileHandle.handle.close()
     if (!fileui.IsRunning) return '已暂停'
     for (let i = 0, maxi = uploadInfo.part_info_list.length; i < maxi; i++) {
       if (!uploadInfo.part_info_list[i].isupload) {
@@ -124,7 +123,7 @@ export default class AliUploadDisk {
 
     if (!fileui.encType && !uploadInfo.sha1) {
       if (fileui.File.size >= 1024000) {
-        const prehash = await AliUploadHashPool.GetFilePreHash(path.join(fileui.localFilePath, fileui.File.partPath))
+        const prehash = await AliUploadHashPool.GetFilePreHash(filePath)
         if (fileui.File.size >= 10240000 && !prehash.startsWith('error')) {
           uploadInfo.sha1 = await DBCache.getFileHash(fileui.File.size, fileui.File.mtime, prehash, path.basename(fileui.File.name))
         }
@@ -146,118 +145,54 @@ export default class AliUploadDisk {
       })
   }
 
+  /** Uploads one byte range of the file through the Rust streaming uploader. */
+  static async UploadOneFilePart(fileui: IUploadingUI, encryption: UploadEncryption | null, filePath: string, partStart: number, partSize: number, upload_url: string): Promise<string> {
+    const token = await UserDAL.GetUserTokenFromDB(fileui.user_id)
+    if (!token || !token.access_token) {
+      return '找不到上传token，请重试'
+    }
 
-  static UploadOneFilePartNode(fileui: IUploadingUI, flowEnc: FlowEnc | null, fileHandle: FileHandle, partStart: number, partSize: number, upload_url: string): Promise<string> {
-    return new Promise<string>(async (resolve) => {
-      const token = await UserDAL.GetUserTokenFromDB(fileui.user_id)
-      if (!token || !token.access_token) {
-        resolve('找不到上传token，请重试')
-        return
+    let cancelled = false
+    const cancelIfStopped = () => {
+      if (fileui.IsRunning || cancelled) return
+      cancelled = true
+      uploadCancel(fileui.UploadID)
+    }
+    const onProgress = (progress: UploadProgress) => {
+      if (progress.delta > 0) UploadSpeedTotal += progress.delta
+      filePosMap.set(fileui.UploadID, progress.pos)
+      cancelIfStopped()
+    }
+    // the network may stall without progress events, so also poll the running flag
+    const stopWatcher = setInterval(cancelIfStopped, 1000)
+    try {
+      const result = await uploadPart(
+        {
+          taskId: fileui.UploadID,
+          path: filePath,
+          start: partStart,
+          size: partSize,
+          url: upload_url,
+          authorization: token.token_type + ' ' + token.access_token,
+          encryption
+        },
+        onProgress
+      )
+      if (result.status == 200) {
+        return 'success'
+      } else if (result.status == 409 && (result.body || '').indexOf('PartAlreadyExist') >= 0) {
+        return 'success'
+      } else {
+        DebugLog.mSaveDanger('分片上传失败，稍后重试' + result.status)
+        return '分片上传失败，稍后重试' + result.status
       }
-
-      let option = {
-        method: 'PUT',
-        strictSSL: false,
-        rejectUnauthorized: false,
-        timeout: 15000,
-        headers: {
-          'Content-Type': '',
-          'Content-Length': partSize,
-          'Transfer-Encoding': 'chunked',
-          Authorization: token.token_type + ' ' + token.access_token,
-          Connection: 'keep-alive'
-        }
-      }
-      const winfo = {
-        UploadID: fileui.UploadID,
-        isstop: false,
-        partSize, partStart,
-        buff: Buffer.alloc(40960),
-        flowEnc: flowEnc
-      }
-      const req: ClientRequest = nodehttps.request(upload_url, option, function(res: any) {
-        let _data = ''
-        res.on('data', function(chunk: string) {
-          _data += chunk
-        })
-        res.on('end', function() {
-          winfo.isstop = true
-          if (res.statusCode == 200) {
-            resolve('success')
-          } else if (res.statusCode == 409 && _data.indexOf('PartAlreadyExist') > 0) {
-            resolve('success')
-          } else {
-            DebugLog.mSaveDanger('分片上传失败，稍后重试' + res.statusCode)
-            resolve('分片上传失败，稍后重试' + res.statusCode)
-          }
-        })
-      })
-      req.on('error', (error: any) => {
-        DebugLog.mSaveWarning('分片上传失败，稍后重试', error)
-        winfo.isstop = true
-        let message = error.message || error.code || '网络错误'
-        message = message.replace('A "socket" was not created for HTTP request before 15000ms', '网络连接超时失败')
-        resolve('分片上传失败，稍后重试' + message)
-      })
-
-      while (winfo.partSize > 0 && !winfo.isstop) {
-        const result = await AliUploadDisk._WriteToRequest(req, fileHandle, winfo)
-        if (result != 'success') {
-          resolve('读取文件数据失败，请重试')
-          break
-        }
-      }
-      req.end()
-    })
-  }
-
-  static async _WriteToRequest(req: ClientRequest, fileHandle: FileHandle, winfo: {
-    UploadID: number;
-    isstop: boolean;
-    partSize: number;
-    partStart: number;
-    buff: Buffer,
-    flowEnc: FlowEnc | null
-  }): Promise<string> {
-    return new Promise<string>((resolve) => {
-      try {
-        const flowEnc = winfo.flowEnc
-        const redLen = Math.min(40960, winfo.partSize)
-        if (redLen != winfo.buff.length) winfo.buff = Buffer.alloc(redLen)
-        fileHandle
-          .read(winfo.buff, 0, redLen, winfo.partStart)
-          .then(async (rbuff: FileReadResult<Buffer>) => {
-            if (redLen == rbuff.bytesRead) {
-              winfo.partStart += redLen
-              winfo.partSize -= redLen
-              const uploadpos = winfo.partStart
-              const bufferData = winfo.flowEnc ? winfo.flowEnc.encryptBuff(rbuff.buffer) : rbuff.buffer
-              req.write(bufferData, async function() {
-                filePosMap.set(winfo.UploadID, uploadpos)
-                UploadSpeedTotal += redLen
-                window.speedLimte -= redLen
-                for (let i = 0; i < 10; i++) {
-                  if (window.speedLimte <= 0) await Sleep(100)
-                  else break
-                }
-                resolve('success')
-              })
-            } else {
-              winfo.isstop = true
-              resolve('读取文件数据失败，请重试')
-            }
-          })
-          .catch((error) => {
-            console.error(error)
-            winfo.isstop = true
-            resolve('读取文件数据失败，请重试')
-          })
-      } catch (error) {
-        console.error(error)
-        winfo.isstop = true
-        resolve('读取文件数据失败，请重试')
-      }
-    })
+    } catch (error: any) {
+      DebugLog.mSaveWarning('分片上传失败，稍后重试', error)
+      const message = (error && (error.message || error.code)) || '网络错误'
+      return '分片上传失败，稍后重试' + message
+    } finally {
+      clearInterval(stopWatcher)
+    }
   }
 
   static GetFileUploadSpeed(UploadID: number): number {

@@ -43,6 +43,21 @@ function parseEnvFile(filePath) {
   return output
 }
 
+function readExistingValues(filePath) {
+  // Values already present in src/secrets.generated.ts (for example hand-filled OpenAPI credentials).
+  if (!fs.existsSync(filePath)) return {}
+  const output = {}
+  const text = fs.readFileSync(filePath, 'utf8')
+  const re = /^export const ([A-Z0-9_]+) = ("(?:[^"\\]|\\.)*")$/gm
+  let match
+  while ((match = re.exec(text))) {
+    try {
+      output[match[1]] = JSON.parse(match[2])
+    } catch {}
+  }
+  return output
+}
+
 function readRequiredNames() {
   const raw = process.env.REQUIRED_RELEASE_SECRETS || ''
   return raw
@@ -54,10 +69,18 @@ function readRequiredNames() {
 function main() {
   const args = parseArgs(process.argv.slice(2))
   const localEnv = args.mode === 'ci' ? {} : parseEnvFile(envFile)
+  const existing = args.mode === 'ci' ? {} : readExistingValues(outputFile)
   const values = {}
+  const kept = []
 
   for (const name of secretNames) {
-    values[name] = process.env[name] ?? localEnv[name] ?? ''
+    let value = process.env[name] ?? localEnv[name] ?? ''
+    // Never clobber a value that was already generated/filled in when nothing new is configured.
+    if (!value && existing[name]) {
+      value = existing[name]
+      kept.push(name)
+    }
+    values[name] = value
   }
 
   const required = args.strict ? readRequiredNames() : []
@@ -82,7 +105,10 @@ function main() {
   fs.writeFileSync(outputFile, lines.join('\n'), 'utf8')
 
   const filled = secretNames.filter((name) => values[name]).length
-  console.log(`Generated src/secrets.generated.ts (${filled}/${secretNames.length} values set, mode=${args.mode})`)
+  console.log(`Generated src/secrets.generated.ts (${filled}/${secretNames.length} values set, mode=${args.mode}${kept.length ? `, kept existing: ${kept.join(', ')}` : ''})`)
+  if (!values.ALIYUN_APP_ID || !values.ALIYUN_APP_SECRET) {
+    console.warn('ALIYUN_APP_ID / ALIYUN_APP_SECRET are empty: put them in .env.local or enter your own OpenAPI credentials in 设置 → 账户设置 → OpenAPI 授权.')
+  }
 }
 
 main()

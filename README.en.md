@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="screenshot/icon.svg" alt="BoxPlayer" width="120">
+  <img src="screenshot/icon.svg" alt="AlipanBuddy" width="120">
 </p>
 
-<h1 align="center">BoxPlayer</h1>
+<h1 align="center">神行云盘助手 · AlipanBuddy</h1>
 
 <p align="center">
   <a href="./README.md">中文</a> · English
@@ -16,7 +16,7 @@
 
 ## What it is
 
-BoxPlayer continues the "aliyunpan (小白羊)" project as a cross-platform Aliyun Drive desktop client:
+AlipanBuddy (神行云盘助手) is a fork of BoxPlayer / "aliyunpan (小白羊)", a cross-platform Aliyun Drive desktop client:
 
 - Multiple accounts; browse backup / resource / album / safe-box drives.
 - File management: create, rename, move, copy, favorites, recycle bin, search, properties, archive extraction.
@@ -49,25 +49,31 @@ Download the installer for your platform from GitHub Releases:
 If macOS reports the app as damaged, run after verifying the source:
 
 ```sh
-sudo xattr -d com.apple.quarantine /Applications/BoxPlayer.app
+sudo xattr -d com.apple.quarantine /Applications/alipanbuddy.app
 ```
 
 ---
 
 ## Development
 
-Requirements: Node.js >= 22.12.0 and pnpm (never npm / yarn in this repo).
+Requirements: Node.js >= 22.12.0, pnpm (never npm / yarn in this repo) and a stable Rust toolchain. On Linux install the
+WebKitGTK development packages (`libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf` on Debian/Ubuntu,
+`webkit2gtk4.1-devel gtk3-devel libsoup3-devel librsvg2-devel libappindicator-gtk3-devel` on Fedora).
 
 ```bash
 pnpm install
-pnpm dev                            # Vite + Electron with hot reload
-CI=true pnpm exec vue-tsc --noEmit  # type check only
+pnpm dev                            # Vite hot reload + Tauri (Rust) app
+pnpm run typecheck                  # renderer type check (vue-tsc)
+pnpm run typecheck:rust             # cargo check
 pnpm run test                       # Vitest
-pnpm run build                      # bump version → type check → bundle
-pnpm run build:electron             # package with electron-builder
+pnpm run test:rust                  # cargo test -p boxcore
+pnpm run build                      # bump version → type check → vite build → tauri build (installers)
+pnpm run build:mac | build:linux | build:windows | build:windows:arm64
 ```
 
-Aliyun Drive client id / secret live in `.env.local` (see `.env.example`); `pnpm run secrets:generate` writes `src/secrets.generated.ts` (git-ignored) and runs automatically before `dev`, `build`, and `test`.
+Aliyun Drive OpenAPI client id / secret live in `.env.local` (see `.env.example`); `pnpm run secrets:generate` writes `src/secrets.generated.ts` (git-ignored, existing values are never overwritten with empty ones) and runs automatically before `dev`, `build`, and `test`. Builds without built-in credentials can still log in: pick "Custom credentials" under Settings → Account → OpenAPI Authorization and enter your own client id / secret from the [Aliyun Drive developer portal](https://www.aliyundrive.com/developer).
+
+Auto update needs a Tauri signing key pair (`pnpm tauri signer generate`): put the public key into `plugins.updater.pubkey` in `src-tauri/tauri.conf.json` and provide `TAURI_SIGNING_PRIVATE_KEY` in CI.
 
 See [README.md](./README.md) for the project layout.
 
@@ -87,7 +93,7 @@ This project continues development based on [liupan1890/aliyunpan](https://githu
 
 ## Disclaimer
 
-1. This is a free and open-source project intended for personal cloud-drive file management and Electron learning. Comply with all applicable laws and the platform's terms of service; do not abuse it.
+1. This is a free and open-source project intended for personal cloud-drive file management and Tauri learning. Comply with all applicable laws and the platform's terms of service; do not abuse it.
 2. It works through official APIs and user authorization and does not bypass or tamper with official interfaces.
 3. Before using it, understand and accept the related risks (account restrictions, speed limits, etc.); they are unrelated to this program.
 4. For infringement or compliance concerns, open a GitHub Issue.

@@ -1,6 +1,10 @@
-export {}
+import type { Buffer as BufferType } from 'buffer'
 
 declare global {
+  // The `buffer` npm package is installed on `window` by src/main.ts so legacy code keeps working.
+  type Buffer = BufferType
+  const Buffer: typeof BufferType
+
   // eslint-disable-next-line no-unused-vars
   interface Window {
     Go: any
@@ -15,8 +19,10 @@ declare global {
     WebUserToken: any
     WebToElectron: any
     WebToWindow: any
+    WebToElectronCB: any
     WebClearCache: any
     WebRelaunch: any
+    WebReload: any
     WebGetCookies: any
     WebClearCookies: any
     WebSaveTheme: any
@@ -28,9 +34,6 @@ declare global {
     AutoUpdateCheck?: (force?: boolean) => Promise<any>
     AutoUpdateInstall?: () => Promise<boolean>
     AutoUpdateOnStateChanged?: (callback: (state: any) => void) => () => void
-    UploadPort: any
-    DownloadPort: any
-    MainPort: any
     MainProxyServer: any
     MainProxyHost: any
     MainProxyPort: any
@@ -39,7 +42,6 @@ declare global {
     WinMsgToMain: any
     IsMainPage: boolean
     WebSetProxy: any
-    speedLimte: number
     WebSetProgressBar: any
   }
 }

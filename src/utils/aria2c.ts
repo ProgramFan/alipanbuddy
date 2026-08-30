@@ -1,6 +1,6 @@
 import { IAliFileResp } from '../aliapi/dirfilelist'
 
-import Aria2 from 'aria2-lib'
+import Aria2Client from './aria2Client'
 import axios from 'axios'
 import DownDAL, { IAriaDownProgress, IStateDownFile } from '../down/DownDAL'
 import message from './message'
@@ -10,8 +10,8 @@ import DebugLog from './debuglog'
 import Config from '../config'
 import AliTrash from '../aliapi/trash'
 
-import path from 'path'
-import fs from 'fs'
+import path from './path'
+import fs from '../tauri/fs'
 import { getRawUrl } from './proxyhelper'
 import { callAriaClient, getAriaAddUriGid, isAriaDuplicateGidError } from './aria2Rpc'
 import { buildAriaAddOptions } from '../down/integration/aria2AddOptions'
@@ -19,8 +19,8 @@ import { buildAriaAddOptions } from '../down/integration/aria2AddOptions'
 export const localPwd = 'S4znWTaZYQi3cpRNb'
 
 let Aria2cChangeing: boolean = false
-let Aria2EngineLocal: Aria2 | undefined = undefined
-let Aria2EngineRemote: Aria2 | undefined = undefined
+let Aria2EngineLocal: Aria2Client | undefined = undefined
+let Aria2EngineRemote: Aria2Client | undefined = undefined
 
 let IsAria2cOnlineLocal: boolean = false
 
@@ -70,7 +70,7 @@ function CloseRemote() {
         Aria2EngineRemote.call('aria2.forceShutdown').catch(() => {})
       } catch {}
       try {
-        Aria2EngineRemote.close()
+        Aria2EngineRemote.close().catch(() => {})
       } catch {}
       Aria2EngineRemote = undefined
     }
@@ -139,7 +139,7 @@ export async function AriaChangeToRemote() {
     const secret = settingStore.ariaPwd
 
     const options = { host, port, secure: settingStore.ariaHttps, secret, path: '/jsonrpc' }
-    Aria2EngineRemote = new Aria2({ WebSocket: global.WebSocket, fetch: (...args: any[]) => (window.fetch as any)(...args), ...options })
+    Aria2EngineRemote = new Aria2Client(options)
     bindAriaErrorListener(Aria2EngineRemote, 'remote')
 
     Aria2EngineRemote.on('close', () => {
@@ -196,7 +196,7 @@ export async function AriaChangeToLocal() {
       if (Aria2EngineLocal == undefined) {
         port = window.WebRelaunchAria ? await window.WebRelaunchAria() : 16800
         const options = { host: '127.0.0.1', port, secure: false, secret: localPwd, path: '/jsonrpc' }
-        Aria2EngineLocal = new Aria2({ WebSocket: global.WebSocket, fetch: (...args: any[]) => (window.fetch as any)(...args), ...options })
+        Aria2EngineLocal = new Aria2Client(options)
         bindAriaErrorListener(Aria2EngineLocal, 'local')
         Aria2EngineLocal.on('close', () => {
           IsAria2cOnlineLocal = false
@@ -327,7 +327,7 @@ export async function AriaGetDowningList() {
       list = list.concat(arr)
       arr = result[2][0]
       list = list.concat(arr)
-      DownDAL.mSpeedEvent(list || [])
+      await DownDAL.mSpeedEvent(list || [])
       SetAriaOnline(true)
     }
   } catch (e: any) {
@@ -377,7 +377,9 @@ export function AriaShoutDown() {
   CloseRemote()
   // 清理本地引擎引用
   if (Aria2EngineLocal) {
-    try { Aria2EngineLocal.close() } catch {}
+    try {
+      Aria2EngineLocal.close().catch(() => {})
+    } catch {}
     Aria2EngineLocal = undefined
   }
   IsAria2cOnlineLocal = false
@@ -408,7 +410,7 @@ export async function AriaAddUrl(file: IStateDownFile): Promise<string> {
       const dirFull = path.join(info.DownSavePath, info.name)
       if (!info.ariaRemote) {
         try {
-          await fs.promises.mkdir(dirFull, { recursive: true })
+          await fs.mkdir(dirFull, { recursive: true })
         } catch (error: any) {
           const errorMap: Record<string, string> = {
             EPERM: '文件没有读取权限',
@@ -450,7 +452,7 @@ export async function AriaAddUrl(file: IStateDownFile): Promise<string> {
       const fileFull = path.join(dirPath, info.name)
       if (!info.ariaRemote) {
         try {
-          const fileStat = await fs.promises.stat(fileFull)
+          const fileStat = await fs.stat(fileFull)
           if (fileStat && fileStat.size == info.size) return 'downed'
           else return '本地存在重名文件，请手动删除'
         } catch (error: any) {
@@ -459,8 +461,9 @@ export async function AriaAddUrl(file: IStateDownFile): Promise<string> {
             EBUSY: '文件被占用或锁定中',
             EACCES: '文件没有读取权限'
           }
-          const errorMessage = errorMap[error.code] || error.message
-          if (errorMessage.indexOf('no such file') < 0) {
+          const errorMessage: string = errorMap[error.code] || error.message || ''
+          const isMissing = error.code === 'ENOENT' || errorMessage.indexOf('no such file') >= 0
+          if (!isMissing) {
             DebugLog.mSaveLog(
               'danger',
               `AriaAddUrl访问文件失败：${fileFull} ${errorMessage || ''}`,
@@ -470,7 +473,7 @@ export async function AriaAddUrl(file: IStateDownFile): Promise<string> {
           }
           if (info.size == 0) {
             try {
-              await (await fs.promises.open(fileFull, 'w')).close()
+              await fs.writeFile(fileFull, '')
               return 'downed'
             } catch {
               return '创建空文件失败'
@@ -605,7 +608,7 @@ export async function AriaAddUrl(file: IStateDownFile): Promise<string> {
 }
 
 
-export function AriaHashFile(downitem: IStateDownFile): { DownID: string; Check: boolean } {
+export async function AriaHashFile(downitem: IStateDownFile): Promise<{ DownID: string; Check: boolean }> {
   const DownID = downitem.DownID
   const dir = downitem.Info.DownSavePath
   const out = downitem.Info.ariaRemote ? downitem.Info.name : downitem.Info.name + '.td'
@@ -622,15 +625,15 @@ export function AriaHashFile(downitem: IStateDownFile): { DownID: string; Check:
   let success = false
   if (data.inputfile == data.movetofile) {
     success = true
-  } else if (fs.existsSync(data.movetofile)) {
+  } else if (await fs.exists(data.movetofile)) {
     success = true
   } else {
     try {
-      fs.renameSync(data.inputfile, data.movetofile)
+      await fs.rename(data.inputfile, data.movetofile)
       success = true
     } catch {
       try {
-        fs.renameSync(data.inputfile, data.movetofile)
+        await fs.rename(data.inputfile, data.movetofile)
         success = true
       } catch (e: any) {
         DebugLog.mSaveLog('danger', 'AriaRename file=' + data.inputfile + ' error=' + (e.message || ''), e)

@@ -5,23 +5,47 @@ import { FileSystemErrorMessage } from './filehelper'
 import { humanSize, Sleep } from './format'
 import message from './message'
 
-import path from 'path'
-import fsPromises from 'fs/promises'
+import path from './path'
+import fs, { DirEntryInfo } from '../tauri/fs'
+
+/**
+ * Lists a directory. Missing directories (e.g. the Chromium cache folders that do not exist under Tauri)
+ * yield an empty list; other errors are logged when `report` is set.
+ */
+async function readDirSafe(dir: string, report: string): Promise<DirEntryInfo[]> {
+  try {
+    return await fs.readDir(dir)
+  } catch (err: any) {
+    if (report && err && err.code !== 'ENOENT' && err.code !== 'ENOTDIR') {
+      const msg = FileSystemErrorMessage(err.code, err.message)
+      DebugLog.mSaveDanger(report + '失败：' + dir, msg)
+      message.error(msg + ' ' + dir)
+    }
+    return []
+  }
+}
+
+async function fileSize(filePath: string): Promise<number> {
+  return fs
+    .lstat(filePath)
+    .then((stat) => stat.size || 0)
+    .catch(() => 0)
+}
 
 export default class AppCache {
 
   private static async LoadStorageSize(dir: string, inCache = false): Promise<{ total: number; cache: number }> {
     try {
-      const childFiles = await fsPromises.readdir(dir, { withFileTypes: true })
+      const childFiles = await readDirSafe(dir, '')
       let total = 0
       let cache = 0
       for (const child of childFiles) {
         const childPath = path.join(dir, child.name)
-        if (child.isFile()) {
-          const stat = await fsPromises.lstat(childPath).catch(() => ({ size: 0 }))
-          total += stat.size
-          if (inCache) cache += stat.size
-        } else if (child.isDirectory()) {
+        if (child.isFile) {
+          const size = await fileSize(childPath)
+          total += size
+          if (inCache) cache += size
+        } else if (child.isDirectory) {
           const childSize = await AppCache.LoadStorageSize(childPath, inCache || child.name === 'Cache')
           total += childSize.total
           cache += childSize.cache
@@ -35,20 +59,12 @@ export default class AppCache {
 
   static async LoadDirSize(dir: string): Promise<number> {
     try {
-      const childFiles = await fsPromises.readdir(dir, { withFileTypes: true }).catch((err: any) => {
-        err = FileSystemErrorMessage(err.code, err.message)
-        DebugLog.mSaveDanger('LoadDirSize失败：' + dir, err)
-        message.error(err + ' ' + dir)
-        return []
-      })
+      const childFiles = await readDirSafe(dir, 'LoadDirSize')
       let total = 0
       for (let i = 0, maxi = childFiles.length; i < maxi; i++) {
-        if (childFiles[i].isFile()) {
-          const stat = await fsPromises.lstat(path.join(dir, childFiles[i].name)).catch(() => {
-            return { size: 0 }
-          })
-          total += stat.size
-        } else if (childFiles[i].isDirectory()) {
+        if (childFiles[i].isFile) {
+          total += await fileSize(path.join(dir, childFiles[i].name))
+        } else if (childFiles[i].isDirectory) {
           total += await AppCache.LoadDirSize(path.join(dir, childFiles[i].name))
         }
       }
@@ -60,20 +76,12 @@ export default class AppCache {
 
   static async LoadCacheDirSize(dir: string): Promise<number> {
     try {
-      const childFiles = await fsPromises.readdir(dir, { withFileTypes: true }).catch((err: any) => {
-        err = FileSystemErrorMessage(err.code, err.message)
-        DebugLog.mSaveDanger('LoadCacheDirSize失败：' + dir, err)
-        message.error(err + ' ' + dir)
-        return []
-      })
+      const childFiles = await readDirSafe(dir, 'LoadCacheDirSize')
       let total = 0
       for (let i = 0, maxi = childFiles.length; i < maxi; i++) {
-        if (childFiles[i].isFile()) {
-          const stat = await fsPromises.lstat(path.join(dir, childFiles[i].name)).catch(() => {
-            return { size: 0 }
-          })
-          total += stat.size
-        } else if (childFiles[i].isDirectory()) {
+        if (childFiles[i].isFile) {
+          total += await fileSize(path.join(dir, childFiles[i].name))
+        } else if (childFiles[i].isDirectory) {
           total += await AppCache.LoadDirSize(path.join(dir, childFiles[i].name))
         }
       }
@@ -84,8 +92,8 @@ export default class AppCache {
   }
 
   static DeleteDir(dir: string): Promise<void> {
-    return fsPromises
-      .rm(dir, { force: true, recursive: true })
+    return fs
+      .rm(dir, { recursive: true, force: true })
       .then(() => {})
       .catch(() => {})
   }
@@ -115,7 +123,7 @@ export default class AppCache {
     useSettingStore().debugDirSize = humanSize(total)
     useSettingStore().debugCacheSize = humanSize(cache)
   }
-  
+
   static async aClearDir(delby: string): Promise<void> {
     const dir = getUserData()
     if (delby == 'all') {
@@ -133,6 +141,7 @@ export default class AppCache {
           quotas: ['temporary', 'persistent', 'syncable']
         })
     }
+    // Chromium data folders: they exist only for the old Electron builds, deleting a missing dir is a no-op
     if (delby == 'all') {
       await AppCache.DeleteDir(path.join(dir, 'databases')).catch(() => {})
       await AppCache.DeleteDir(path.join(dir, 'IndexedDB')).catch(() => {})
@@ -148,17 +157,17 @@ export default class AppCache {
 
 
     if (delby == 'all') {
-      message.success('删除全部数据成功，自动重启小白羊')
+      message.success('删除全部数据成功，自动重启神行云盘助手')
       Sleep(3000).then(() => {
         window.WebRelaunch()
       })
     } else if (delby == 'db') {
-      message.success('删除数据库成功，自动重启小白羊')
+      message.success('删除数据库成功，自动重启神行云盘助手')
       Sleep(3000).then(() => {
         window.WebRelaunch()
       })
     } else {
-      message.success('清理缓存成功，自动重启小白羊')
+      message.success('清理缓存成功，自动重启神行云盘助手')
       Sleep(3000).then(() => {
         // window.WebReload()
         window.WebRelaunch()
@@ -169,7 +178,7 @@ export default class AppCache {
   static async aClearCache(): Promise<void> {
     const dir = getUserData()
     await AppCache.DeleteDir(path.join(dir, 'Cache')).catch(() => {})
-    message.success('删除全部缓存数据成功，自动重启小白羊')
+    message.success('删除全部缓存数据成功，自动重启神行云盘助手')
     Sleep(1500).then(() => {
       window.WebRelaunch()
     })

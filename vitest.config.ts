@@ -1,26 +1,16 @@
 // vitest.config.ts
 import { defineConfig } from 'vitest/config'
 import vue from '@vitejs/plugin-vue'
-import path from 'path'
 
 export default defineConfig({
   plugins: [vue()],
-  resolve: {
-    alias: {
-      '@shared': path.resolve(__dirname, 'shared'),
-      '@main':   path.resolve(__dirname, 'electron/main')
-    }
-  },
   test: {
     environment: 'node',
     include: [
-      'electron/main/core/__tests__/**/*.test.ts',
-      'electron/main/aria/__tests__/**/*.test.ts',
-      'shared/__tests__/**/*.test.ts',
-      'src/down/motrix-integration/**/*.test.ts',
       'src/down/integration/**/*.test.ts',
       'src/utils/__tests__/**/*.test.ts',
-      'src/aliapi/__tests__/**/*.test.ts'
-    ],
-  },
+      'src/aliapi/__tests__/**/*.test.ts',
+      'src/tauri/__tests__/**/*.test.ts'
+    ]
+  }
 })

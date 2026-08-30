@@ -1,17 +1,11 @@
 <script setup lang="ts">
 
 import { modalCloseAll } from '../../utils/modal'
-import { nextTick, PropType, ref } from 'vue'
+import { nextTick, onBeforeUnmount, PropType, ref } from 'vue'
 import { IServerVerData } from '../../aliapi/server'
 import MarkdownIt from 'markdown-it'
-import { getAppNewPath, getResourcesPath, getUserDataPath, openExternal } from '../../utils/electronhelper'
-import fs, { existsSync, rmSync, writeFile } from 'fs'
+import { openExternal } from '../../utils/electronhelper'
 import message from '../../utils/message'
-import axios, { AxiosResponse } from 'axios'
-import { Sleep } from '../../utils/format'
-import { execFile, SpawnOptions } from 'child_process'
-import { shell } from 'electron'
-import path from 'path'
 import { Progress as AntdProgress } from 'ant-design-vue'
 import useFootStore from '../../store/footstore'
 
@@ -29,6 +23,41 @@ const okLoading = ref(false)
 const percent = ref(0)
 const loaded = ref(0)
 const footStore = useFootStore()
+let unlistenState: (() => void) | undefined
+
+const stopListening = () => {
+  if (unlistenState) {
+    unlistenState()
+    unlistenState = undefined
+  }
+}
+
+// Mirrors the backend updater state (window.AutoUpdateOnStateChanged) into the progress bar.
+const applyState = (state: any) => {
+  if (!state || !state.status) return
+  if (state.status === 'downloading') {
+    okLoading.value = true
+    const raw = typeof state.percent === 'number' ? state.percent : percent.value
+    const pro = Math.min(100, Math.max(0, Math.round(raw)))
+    percent.value = pro
+    loaded.value = props.verData.fileSize ? Math.round((props.verData.fileSize * pro) / 100) : 0
+    footStore.mSaveUpdateDownloadProgress(pro)
+  } else if (state.status === 'downloaded') {
+    percent.value = 100
+    loaded.value = props.verData.fileSize
+    footStore.mSaveUpdateDownloadProgress(0)
+    okLoading.value = false
+    message.info(state.version ? `新版本 ${state.version} 已下载，正在安装...` : '新版本已下载，正在安装...', 0)
+    window.AutoUpdateInstall?.()
+  } else if (state.status === 'error') {
+    okLoading.value = false
+    percent.value = 0
+    loaded.value = 0
+    footStore.mSaveUpdateDownloadProgress(0)
+    message.error(state.message ? `新版本下载失败：${state.message}，请前往github下载最新版本` : '新版本下载失败，请前往github下载最新版本', 8)
+    openExternal(props.verData.verHtml)
+  }
+}
 
 const handleOpen = async () => {
   const markdown = new MarkdownIt({
@@ -40,110 +69,52 @@ const handleOpen = async () => {
     const el = document.getElementById('markdown-content')
     if (el) el.innerHTML = markdown.render(props.verData.verInfo || '')
   })
+  stopListening()
+  unlistenState = window.AutoUpdateOnStateChanged?.(applyState)
 }
 
 const handleHide = () => {
+  stopListening()
   if (okLoading.value) okLoading.value = false
   percent.value = 0
   loaded.value = 0
   footStore.mSaveUpdateDownloadProgress(0)
-  if (props.verData.verName) {
-    let resourcesPath = getResourcesPath(props.verData.verName)
-    if (existsSync(resourcesPath)) {
-      rmSync(resourcesPath, { force: true })
-    }
-  }
   modalCloseAll()
 }
+
+onBeforeUnmount(() => {
+  stopListening()
+})
+
 const handleOK = async () => {
-  let { version, verName, verUrl, verHtml } = props.verData
-  let isHot = props.verData.fileExt.includes('asar')
-  if (verUrl && window.platform !== 'linux') {
-    okLoading.value = true
-    // 下载安装
-    const flag = await AutoDownload(verUrl, verName, verHtml, isHot)
-    okLoading.value = false
-    // 更新本地版本号
-    if (flag && version) {
-      const localVersion = getResourcesPath('localVersion')
-      if (localVersion) {
-        writeFile(localVersion, version, async (err) => {
-          if (err) {
-            message.error('更新本地版本号失败，请检查【Resources文件夹】是否有写入权限【不要安装到系统盘】', 5)
-          } else {
-            message.info('热更新完毕，重新打开应用...', 0)
-            await Sleep(500)
-            window.WebToElectron({ cmd: 'relaunch' })
-          }
-        })
-      }
-    } else {
-      percent.value = 0
-      message.error('新版本下载失败，请前往github下载最新版本', 8)
+  const { verHtml } = props.verData
+  okLoading.value = true
+  try {
+    const state = await window.AutoUpdateCheck?.(true)
+    if (!state || state.status === 'unsupported') {
+      // no in-app updater (e.g. unpackaged / unsupported platform) -> open the release page
+      okLoading.value = false
       openExternal(verHtml)
+    } else if (state.status === 'downloading') {
+      message.info(state.version ? `新版本 ${state.version} 正在后台下载，完成后将自动安装` : '新版本正在后台下载，完成后将自动安装', 5)
+      applyState(state)
+    } else if (state.status === 'downloaded') {
+      applyState(state)
+    } else if (state.status === 'up-to-date') {
+      okLoading.value = false
+      message.info('已经是最新版', 6)
+    } else if (state.status === 'error') {
+      okLoading.value = false
+      message.error(state.message ? `检查更新失败：${state.message}，请前往github下载最新版本` : '检查更新失败，请前往github下载最新版本', 8)
+      openExternal(verHtml)
+    } else {
+      // 'idle' | 'checking' – the state listener will pick up the rest
+      message.info('正在检查更新')
     }
-  } else {
+  } catch (err: any) {
+    okLoading.value = false
+    message.error(err?.message || '检查更新失败，请前往github下载最新版本', 8)
     openExternal(verHtml)
-  }
-}
-
-const AutoDownload = async (url: string, name: string, html_url: string, hot: boolean) => {
-  const downPath = hot ? getAppNewPath() : getUserDataPath(name)
-  if (!hot && existsSync(downPath) && fs.statSync(downPath).size == props.verData.fileSize) {
-    await autoInstallNewVersion(downPath)
-    return true
-  } else {
-    await fs.promises.rm(downPath, { force: true })
-  }
-  return axios
-    .get(url, {
-      withCredentials: false,
-      responseType: 'arraybuffer',
-      timeout: 60000,
-      headers: {
-        'Cache-Control': 'no-cache',
-        Pragma: 'no-cache',
-        Expires: '0'
-      },
-      onDownloadProgress: (progressEvent) => {
-        let total = props.verData.fileSize
-        loaded.value = progressEvent.loaded
-        if (total) {
-          let progress = (loaded.value > 0) ? Math.ceil(loaded.value / (total / 100)) : 0
-          percent.value = (progress > 100) ? 100 : progress
-          footStore.mSaveUpdateDownloadProgress(percent.value)
-        }
-      }
-    })
-    .then(async (response: AxiosResponse) => {
-      writeFile(downPath, Buffer.from(response.data), (err) => {
-        if (err) {
-          return false
-        }
-      })
-      footStore.mSaveUpdateDownloadProgress(0)
-      if (!hot) {
-        await autoInstallNewVersion(downPath)
-      }
-      return true
-    })
-    .catch(() => {
-      rmSync(downPath, { force: true })
-      return false
-    })
-}
-
-const autoInstallNewVersion = async (resourcesPath: string) => {
-  // 自动安装
-  const options: SpawnOptions = { shell: true, windowsVerbatimArguments: true }
-  const subProcess = execFile(`${resourcesPath}`, options)
-  if (subProcess.pid && process.kill(subProcess.pid, 0)) {
-    await Sleep(2000)
-    window.WebToElectron({ cmd: 'exit' })
-  } else {
-    message.info('安装失败，请前往文件夹手动安装', 5)
-    const resources = getResourcesPath('')
-    await shell.openPath(path.join(resources, '/'))
   }
 }
 </script>
@@ -184,7 +155,7 @@ const autoInstallNewVersion = async (resourcesPath: string) => {
           </template>
         </AntdProgress>
         <div style='flex-grow: 1'></div>
-        <a-button v-if='!okLoading' type='outline' size='small' @click='handleHide'>取消</a-button>
+        <a-button type='outline' size='small' @click='handleHide'>{{ okLoading ? '后台下载' : '取消' }}</a-button>
         <a-button type='primary' size='small' :loading='okLoading' @click='handleOK'>更新</a-button>
       </div>
     </template>

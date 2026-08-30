@@ -21,7 +21,7 @@ import {
   TestKeyboardScroll,
   TestKeyboardSelect
 } from '../utils/keyboardhelper'
-import { computed, onMounted, ref, watchEffect } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watchEffect } from 'vue'
 import { t } from '../i18n'
 import PanDAL from './pandal'
 
@@ -57,6 +57,7 @@ import { menuOpenFile } from '../utils/openfile'
 import { throttle } from '../utils/debounce'
 import { TestButton } from '../utils/mosehelper'
 import { isValidDropUploadTarget } from '../utils/uploadTarget'
+import { setDropHandler } from '../tauri/dragDrop'
 import usePanTreeStore from './pantreestore'
 import { getDriveId as GetDriveID, getDriveType as GetDriveType } from '../drive/context'
 import { xorWith } from 'lodash'
@@ -341,6 +342,8 @@ onMounted(() => {
   if (panFileList instanceof Element) {
     resizeObserver.observe(panFileList)
   }
+  // OS file drops arrive as Tauri window events with real paths (DataTransfer.files has no path in Tauri)
+  setDropHandler((paths) => uploadDroppedPaths(paths))
   let searchDrive = ['backup', 'resource', 'pic']
   if (useSettingStore().securityHideBackupDrive) {
     searchDrive = searchDrive.filter((t) => t != 'backup')
@@ -352,6 +355,11 @@ onMounted(() => {
     searchDrive = searchDrive.filter((t) => t != 'pic')
   }
   inputsearchType.value = searchDrive
+})
+
+onUnmounted(() => {
+  setDropHandler(undefined)
+  resizeObserver.disconnect()
 })
 
 const listGridColumn = ref(1)
@@ -521,11 +529,18 @@ const onRowItemDragEnd = (ev: any) => {
 
 
 const showDragUpload = ref(false)
-const onPanDrop = (e: any) => {
-  if (!e.dataTransfer.files || e.dataTransfer.files.length == 0) return
-  e.stopPropagation()
-  e.preventDefault()
+const uploadDroppedPaths = (paths: string[]) => {
   showDragUpload.value = false
+  if (appStore.appTab != 'pan') return
+  const files: string[] = []
+  for (let i = 0, maxi = paths.length; i < maxi; i++) {
+    const filePath = paths[i] || ''
+    if (filePath) files.push(filePath)
+  }
+  if (!files.length) {
+    message.error('无法读取拖拽文件的本地路径，请重新拖拽或使用上传按钮')
+    return
+  }
   if (!canWriteCurrentDirectory.value) {
     message.warning(t('pan.readOnlyNoUpload'))
     return
@@ -556,23 +571,14 @@ const onPanDrop = (e: any) => {
     message.error(t('pan.invalidUploadTarget'))
     return
   }
-
-
-  const filesList = e.dataTransfer.files
-  if (filesList && filesList.length > 0) {
-    const files: string[] = []
-
-    for (let i = 0, maxi = filesList.length; i < maxi; i++) {
-      const file = filesList[i]
-      const filePath = window.WebGetPathForFile?.(file) || (file as any).path || ''
-      if (filePath) files.push(filePath)
-    }
-    if (!files.length) {
-      message.error('无法读取拖拽文件的本地路径，请重新拖拽或使用上传按钮')
-      return
-    }
-    modalUpload(targetDirId, files)
-  }
+  modalUpload(targetDirId, files)
+}
+// HTML5 drop only drives the overlay; the real file paths come through setDropHandler (Tauri drag-drop event)
+const onPanDrop = (e: any) => {
+  if (!e.dataTransfer?.files || e.dataTransfer.files.length == 0) return
+  e.stopPropagation()
+  e.preventDefault()
+  showDragUpload.value = false
 }
 const onPanDragEnter = (ev: any) => {
   if (dragingRowItem.value) return

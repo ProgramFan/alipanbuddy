@@ -1,4 +1,3 @@
-import { Dirent, Stats } from 'fs'
 import AliFileCmd from '../aliapi/filecmd'
 import { IUploadInfo } from '../aliapi/models'
 import AliUpload from '../aliapi/upload'
@@ -11,8 +10,8 @@ import DebugLog from '../utils/debuglog'
 import { CheckWindowsBreakPath, FileSystemErrorMessage } from '../utils/filehelper'
 import { humanSize, Sleep } from '../utils/format'
 import { RuningList } from './uiupload'
-import path from 'path'
-import fspromises from 'fs/promises'
+import path from '../utils/path'
+import fs, { type DirEntryInfo, type StatInfo } from '../tauri/fs'
 
 export async function StartUpload(fileui: IUploadingUI): Promise<void> {
   try {
@@ -219,9 +218,9 @@ async function AddFiles(addFileList: IStateUploadTaskFile[], fileList: string[],
     const filePath = localDirPath + fileName
 
     plist.push(
-      fspromises
+      fs
         .lstat(filePath)
-        .then((stat: Stats) => {
+        .then((stat: StatInfo) => {
           return stat
         })
         .catch((err: any) => {
@@ -229,7 +228,7 @@ async function AddFiles(addFileList: IStateUploadTaskFile[], fileList: string[],
           DebugLog.mSaveDanger('上传文件出错 ' + err + ' ' + filePath)
           return undefined
         })
-        .then((stat: Stats | undefined) => {
+        .then((stat: StatInfo | undefined) => {
           readConfig.filetime += 1
           const fileItem: IStateUploadTaskFile = {
             TaskID: readConfig.TaskID,
@@ -238,7 +237,7 @@ async function AddFiles(addFileList: IStateUploadTaskFile[], fileList: string[],
             name: parentDirName + '/' + fileName,
             size: stat ? stat.size : 1,
             sizeStr: humanSize(stat ? stat.size : 1),
-            mtime: stat ? stat.mtime.getTime() : 0,
+            mtime: stat ? stat.mtimeMs : 0,
             isDir: false,
             IsRoot: false,
             uploaded_is_rapid: false,
@@ -361,16 +360,16 @@ async function readDir(fullDirPath: string, ingoredList: string[]): Promise<{
   const fileList: string[] = []
   const dirList: string[] = []
 
-  await fspromises
-    .readdir(fullDirPath, { withFileTypes: true })
-    .then((files: Dirent[]) => {
+  await fs
+    .readDir(fullDirPath)
+    .then((files: DirEntryInfo[]) => {
       for (let i = 0, maxi = files.length; i < maxi; i++) {
         const stat = files[i]
         if (!stat || typeof stat.name !== 'string') continue
-        if (stat.isSymbolicLink()) continue
+        if (stat.isSymlink) continue
         if (CheckWindowsBreakPath(stat.name)) continue
-        if (stat.isDirectory()) dirList.push(stat.name)
-        else if (stat.isFile()) {
+        if (stat.isDirectory) dirList.push(stat.name)
+        else if (stat.isFile) {
           const filePathLower = stat.name.toLowerCase()
           let ingored = false
           for (let j = 0, maxj = ingoredList.length; j < maxj; j++) {
@@ -395,7 +394,7 @@ async function readDir(fullDirPath: string, ingoredList: string[]): Promise<{
 
 async function checkFileSize(fileui: IUploadingUI): Promise<boolean> {
   let errorMessage = ''
-  const stat = await fspromises.lstat(path.join(fileui.localFilePath, fileui.File.partPath)).catch((err: any) => {
+  const stat = await fs.lstat(path.join(fileui.localFilePath, fileui.File.partPath)).catch((err: any) => {
     err = FileSystemErrorMessage(err.code, err.message)
     DebugLog.mSaveDanger('StartUpload失败：' + path.join(fileui.localFilePath, fileui.File.partPath), err)
     errorMessage = err
@@ -414,9 +413,9 @@ async function checkFileSize(fileui: IUploadingUI): Promise<boolean> {
     fileui.Info.up_upload_id = ''
     fileui.Info.up_file_id = ''
   }
-  if (fileui.File.mtime != stat.mtime.getTime()) {
+  if (fileui.File.mtime != stat.mtimeMs) {
 
-    fileui.File.mtime = stat.mtime.getTime()
+    fileui.File.mtime = stat.mtimeMs
     fileui.Info.up_upload_id = ''
     fileui.Info.up_file_id = ''
   }

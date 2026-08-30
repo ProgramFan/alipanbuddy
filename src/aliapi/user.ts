@@ -140,12 +140,26 @@ export default class AliUser {
       return true
     }
     let { uiEnableOpenApiType, uiOpenApiClientId, uiOpenApiClientSecret } = useSettingStore()
+    const customId = (uiOpenApiClientId || '').trim()
+    const customSecret = (uiOpenApiClientSecret || '').trim()
+    let client_id = ALIYUN_APP_ID
+    let client_secret = ALIYUN_APP_SECRET
+    if ((uiEnableOpenApiType === 'custom' && customId && customSecret) || !ALIYUN_APP_ID) {
+      client_id = customId
+      client_secret = customSecret
+    }
+    if (!client_id) {
+      OpenApiTokenLockMap.delete(token.user_id)
+      DebugLog.mSaveWarning('OpenApiTokenRefreshAccount: OpenAPI client_id is empty (no built-in credentials and no custom credentials configured)')
+      if (showMessage) message.error('OpenAPI 凭据未配置，请在 设置 → 账户设置 → OpenAPI 授权 中填写', 5)
+      return false
+    }
     let url = 'https://openapi.alipan.com/oauth/access_token'
     const postData = {
       refresh_token: token.open_api_refresh_token,
       grant_type: 'refresh_token',
-      client_id: ALIYUN_APP_ID,
-      client_secret: ALIYUN_APP_SECRET
+      client_id,
+      client_secret
     }
     const resp = await AliHttp.Post(url, postData, '', '')
     OpenApiTokenLockMap.delete(token.user_id)

@@ -2,13 +2,11 @@
 import { computed, onMounted, ref } from 'vue'
 import useSettingStore from './settingstore'
 import MySwitch from '../layout/MySwitch.vue'
-import { getAppNewPath, openExternal } from '../utils/electronhelper'
+import { openExternal } from '../utils/electronhelper'
 import { Code2 } from 'lucide-vue-next'
 import { getPkgVersion } from '../utils/utils'
 import { modalUpdateLog } from '../utils/modal'
-import fs from 'node:fs'
 import message from '../utils/message'
-import { Sleep } from '../utils/format'
 import { t } from '../i18n'
 
 const platform = window.platform
@@ -67,22 +65,6 @@ function openSupport() {
   openExternal('https://xbyvideohub.com/support/')
 }
 
-const handleImportAsar = () => {
-  window.WebShowOpenDialogSync({
-    title: t('settings.selectAsar'),
-    buttonLabel: t('settings.importUpdateFile'),
-    filters: [{ name: 'app.asar', extensions: ['asar'] }],
-    properties: ['openFile', 'showHiddenFiles', 'noResolveAliases', 'treatPackageAsDirectory', 'dontAddToRecent']
-  }, async (files: string[] | undefined) => {
-    if (files && files.length > 0) {
-      // 导入到app.new
-      await fs.promises.cp(files[0], getAppNewPath())
-      message.info(t('settings.importUpdateSuccess'), 0)
-      await Sleep(1000)
-      window.WebToElectron({ cmd: 'relaunch' })
-    }
-  })
-}
 </script>
 
 <template>
@@ -90,7 +72,7 @@ const handleImportAsar = () => {
     <div class='settings-app-hero'>
       <div class='settings-app-badge'>{{ t('settings.application') }}</div>
       <div class='appver'>
-        BoxPlayer {{ getAppVersion }}
+        {{ t('app.name') }} {{ getAppVersion }}
         <span class="appver-badge">
           <Code2 :size="15" :stroke-width="2.2" />
           {{ t('settings.openSource') }}
@@ -106,9 +88,6 @@ const handleImportAsar = () => {
       </a-button>
       <a-button type='outline' size='small' :loading='verLoading' @click='handleCheckVer'>
         {{ t('settings.checkUpdates') }}
-      </a-button>
-      <a-button v-if='platform !== "linux"' status='warning' type='outline' size='small' @click='handleImportAsar'>
-        {{ t('settings.import') }}
       </a-button>
     </div>
     <div class='settingspace'></div>

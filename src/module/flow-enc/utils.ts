@@ -1,28 +1,9 @@
 import FlowEnc from './index'
-import fs from 'fs'
-import path from 'path'
 import { Buffer } from 'buffer'
 import MixBase64 from './lib/mixBase64'
 import Crcn from './lib/crc6-8'
 
 const crc6 = new Crcn(6)
-
-export function searchFile(filePath: string) {
-  const fileArray: { size: number; filePath: string }[] = []
-  const files = fs.readdirSync(filePath)
-  files.forEach((child) => {
-    const filePath2 = path.join(filePath, child),
-      info = fs.statSync(filePath2)
-    if (info.isDirectory()) {
-      const deepArr = searchFile(filePath2)
-      fileArray.push(...deepArr)
-    } else {
-      const data = { size: info.size, filePath: filePath2 }
-      fileArray.push(data)
-    }
-  })
-  return fileArray
-}
 
 export function encodeName(password: string, encType: string, plainName: string): string {
   const passwdOutward = FlowEnc.getPassWdOutward(password, encType)

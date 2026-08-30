@@ -5,7 +5,8 @@ import { IShareSiteGroupModel, IShareSiteModel, useServerStore, useSettingStore 
 import ShareDAL from '../share/share/ShareDAL'
 import { modalShowPost, modalUpdate } from '../utils/modal'
 import message from '../utils/message'
-import path from 'path'
+import path from '../utils/path'
+import { getArch } from '../utils/electronhelper'
 import DebugLog from '../utils/debuglog'
 import { buildUpdateProxyUrl } from '../utils/updateProxy'
 
@@ -212,20 +213,21 @@ export default class ServerHttp {
           fileSize: 0
         }
         let assets = response.data.assets     // 文件
-        function isMatchingPlatformAndExtension(platform: string, fileName: string, extension: string): boolean {
-          return platform === window.platform && fileName.indexOf(process.arch) > 0 && fileName.endsWith(extension)
+        const arch = (getArch() || '').toLowerCase()
+        const platform = window.platform
+        function isMatchingAsset(fileName: string): boolean {
+          const name = fileName.toLowerCase()
+          if (platform === 'win32') {
+            if (!name.endsWith('.exe') && !name.endsWith('.msi')) return false
+            return arch ? name.includes(arch) : true
+          }
+          if (platform === 'darwin') return name.endsWith('.dmg')
+          if (platform === 'linux') return name.endsWith('.appimage') || name.endsWith('.deb') || name.endsWith('.rpm')
+          return false
         }
 
         for (let asset of assets) {
-          if (asset.name.endsWith('.asar')) {
-            verData.fileSize = asset.size
-            verData.fileExt = path.extname(asset.name)
-            verData.verUrl = asset.browser_download_url
-            verData.verName = asset.name
-            break
-          }
-          if (isMatchingPlatformAndExtension('win32', asset.name, '.exe') ||
-            isMatchingPlatformAndExtension('darwin', asset.name, '.dmg')) {
+          if (isMatchingAsset(asset.name)) {
             verData.fileSize = asset.size
             verData.fileExt = path.extname(asset.name)
             verData.verUrl = asset.browser_download_url

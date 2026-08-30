@@ -4,8 +4,9 @@ import DownDAL, { IStateDownFile } from './DownDAL'
 import { GetFocusNext, GetSelectedList, KeyboardSelectOne, MouseSelectOne, SelectAll } from '../utils/selecthelper'
 import { humanSize } from '../utils/format'
 import message from '../utils/message'
-import fs from 'fs'
-import path from 'path'
+import fs from '../tauri/fs'
+import path from '../utils/path'
+import { openPath, showItemInFolder } from '../utils/electronhelper'
 import { t } from '../i18n'
 
 type Item = IStateDownFile
@@ -253,16 +254,16 @@ const useDownStore = defineStore('down', {
      * @param downIDList
      * @param isDir 是否打开目录
      */
-    mOpenUploadedFile(file: Item | null, downIDList: string[], isDir: boolean) {
+    async mOpenUploadedFile(file: Item | null, downIDList: string[], isDir: boolean) {
       const DownedList = this.ListDataRaw
       const resolveExistingPath = (item: Item) => item.Info.localFilePath || path.join(item.Info.DownSavePath, item.Info.name)
 
-      const openDir = (localFilePath: string, savePath: string) => {
+      const openDir = async (localFilePath: string, savePath: string) => {
         try {
-          if (fs.existsSync(localFilePath)) {
-            window.Electron.shell.showItemInFolder(localFilePath)
-          } else if (fs.existsSync(savePath)) {
-            window.Electron.shell.openPath(savePath)
+          if (await fs.exists(localFilePath)) {
+            await showItemInFolder(localFilePath)
+          } else if (await fs.exists(savePath)) {
+            await openPath(savePath)
           } else {
             message.error(t('transfer.folderMayDeleted'))
           }
@@ -270,10 +271,10 @@ const useDownStore = defineStore('down', {
         }
       }
 
-      const openFile = (localFilePath: string) => {
+      const openFile = async (localFilePath: string) => {
         try {
-          if (fs.existsSync(localFilePath)) {
-            window.Electron.shell.openPath(localFilePath)
+          if (await fs.exists(localFilePath)) {
+            await openPath(localFilePath)
           } else {
             message.error(t('transfer.fileMayDeleted'))
           }
@@ -288,9 +289,9 @@ const useDownStore = defineStore('down', {
         }
         const localFilePath = resolveExistingPath(file)
         if (isDir) {
-          openDir(localFilePath, file.Info.DownSavePath)
+          await openDir(localFilePath, file.Info.DownSavePath)
         } else {
-          openFile(localFilePath)
+          await openFile(localFilePath)
         }
         return
       }
@@ -309,9 +310,9 @@ const useDownStore = defineStore('down', {
           }
           const localFilePath = resolveExistingPath(DownedList[j])
           if (isDir) {
-            openDir(localFilePath, DownedList[j].Info.DownSavePath)
+            await openDir(localFilePath, DownedList[j].Info.DownSavePath)
           } else {
-            openFile(localFilePath)
+            await openFile(localFilePath)
           }
         }
       }

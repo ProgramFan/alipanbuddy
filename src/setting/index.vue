@@ -202,7 +202,7 @@ onUnmounted(() => {
       <div id="SettingDiv" class="settings-content-inner">
 <!--        <div class="settings-hero">-->
 <!--          <div>-->
-<!--            <div class="settings-hero-kicker">BoxPlayer Workspace</div>-->
+<!--            <div class="settings-hero-kicker">AlipanBuddy Workspace</div>-->
 <!--            <h2>按照你的使用方式定制整个 App</h2>-->
 <!--            <p>从界面风格到播放方式、从网盘策略到安全控制，所有配置集中在这里完成。</p>-->
 <!--          </div>-->
@@ -213,7 +213,7 @@ onUnmounted(() => {
 <!--        </div>-->
 
         <section id="SettingUI" class="settings-section"><div class="settings-section-header"><h2>{{ t(sectionMeta.SettingUI.title as Parameters<typeof t>[0]) }}</h2></div><SettingUI /></section>
-<!--        <section id="SettingAccount" class="settings-section"><div class="settings-section-header"><h2>{{ t(sectionMeta.SettingAccount.title as Parameters<typeof t>[0]) }}</h2></div><SettingAccount /></section>-->
+        <section id="SettingAccount" class="settings-section"><div class="settings-section-header"><h2>{{ t(sectionMeta.SettingAccount.title as Parameters<typeof t>[0]) }}</h2></div><SettingAccount /></section>
         <section id="SettingSecurity" class="settings-section"><div class="settings-section-header"><h2>{{ t(sectionMeta.SettingSecurity.title as Parameters<typeof t>[0]) }}</h2></div><SettingSecurity /></section>
         <section id="SettingPan" class="settings-section"><div class="settings-section-header"><h2>{{ t(sectionMeta.SettingPan.title as Parameters<typeof t>[0]) }}</h2></div><SettingPan /></section>
         <section id="SettingDown" class="settings-section"><div class="settings-section-header"><h2>{{ t(sectionMeta.SettingDown.title as Parameters<typeof t>[0]) }}</h2></div><SettingDown /></section>

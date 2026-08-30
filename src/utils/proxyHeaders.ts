@@ -1,4 +1,5 @@
-import type { IncomingHttpHeaders } from 'http'
+/** Node's `IncomingHttpHeaders` shape without depending on the `http` module. */
+export type IncomingHeaders = Record<string, string | string[] | undefined>
 
 export type ProxyResponseHeaders = Record<string, string | string[] | number | undefined>
 
@@ -18,7 +19,7 @@ const DROPPED_UPSTREAM_HEADERS = new Set([
 ])
 
 export function buildUpstreamProxyHeaders(
-  incomingHeaders: IncomingHttpHeaders,
+  incomingHeaders: IncomingHeaders,
   proxyHeaders?: string
 ): Record<string, string | string[]> {
   const headers: Record<string, string | string[]> = {}
