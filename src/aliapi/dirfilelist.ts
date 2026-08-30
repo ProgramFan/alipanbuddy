@@ -593,9 +593,8 @@ export default class AliDirFileList {
   }
 
   private static async _ApiFavorFileListOnePage(orderby: string, order: string, dir: IAliFileResp, pageIndex: number): Promise<boolean> {
-    let url = 'v2/file/list_by_custom_index_key'
-    if (useSettingStore().uiShowPanMedia == false) url += '?jsonmask=next_marker%2Citems(' + AliDirFileList.ItemJsonmask + ')'
-    else url += '?jsonmask=next_marker%2Citems(' + AliDirFileList.ItemJsonmask + '%2Cuser_meta%2Cvideo_media_metadata(duration%2Cwidth%2Cheight%2Ctime)%2Cvideo_preview_metadata%2Fduration%2Cimage_media_metadata)'
+    // no jsonmask: Aliyun's field filter sends an empty body (with the unfiltered Content-Length) for empty lists
+    const url = 'v2/file/list_by_custom_index_key'
 
     const postData = {
       drive_id: dir.m_drive_id,
@@ -613,7 +612,8 @@ export default class AliDirFileList {
   }
 
   private static async _ApiTrashFileListOnePage(orderby: string, order: string, dir: IAliFileResp, pageIndex: number): Promise<boolean> {
-    const url = 'v2/recyclebin/list?jsonmask=next_marker%2Citems(' + AliDirFileList.ItemJsonmask + ')'
+    // no jsonmask, see _ApiFavorFileListOnePage
+    const url = 'v2/recyclebin/list'
 
     const postData = {
       drive_id: dir.m_drive_id,

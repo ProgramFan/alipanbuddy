@@ -13,6 +13,7 @@ import AliTrash from '../aliapi/trash'
 import path from './path'
 import fs from '../tauri/fs'
 import { getRawUrl } from './proxyhelper'
+import { getImageProxyBase } from './imageproxy'
 import { callAriaClient, getAriaAddUriGid, isAriaDuplicateGidError } from './aria2Rpc'
 import { buildAriaAddOptions } from '../down/integration/aria2AddOptions'
 
@@ -484,6 +485,13 @@ export async function AriaAddUrl(file: IStateDownFile): Promise<string> {
       let downloadUrl = typeof file.Down.DownUrl === 'string' ? file.Down.DownUrl : ''
       downloadUrl = downloadUrl.trim()
       let resolvedDownloadHeaders: Record<string, string> = {}
+      // Album (pic drive) files: the CDN refuses aria2c's request for the web-API download url (403),
+      // while the same account fetches them fine through the local /image route (API download endpoint
+      // + redirect, see boxcore::proxy). Use that route for album files, and as a one-time fallback for
+      // any file whose previous attempt was rejected with 403. Local aria2c only, plain files only.
+      const isPicDrive = !!accountToken.pic_drive_id && accountToken.pic_drive_id === info.drive_id
+      const lastWas403 = String(file.Down.FailedCode) === '22' && /403/.test(file.Down.FailedMessage || '')
+      const useImageProxy = !info.ariaRemote && !info.encType && (isPicDrive || lastWas403)
       if (downloadUrl && downloadUrl.includes('x-oss-expires=')) {
         const expires = downloadUrl.split('x-oss-expires=')[1].split('&')[0]
         const lastTime = parseInt(expires) - Date.now() / 1000
@@ -492,7 +500,12 @@ export async function AriaAddUrl(file: IStateDownFile): Promise<string> {
           downloadUrl = ''
         }
       }
-      if (!downloadUrl) {
+      if (useImageProxy) {
+        downloadUrl = getImageProxyBase(info.user_id) + '&drive_id=' + encodeURIComponent(info.drive_id) + '&file_id=' + encodeURIComponent(info.file_id)
+        resolvedDownloadHeaders = {}
+        file.Down.DownUrl = ''
+        console.log('[aria2] using local image proxy', info.drive_id, info.file_id, isPicDrive ? 'pic drive' : 'after 403')
+      } else if (!downloadUrl) {
         const durl = await getRawUrl(info.user_id, info.drive_id, info.file_id, info.encType)
         if (typeof durl == 'string') {
           console.warn('[aria2] getRawUrl failed', info.drive_id, info.file_id, durl)
@@ -523,7 +536,8 @@ export async function AriaAddUrl(file: IStateDownFile): Promise<string> {
       }
       console.log('[aria2] addUri', info.drive_id, info.file_id, { url: downloadUrl })
       if (file.Down.IsStop) return '已暂停'
-      const split = useSettingStore().downThreadMax
+      // every proxied connection costs an API call + redirect, so keep the fan-out small
+      const split = useImageProxy ? Math.min(useSettingStore().downThreadMax || 1, 4) : useSettingStore().downThreadMax
       const referer = Config.referer
       const userAgent = useSettingStore().ariaUserAgent || Config.downAgent
       const headers: string[] = []

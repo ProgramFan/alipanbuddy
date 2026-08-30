@@ -5,6 +5,7 @@
 use std::time::{Duration, Instant};
 
 use base64::Engine;
+use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
 
@@ -115,20 +116,62 @@ async fn perform(builder: reqwest::RequestBuilder, timeout: Duration, method: &s
     let status = response.status();
     let final_url = response.url().to_string();
     let headers: Vec<(String, String)> = response.headers().iter().map(|(k, v)| (k.as_str().to_string(), v.to_str().unwrap_or("").to_string())).collect();
+    let content_type = headers.iter().find(|(k, _)| k == "content-type").map(|(_, v)| v.to_ascii_lowercase()).unwrap_or_default();
+    let expected = response.content_length();
     let body_timeout = timeout.max(Duration::from_secs(120));
-    let body = match tokio::time::timeout(body_timeout, response.bytes()).await {
-        Ok(Ok(b)) => b.to_vec(),
-        Ok(Err(err)) => {
-            let chain = error_chain(&err);
-            log::warn!("http {method} {label} body failed after {}ms: {chain}", started.elapsed().as_millis());
-            return Err(Failure { during_body: true, message: format!("body: {chain}") });
+    // Stream the body so a truncated transfer still tells us how much arrived.
+    let mut body: Vec<u8> = Vec::with_capacity(expected.unwrap_or(0).min(64 * 1024 * 1024) as usize);
+    let mut stream = response.bytes_stream();
+    let read = tokio::time::timeout(body_timeout, async {
+        // A server that has sent the headers sends the first body bytes right away; api.aliyundrive.com
+        // has been seen announcing a Content-Length and then sending nothing until its keep-alive
+        // timeout (20 s) - do not wait that long.
+        match tokio::time::timeout(FIRST_BYTE_TIMEOUT, stream.next()).await {
+            Err(_) => return Err(format!("no body bytes within {}ms of the headers", FIRST_BYTE_TIMEOUT.as_millis())),
+            Ok(None) => return Ok(()),
+            Ok(Some(chunk)) => body.extend_from_slice(&chunk.map_err(|e| error_chain(&e))?),
         }
-        Err(_) => {
-            log::warn!("http {method} {label} body timed out after {}ms", started.elapsed().as_millis());
-            return Err(Failure { during_body: true, message: format!("body: timeout after {}ms", body_timeout.as_millis()) });
+        while let Some(chunk) = stream.next().await {
+            body.extend_from_slice(&chunk.map_err(|e| error_chain(&e))?);
         }
+        Ok::<(), String>(())
+    })
+    .await;
+    let failure = match read {
+        Ok(Ok(())) => None,
+        Ok(Err(reason)) => Some(reason),
+        Err(_) => Some(format!("timeout after {}ms", body_timeout.as_millis())),
     };
+    if let Some(reason) = failure {
+        let expected_text = expected.map(|n| n.to_string()).unwrap_or_else(|| "?".to_string());
+        // api.aliyundrive.com has been seen closing the socket before its own Content-Length while the JSON
+        // payload was already complete; a document that parses cannot be missing anything.
+        if content_type.contains("json") && complete_json(&body) {
+            log::warn!("http {method} {label} body ended early after {}ms ({}/{expected_text} bytes: {reason}) but is complete JSON, using it", started.elapsed().as_millis(), body.len());
+        } else {
+            log::warn!("http {method} {label} body failed after {}ms ({}/{expected_text} bytes): {reason}", started.elapsed().as_millis(), body.len());
+            return Err(Failure { during_body: true, message: format!("body: {reason} ({}/{expected_text} bytes)", body.len()) });
+        }
+    }
     Ok(Performed { status, final_url, headers, body })
+}
+
+const FIRST_BYTE_TIMEOUT: Duration = Duration::from_secs(6);
+
+/// Removes `name=...` from the query string (keeps everything else untouched).
+fn strip_query_param(url: &str, name: &str) -> String {
+    let Some((base, query)) = url.split_once('?') else { return url.to_string() };
+    let kept: Vec<&str> = query.split('&').filter(|pair| !pair.is_empty() && pair.split('=').next() != Some(name)).collect();
+    if kept.is_empty() {
+        base.to_string()
+    } else {
+        format!("{base}?{}", kept.join("&"))
+    }
+}
+
+/// `true` when `bytes` is one syntactically complete JSON document (nothing built, just parsed).
+fn complete_json(bytes: &[u8]) -> bool {
+    !bytes.is_empty() && serde_json::from_slice::<serde::de::IgnoredAny>(bytes).is_ok()
 }
 
 /// A body-read retry re-sends the request, so only do it for reads (the server already executed the
@@ -142,7 +185,8 @@ fn retry_is_safe(method: &reqwest::Method, url: &str) -> bool {
     }
     let path = url.split('?').next().unwrap_or("").to_ascii_lowercase();
     if path.contains("/batch") {
-        return false;
+        // batch carries mutations too; the directory-tree loaders are the jsonmask'd ones
+        return url.contains("jsonmask=");
     }
     path.contains("list") || path.contains("search") || path.ends_with("/get") || path.contains("/get_") || path.contains("getdownloadurl") || path.contains("download_url") || path.contains("/info")
 }
@@ -181,10 +225,12 @@ pub async fn http_request(app: AppHandle, request: HttpRequestArg) -> Result<Htt
     let mut attempt = perform(builder, timeout, &request.method, &label, started).await;
     if let Err(Failure { during_body: true, ref message }) = attempt {
         if retry_is_safe(&method, &request.url) {
-            // The headers arrived but the (compressed) body could not be read/decoded: fetch it once
-            // more on a fresh request without content encoding.
-            log::warn!("http {} {} retrying uncompressed after body failure: {message}", request.method, label);
-            let mut retry = client.request(method.clone(), &request.url);
+            // The headers arrived but the body could not be read: fetch it once more on a fresh request
+            // without content encoding and without `jsonmask` (Aliyun's field filter has been seen
+            // announcing the unfiltered Content-Length and then sending nothing for empty lists).
+            let retry_url = strip_query_param(&request.url, "jsonmask");
+            log::warn!("http {} {} retrying uncompressed{} after body failure: {message}", request.method, label, if retry_url != request.url { " without jsonmask" } else { "" });
+            let mut retry = client.request(method.clone(), &retry_url);
             for (name, value) in &request.headers {
                 if !name.eq_ignore_ascii_case("accept-encoding") {
                     retry = retry.header(name.as_str(), value.as_str());
@@ -238,8 +284,25 @@ pub fn http_body_release(app: AppHandle, id: u64) {
 
 #[cfg(test)]
 mod tests {
-    use super::retry_is_safe;
+    use super::{complete_json, retry_is_safe, strip_query_param};
     use reqwest::Method;
+
+    #[test]
+    fn strips_one_query_param() {
+        assert_eq!(strip_query_param("https://h/v2/recyclebin/list?jsonmask=next_marker%2Citems(a%2Cb)", "jsonmask"), "https://h/v2/recyclebin/list");
+        assert_eq!(strip_query_param("https://h/p?a=1&jsonmask=x&b=2", "jsonmask"), "https://h/p?a=1&b=2");
+        assert_eq!(strip_query_param("https://h/p?a=1", "jsonmask"), "https://h/p?a=1");
+        assert_eq!(strip_query_param("https://h/p", "jsonmask"), "https://h/p");
+    }
+
+    #[test]
+    fn complete_json_detection() {
+        assert!(complete_json(br#"{"items":[{"a":1}],"next_marker":""}"#));
+        assert!(complete_json(b"[]"));
+        assert!(!complete_json(br#"{"items":[{"a":1}],"next_mar"#));
+        assert!(!complete_json(b""));
+        assert!(!complete_json(b"<html>"));
+    }
 
     #[test]
     fn body_retry_only_for_reads() {
@@ -251,6 +314,7 @@ mod tests {
         assert!(retry_is_safe(&Method::POST, "https://api.aliyundrive.com/v2/file/get_download_url"));
         assert!(!retry_is_safe(&Method::POST, "https://api.aliyundrive.com/adrive/v1/album/create"));
         assert!(!retry_is_safe(&Method::POST, "https://api.aliyundrive.com/v3/batch"));
+        assert!(retry_is_safe(&Method::POST, "https://api.aliyundrive.com/v4/batch?jsonmask=responses(id)"));
         assert!(!retry_is_safe(&Method::POST, "https://api.aliyundrive.com/adrive/v2/file/delete"));
         assert!(!retry_is_safe(&Method::PUT, "https://upload/list"));
     }

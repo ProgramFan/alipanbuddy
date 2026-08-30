@@ -7,6 +7,7 @@ import AliDirFileList from './dirfilelist'
 import { IDownloadUrl } from './models'
 import { DecodeEncName, GetDriveType } from './utils'
 import { getRawUrl } from '../utils/proxyhelper'
+import UserDAL from '../user/userdal'
 
 export default class AliFile {
 
@@ -94,8 +95,10 @@ export default class AliFile {
       size: 0
     }
     let url = ''
-    // 处理OpenApi无法访问相册
-    let isPic = GetDriveType(user_id, drive_id).name === 'pic'
+    // 处理OpenApi无法访问相册。The hidden download worker never fills the in-memory token map, so
+    // fall back to the DB copy before deciding which API may serve this drive.
+    const token = UserDAL.GetUserToken(user_id) || (await UserDAL.GetUserTokenFromDB(user_id))
+    let isPic = (!!token && !!token.pic_drive_id && token.pic_drive_id === drive_id) || GetDriveType(user_id, drive_id).name === 'pic'
     if (!isPic) {
       url = 'adrive/v1.0/openFile/getDownloadUrl'
     } else {
@@ -109,7 +112,12 @@ export default class AliFile {
     if (isPic) {
       delete postData.expire_sec
     }
-    const resp = await AliHttp.Post(url, postData, user_id, '')
+    let resp = await AliHttp.Post(url, postData, user_id, '')
+    if (!isPic && (resp.code == 403 || resp.code == 404)) {
+      // OpenAPI cannot reach every drive (albums among them): let the web API answer instead
+      DebugLog.mSaveWarning('ApiFileDownloadUrl openapi ' + resp.code + ' for ' + drive_id + '/' + file_id + ', retrying with web api', resp.body)
+      resp = await AliHttp.Post('v2/file/get_download_url', { drive_id: drive_id, file_id: file_id }, user_id, '')
+    }
     if (AliHttp.IsSuccess(resp.code)) {
       data.url = resp.body.cdn_url || resp.body.url
       data.size = resp.body.size
