@@ -77,14 +77,6 @@ See [README.md](./README.md) for the project layout.
 
 ---
 
-## Community
-
-Telegram: [https://t.me/+wjdFeQ7ZNNE1NmM1](https://t.me/+wjdFeQ7ZNNE1NmM1)
-
-<p align="center">
-  <img src="screenshot/qrcode_wechat.jpg" width="320" alt="WeChat official account">
-</p>
-
 ## Credits
 
 This project continues development based on [liupan1890/aliyunpan](https://github.com/liupan1890/aliyunpan). Thanks to [liupan1890](https://github.com/liupan1890).
