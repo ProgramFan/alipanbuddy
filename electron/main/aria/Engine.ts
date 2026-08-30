@@ -45,11 +45,19 @@ export default class Engine {
   }
 
   stop (): void {
-    if (!this.instance) return
-    try { this.instance.kill() } catch (e: any) {
+    const instance = this.instance
+    if (!instance) return
+    this.instance = null
+    try { instance.kill() } catch (e: any) {
       logger.warn('[motrix] Engine.stop: ' + e.message)
     }
-    this.instance = null
+    const pid = instance.pid
+    if (pid) {
+      const timer = setTimeout(() => {
+        try { process.kill(pid, 'SIGKILL') } catch {}
+      }, 1500)
+      timer.unref()
+    }
   }
 
   restart (): void { this.stop(); this.start() }
@@ -72,7 +80,9 @@ export default class Engine {
     const sessionExist = existsSync(sessionPath)
     const result: string[] = [
       `--conf-path=${confPath}`,
-      `--save-session=${sessionPath}`
+      `--save-session=${sessionPath}`,
+      // aria2c exits on its own if the Electron main process dies without a clean shutdown.
+      `--stop-with-process=${process.pid}`
     ]
     if (sessionExist) result.push(`--input-file=${sessionPath}`)
 

@@ -1,4 +1,5 @@
 import { AppWindow, createElectronWindow } from './window'
+import { quitApp, relaunchApp } from './lifecycle'
 import path from 'path'
 import is from 'electron-is'
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, powerSaveBlocker, session } from 'electron'
@@ -37,25 +38,10 @@ export default class ipcEvent {
       let mainWindow = AppWindow.mainWindow
       if (data.cmd && data.cmd === 'close') {
         if (mainWindow && !mainWindow.isDestroyed()) mainWindow.hide()
-      } else if (data.cmd && data.cmd === 'relaunch') {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.destroy()
-          mainWindow = undefined
-        }
-        try {
-          app.relaunch({ args: process.argv.slice(1).concat(['--relaunch']) })
-          app.exit(0)
-        } catch {
-        }
       } else if (data.cmd && data.cmd === 'exit') {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.destroy()
-          mainWindow = undefined
-        }
-        try {
-          app.exit(0)
-        } catch {
-        }
+        quitApp()
+      } else if (data.cmd && data.cmd === 'relaunch') {
+        relaunchApp()
       } else if (data.cmd && data.cmd === 'minsize') {
         if (mainWindow && !mainWindow.isDestroyed()) mainWindow.minimize()
       } else if (data.cmd && data.cmd === 'maxsize') {
@@ -229,11 +215,7 @@ export default class ipcEvent {
 
   private static handleWebRelaunch() {
     ipcMain.on('WebRelaunch', (event, data) => {
-      app.relaunch()
-      try {
-        app.exit()
-      } catch {
-      }
+      relaunchApp()
     })
   }
 
@@ -260,10 +242,7 @@ export default class ipcEvent {
         const shutdownCmd = 'osascript -e \'tell application "System Events" to shut down\''
         exec(shutdownCmd, (err: any) => {
           if (data.quitApp) {
-            try {
-              app.exit()
-            } catch {
-            }
+            quitApp()
           }
           if (err) {
             // donothing
@@ -288,10 +267,7 @@ export default class ipcEvent {
 
         exec(finalcmd, (err: any) => {
           if (data.quitApp) {
-            try {
-              app.exit()
-            } catch {
-            }
+            quitApp()
           }
           if (err) {
             // donothing

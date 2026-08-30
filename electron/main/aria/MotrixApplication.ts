@@ -60,9 +60,13 @@ export default class MotrixApplication extends EventEmitter {
   }
 
   async stopEngine (): Promise<void> {
-    try { await this.engineClient?.shutdown({ force: true }) }
-    catch (err: any) { logger.warn('[motrix] shutdown engine failed: ' + err.message) }
-    setImmediate(() => { try { this.engine?.stop() } catch {} })
+    try {
+      await Promise.race([
+        this.engineClient?.shutdown({ force: true }),
+        new Promise((resolve) => setTimeout(resolve, 1000))
+      ])
+    } catch (err: any) { logger.warn('[motrix] shutdown engine failed: ' + err.message) }
+    try { this.engine?.stop() } catch {}
   }
 
   initEngineClient (): void {

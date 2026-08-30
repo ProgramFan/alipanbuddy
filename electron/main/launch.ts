@@ -10,6 +10,7 @@ import { EventEmitter } from 'node:events'
 import exception from './core/exception'
 import ipcEvent from './core/ipcEvent'
 import MotrixApplication from './aria/MotrixApplication'
+import { onAppShutdown, registerAppShutdown } from './core/lifecycle'
 
 type UserToken = {
   access_token: string;
@@ -216,14 +217,13 @@ export default class launch extends EventEmitter {
   }
 
   handleAppWillQuit() {
-    app.on('will-quit', async () => {
-      try { await this.motrixApp?.quit() } catch {}
-      try {
-        if (AppWindow.appTray) {
-          AppWindow.appTray.destroy()
-          AppWindow.appTray = undefined
-        }
-      } catch {}
+    registerAppShutdown()
+    onAppShutdown(() => this.motrixApp?.quit())
+    onAppShutdown(() => {
+      if (AppWindow.appTray) {
+        AppWindow.appTray.destroy()
+        AppWindow.appTray = undefined
+      }
     })
   }
 
@@ -232,7 +232,7 @@ export default class launch extends EventEmitter {
       if (is.macOS()) {
         AppWindow.appTray?.destroy()
       } else {
-        app.quit() // 未测试应该使用哪一个
+        app.quit()
       }
     })
   }
