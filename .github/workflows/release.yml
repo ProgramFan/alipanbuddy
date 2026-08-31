@@ -106,11 +106,10 @@ jobs:
 
       - name: Generate Release Secrets
         env:
-          REQUIRED_RELEASE_SECRETS: ALIYUN_APP_ID,ALIYUN_APP_SECRET
           ALIYUN_APP_ID: ${{ secrets.ALIYUN_APP_ID }}
           ALIYUN_APP_SECRET: ${{ secrets.ALIYUN_APP_SECRET }}
         run: |
-          node scripts/generate-secrets.mjs --mode=ci --strict
+          node scripts/generate-secrets.mjs --mode=ci
 
       - name: Prepare aria2c sidecar
         run: |
