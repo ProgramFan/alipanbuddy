@@ -16,7 +16,7 @@
 
 ## What it is
 
-AlipanBuddy (神行云盘助手) is a fork of BoxPlayer (itself derived from "aliyunpan / 小白羊") that diverges toward a purer goal: being *only* an Aliyun Drive desktop client, with everything unrelated cut away.
+AlipanBuddy (神行云盘助手) is a fork of [BoxPlayer](https://github.com/gaozhangmin/boxplayer) (itself derived from "aliyunpan / 小白羊") that diverges toward a purer goal: being *only* an Aliyun Drive desktop client, with everything unrelated cut away.
 
 - Multiple accounts; browse backup / resource / album / safe-box drives.
 - File management: create, rename, move, copy, favorites, recycle bin, search, properties, archive extraction.
@@ -101,7 +101,7 @@ See [README.md](./README.md) for the project layout.
 
 ## Credits
 
-This project is a fork of BoxPlayer, whose lineage goes back to [liupan1890/aliyunpan](https://github.com/liupan1890/aliyunpan) (小白羊). Thanks to the original authors and community.
+This project is a fork of [BoxPlayer](https://github.com/gaozhangmin/boxplayer), whose lineage goes back to [liupan1890/aliyunpan](https://github.com/liupan1890/aliyunpan) (小白羊). Thanks to the original authors and community.
 
 ## Disclaimer
 

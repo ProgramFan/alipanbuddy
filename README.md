@@ -30,7 +30,7 @@
 
 ## 神行云盘助手 是什么
 
-神行云盘助手（AlipanBuddy）是 BoxPlayer（源自“小白羊网盘” aliyunpan）的一个 fork，并朝着更「纯粹」的方向持续演进：只做阿里云盘桌面客户端，砍掉一切与之无关的功能。
+神行云盘助手（AlipanBuddy）是 [BoxPlayer](https://github.com/gaozhangmin/boxplayer)（源自“小白羊网盘” aliyunpan）的一个 fork，并朝着更「纯粹」的方向持续演进：只做阿里云盘桌面客户端，砍掉一切与之无关的功能。
 
 - 多账号登录，备份盘 / 资源盘 / 相册 / 安全盘统一浏览。
 - 文件管理：新建、重命名、移动、复制、收藏、回收站、搜索、属性、压缩包解压。
@@ -166,7 +166,7 @@ static/engine/        各平台 aria2c 可执行文件与 aria2.conf
 
 ## 鸣谢
 
-本项目 fork 自 BoxPlayer，其前身为 [liupan1890/aliyunpan](https://github.com/liupan1890/aliyunpan)（小白羊网盘）。感谢原作者与社区的贡献。
+本项目 fork 自 [BoxPlayer](https://github.com/gaozhangmin/boxplayer)，其前身为 [liupan1890/aliyunpan](https://github.com/liupan1890/aliyunpan)（小白羊网盘）。感谢原作者与社区的贡献。
 
 ---
 
