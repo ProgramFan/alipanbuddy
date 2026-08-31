@@ -554,8 +554,8 @@ body[arco-theme='dark'] .griditem .select:hover {
     border-top: 1px dashed #637dff;
     border-right: 1px dashed #637dff;
     border-left: 1px dashed #637dff;
-    border-top-left-radius: 28px;
-    border-top-right-radius: 28px;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
 }
 
 .fileitem .rangselect.rangend {
@@ -567,8 +567,8 @@ body[arco-theme='dark'] .griditem .select:hover {
 
     border-bottom: 1px dashed #637dff;
     border-left: 1px dashed #637dff;
-    border-bottom-right-radius: 28px;
-    border-bottom-left-radius: 28px;
+    border-bottom-right-radius: 8px;
+    border-bottom-left-radius: 8px;
 }
 
 .rangselect.rang,
@@ -635,86 +635,82 @@ body[arco-theme='dark'] .griditem .select:hover {
     background-color: rgb(214, 219, 247);
 }
 
-/* ===== Mineradio dark-theme file row & grid polish ===== */
+/* ===== Dark-theme file row & grid states ===== */
 body[arco-theme='dark'] .fileitem {
-    border-bottom: 1px solid rgba(255,255,255,.04);
-    border-radius: 8px;
+    border-bottom: 1px solid var(--md-outline-variant);
+    border-radius: var(--md-shape-sm);
 }
 
 body[arco-theme='dark'] .fileitem:hover {
-    background-color: rgba(255,255,255,.058);
-    box-shadow: inset 0 0 0 1px rgba(0,245,212,.10);
+    background-color: var(--md-state-hover);
 }
 
 body[arco-theme='dark'] .fileitem.selected {
-    background-color: rgba(0,245,212,.080);
-    box-shadow: inset 0 0 0 1px rgba(0,245,212,.18);
+    background-color: var(--md-state-selected);
 }
 
 body[arco-theme='dark'] .fileitem.focus {
-    border: 1px solid rgba(0,245,212,.55);
-    background-color: rgba(0,245,212,.065);
+    border: 1px solid rgba(var(--primary-6),.65);
+    background-color: var(--md-state-selected);
 }
 
 body[arco-theme='dark'] .filename {
-    color: rgba(255,255,255,.92);
+    color: var(--md-on-surface);
 }
 
 body[arco-theme='dark'] .filename > div:hover {
-    color: var(--app-mineradio-accent, #00f5d4);
+    color: var(--md-primary-text);
 }
 
 body[arco-theme='dark'] .filetime,
 body[arco-theme='dark'] .filesize,
 body[arco-theme='dark'] .filesizetime {
-    color: rgba(255,255,255,.42);
+    color: var(--md-on-surface-variant);
 }
 
 body[arco-theme='dark'] .griditem {
-    border-bottom: 1px solid rgba(255,255,255,.04);
-    border-radius: 12px;
+    border-bottom: 1px solid var(--md-outline-variant);
+    border-radius: var(--md-shape-md);
 }
 
 body[arco-theme='dark'] .griditem:hover {
-    background-color: rgba(255,255,255,.058);
-    box-shadow: inset 0 0 0 1px rgba(0,245,212,.10);
+    background-color: var(--md-state-hover);
 }
 
 body[arco-theme='dark'] .griditem.selected {
-    background-color: rgba(0,245,212,.080);
-    box-shadow: inset 0 0 0 1px rgba(0,245,212,.18);
+    background-color: var(--md-state-selected);
 }
 
 body[arco-theme='dark'] .gridname {
-    color: rgba(255,255,255,.90);
+    color: var(--md-on-surface);
 }
 
 body[arco-theme='dark'] .gridname > div:hover {
-    color: var(--app-mineradio-accent, #00f5d4);
+    color: var(--md-primary-text);
 }
 
 body[arco-theme='dark'] .gridinfo {
-    color: rgba(255,255,255,.42);
+    color: var(--md-on-surface-variant);
 }
 
 body[arco-theme='dark'] .toppanarea {
-    border-top: 1px solid rgba(255,255,255,.05);
-    border-bottom: 1px solid rgba(255,255,255,.05);
+    border-top: 1px solid var(--md-outline-variant);
+    border-bottom: 1px solid var(--md-outline-variant);
 }
 
 body[arco-theme='dark'] .toppanarea .cell {
-    color: rgba(255,255,255,.42);
+    color: var(--md-on-surface-variant);
 }
 
 body[arco-theme='dark'] .toppanarea .cell.active,
 body[arco-theme='dark'] .toppanarea .cell.order:hover {
-    color: var(--app-mineradio-accent, #00f5d4);
+    color: var(--md-primary-text);
 }
 
 body[arco-theme='dark'] .toppanarea .qujian {
-    color: var(--app-mineradio-accent, #00f5d4) !important;
+    color: var(--md-primary-text) !important;
 }
 
 body[arco-theme='dark'] .toppanarea .qujian:hover {
-    background: rgba(0,245,212,.10) !important;
+    background: var(--md-state-selected) !important;
 }

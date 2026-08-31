@@ -87,9 +87,9 @@ const onClose = () => emit('update:visible', false)
       top: "30px",
       height: "calc(100% - 30px)",
       color: "var(--color-text-1)",
-      background: "var(--app-detail-bg, var(--color-bg-1))",
-      borderLeft: "1px solid var(--color-border-2)",
-      boxShadow: "-12px 0 32px rgba(0, 0, 0, 0.22)"
+      background: "var(--md-surface-container-high, var(--color-bg-1))",
+      borderLeft: "1px solid var(--md-outline-variant)",
+      boxShadow: "var(--md-elevation-3)"
     }'
     @cancel='onClose'
   >

@@ -72,11 +72,9 @@ const handleSaveLogCopy = () => {
 .loglist {
   box-sizing: content-box;
   overflow: hidden;
-  border: 1px solid rgba(120, 138, 165, 0.2);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.38);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-shape-md);
+  background: var(--md-surface-dim);
 }
 .settings-log-header {
   display: flex;
@@ -89,11 +87,11 @@ const handleSaveLogCopy = () => {
   display: inline-flex;
   margin-bottom: 8px;
   padding: 4px 10px;
-  border-radius: 999px;
-  background: rgba(88, 130, 255, 0.12);
-  color: var(--color-primary-6);
+  border-radius: var(--md-shape-full);
+  background: var(--md-state-selected);
+  color: var(--md-primary-text);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -123,10 +121,8 @@ body[arco-theme='dark'] #xbybody .loglist .arco-list-item .arco-typography {
   -webkit-user-drag: none;
 }
 body[arco-theme='dark'] #xbybody .loglist {
-  border-color: rgba(140, 158, 183, 0.18);
-  background: #05070a;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+  border-color: var(--md-outline-variant);
+  background: var(--md-surface-dim);
 }
 body[arco-theme='dark'] #xbybody .loglist .arco-list,
 body[arco-theme='dark'] #xbybody .loglist .arco-list-content,
@@ -143,11 +139,7 @@ body[arco-theme='dark'] #xbybody .loglist .arco-empty {
 body[arco-theme='dark'] #xbybody .loglist .arco-empty-image {
   opacity: 0.42;
 }
-body[arco-theme='dark'] #xbybody .settings-log-kicker {
-  background: rgba(120, 160, 255, 0.2);
-  color: #dbe6ff;
-}
 body[arco-theme='dark'] #xbybody .settings-log-caption {
-  color: rgba(236, 242, 255, 0.62);
+  color: var(--md-on-surface-variant);
 }
 </style>

@@ -4,26 +4,30 @@ import { describe, expect, it } from 'vitest'
 
 const readSource = (path: string) => readFileSync(resolve(process.cwd(), path), 'utf8')
 
-const expectLightBackground = (source: string, selector: string) => {
-  const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  expect(source).toMatch(new RegExp(`${escapedSelector}\\s*\\{[^}]*background:\\s*var\\(--color-bg-1\\)`, 's'))
-}
-
-describe('light theme page surfaces', () => {
+describe('material theme page surfaces', () => {
   it('lets top tabs use all available header space before window controls', () => {
     const source = readSource('src/layout/PageMain.vue')
     expect(source).not.toMatch(/<\/a-menu>\s*<div class='flexauto'><\/div>\s*<ShutDown \/>/s)
     expect(source).toMatch(/#xbyhead2 \.arco-menu-horizontal\s*\{[^}]*width:\s*0[^}]*flex:\s*1 1 auto/s)
   })
 
-  it('keeps the transfer task canvas on the light page background', () => {
-    expectLightBackground(readSource('src/layout/PageMain.vue'), "body:not([arco-theme='dark']) #xbybody .xbyright > .hidetabs")
+  it('keeps the app canvas flat on the theme surface without decorative overlays', () => {
+    const source = readSource('src/layout/PageMain.vue')
+    expect(source).toMatch(/#xbybody\s*\{[^}]*background:\s*var\(--md-surface-dim\)/s)
+    expect(source).not.toMatch(/#xbybody::before/)
+    expect(source).not.toMatch(/backdrop-filter:\s*blur/)
   })
 
-  it('keeps settings content in the same inset outer panel as other tabs', () => {
+  it('keeps content panes transparent instead of floating rounded islands', () => {
     const source = readSource('src/layout/PageMain.vue')
-    expect(source).toMatch(/#xbybody \.settings-content\s*\{[^}]*height:\s*calc\(100% - 36px\)[^}]*margin:\s*18px 18px 18px 14px\s*!important/s)
+    expect(source).toMatch(/#xbybody \.xbyright > \.hidetabs,[^{]*#xbybody \.rightbg,[^{]*#xbybody \.settings-content\s*\{[^}]*border:\s*0\s*!important[^}]*border-radius:\s*0\s*!important[^}]*background:\s*transparent\s*!important/s)
+    expect(source).toMatch(/#xbybody \.settings-content\s*\{[^}]*height:\s*100%[^}]*margin:\s*0\s*!important/s)
     expect(readSource('src/setting/index.vue')).not.toMatch(/body:not\(\[arco-theme='dark'\]\) #xbybody #SettingObserver\s*\{[^}]*background:/s)
+  })
+
+  it('keeps sidebars as flat panes with a hairline divider', () => {
+    const source = readSource('src/layout/PageMain.vue')
+    expect(source).toMatch(/#xbybody \.xbyleft,[^{]*#xbybody \.settings-sider,[^{]*#xbybody \.rss-sider\s*\{[^}]*background:\s*var\(--md-surface-container-low\)\s*!important[^}]*border-right:\s*1px solid var\(--md-outline-variant\)\s*!important[^}]*border-radius:\s*0\s*!important/s)
   })
 
   it('keeps transfer statistics readable in the light theme', () => {
@@ -31,31 +35,25 @@ describe('light theme page surfaces', () => {
     expect(source).toMatch(/body:not\(\[arco-theme='dark'\]\) #xbybody \.cellcount \.arco-badge-status-text\s*\{[^}]*color:\s*var\(--color-text-2\)/s)
   })
 
-  it('keeps the plugin canvas on the light page background', () => {
+  it('keeps the plugin canvas transparent over the theme surface', () => {
     const source = readSource('src/rss/index.vue')
-    expectLightBackground(source, "body:not([arco-theme='dark']) #xbybody .rss-content-panel > .hidetabs")
-    expectLightBackground(source, "body:not([arco-theme='dark']) #xbybody .rss-content-panel .rightbg")
+    expect(source).toMatch(/\.rss-content-panel\s*\{[^}]*background:\s*transparent\s*!important/s)
+    expect(source).not.toMatch(/backdrop-filter:\s*blur/)
   })
 
-  it('keeps settings navigation and content on light semantic surfaces', () => {
+  it('keeps settings surfaces on material tokens', () => {
     const source = readSource('src/setting/index.vue')
-    const main = readSource('src/layout/PageMain.vue')
     expect(source).not.toContain("<small>{{ t('settings.centerSubtitle') }}</small>")
-    expect(source).toMatch(/\.settings-side-title\s*\{[^}]*height:\s*auto[^}]*min-height:\s*92px[^}]*overflow:\s*visible/s)
-    expectLightBackground(source, "body:not([arco-theme='dark']) #xbybody .settings-shell")
-    expectLightBackground(source, "body:not([arco-theme='dark']) #xbybody .settings-sider")
-    expectLightBackground(main, "body:not([arco-theme='dark']) #xbybody .settings-content")
-    expect(main).toMatch(/#xbybody \.rightbg,[^{]*#xbybody \.settings-content[^{]*\{[^}]*border:\s*1px solid/s)
-    expect(source).toMatch(/#xbybody #SettingObserver \.settingcard\s*\{[^}]*border:\s*0\s*!important[^}]*border-radius:\s*0\s*!important[^}]*background:\s*transparent\s*!important[^}]*box-shadow:\s*none\s*!important[^}]*backdrop-filter:\s*none\s*!important/s)
-    expect(source).toMatch(/body:not\(\[arco-theme='dark'\]\) #xbybody #SettingObserver \.settingcard,[^{]*\.arco-divider-text,[^{]*\.arco-checkbox-label,[^{]*\.arco-switch-text\s*\{[^}]*color:\s*#111827\s*!important/s)
-    expect(source).toMatch(/body:not\(\[arco-theme='dark'\]\) #xbybody #SettingObserver \.settingrow,[^{]*\.settings-app-subtitle,[^{]*\.acc-desc\s*\{[^}]*color:\s*#374151\s*!important/s)
-    expect(source).toMatch(/body:not\(\[arco-theme='dark'\]\) #xbybody #SettingObserver \.arco-input,[^{]*\.arco-select-view-value,[^{]*\.arco-input-number-input\s*\{[^}]*color:\s*#111827\s*!important/s)
+    expect(source).toMatch(/\.settings-side-title\s*\{[^}]*background:\s*transparent/s)
+    expect(source).toMatch(/\.settings-section\s*\{[^}]*border:\s*1px solid var\(--md-outline-variant\)[^}]*border-radius:\s*var\(--md-shape-md\)[^}]*background:\s*var\(--md-surface\)/s)
+    expect(source).toMatch(/#xbybody #SettingObserver \.settingcard\s*\{[^}]*border:\s*0\s*!important[^}]*border-radius:\s*0\s*!important[^}]*background:\s*transparent\s*!important[^}]*box-shadow:\s*none\s*!important/s)
+    expect(source).not.toMatch(/backdrop-filter:\s*blur/)
   })
 
   it('uses the active Arco dark-theme hook for the settings log panel', () => {
     const source = readSource('src/setting/SettingLog.vue')
     expect(source).not.toContain('html.dark .loglist')
-    expect(source).toMatch(/body\[arco-theme='dark'\] #xbybody \.loglist\s*\{[^}]*background:\s*#05070a/s)
+    expect(source).toMatch(/body\[arco-theme='dark'\] #xbybody \.loglist\s*\{[^}]*background:\s*var\(--md-surface-dim\)/s)
     expect(source).toMatch(/body\[arco-theme='dark'\] #xbybody \.loglist \.arco-list-item\s*\{[^}]*color:\s*rgba\(232, 238, 249, 0\.88\)/s)
   })
 
@@ -76,6 +74,5 @@ describe('light theme page surfaces', () => {
     expect(settings).not.toMatch(/body\[arco-theme='dark'\] \.xbyleftmenu/)
     expect(settings).not.toMatch(/^\.xbyleftmenu/m)
     expect(settings).toMatch(/\.settings-sider \.xbyleftmenu\s*\{[^}]*padding:\s*0[^}]*border:\s*0[^}]*border-radius:\s*0[^}]*background:\s*transparent\s*!important[^}]*box-shadow:\s*none\s*!important/s)
-    expect(settings).toMatch(/body\[arco-theme='dark'\] \.settings-sider \.xbyleftmenu\s*\{[^}]*background:\s*transparent\s*!important[^}]*border:\s*0\s*!important[^}]*box-shadow:\s*none\s*!important/s)
   })
 })

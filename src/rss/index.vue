@@ -93,7 +93,7 @@ withDefaults(defineProps<{ sidebarVisible?: boolean }>(), { sidebarVisible: true
 .rss-content-panel {
   min-width: 0;
   height: 100%;
-  padding: 18px 18px 18px 14px;
+  padding: 0;
   overflow: hidden;
   background: transparent !important;
 }
@@ -107,19 +107,5 @@ withDefaults(defineProps<{ sidebarVisible?: boolean }>(), { sidebarVisible: true
   margin: 0;
   overflow-y: auto !important;
   overflow-x: hidden !important;
-}
-
-body:not([arco-theme='dark']) #xbybody .rss-content-panel > .hidetabs {
-  background: var(--color-bg-1) !important;
-  border-color: var(--color-border-2) !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-}
-
-body:not([arco-theme='dark']) #xbybody .rss-content-panel .rightbg {
-  background: var(--color-bg-1) !important;
-  border-color: var(--color-border-2) !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
 }
 </style>

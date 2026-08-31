@@ -122,69 +122,62 @@ const handleClickXiMa = async () => {
 
 <style>
 .rightbg {
-  background:
-    radial-gradient(circle at top left, rgba(0, 245, 212, 0.08), transparent 28%),
-    radial-gradient(circle at top right, rgba(244, 210, 138, 0.08), transparent 24%),
-    transparent;
+  background: transparent;
   padding: 20px 24px 40px !important;
-  color: var(--app-mineradio-ink, #e8ecef);
+  color: var(--md-on-surface);
 }
 
 .rightbg .settingcard {
-  margin-bottom: 22px;
-  padding: 24px 26px;
-  border-radius: 24px;
-  border: 1px solid var(--app-glass-line, rgba(255, 255, 255, 0.082));
-  background:
-    radial-gradient(circle at 8% 0%, rgba(255, 255, 255, 0.075), transparent 34%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.058), rgba(255, 255, 255, 0.026));
-  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.052);
-  backdrop-filter: blur(18px);
+  margin-bottom: 18px;
+  padding: 20px 24px;
+  border-radius: var(--md-shape-md);
+  border: 1px solid var(--md-outline-variant);
+  background: var(--md-surface);
+  box-shadow: none;
 }
 
 .rightbg .settinghead {
-  margin-bottom: 14px;
-  font-size: 19px;
-  font-weight: 800;
-  color: rgba(255, 255, 255, 0.92);
-  letter-spacing: 0.01em;
+  margin-bottom: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--md-on-surface);
+  letter-spacing: 0;
 }
 
 .rightbg .settingrow {
   line-height: 1.8;
-  color: rgba(232, 236, 239, 0.68);
+  color: var(--md-on-surface-variant);
 }
 
-.rightbg .settingspace {
+.rightbg .settingspace,
+.rightbg .hrspace {
   height: 18px;
+}
+
+.rightbg .arco-radio-group {
+  gap: 10px;
 }
 
 .rightbg .arco-input-wrapper,
 .rightbg .arco-input-group-wrapper,
 .rightbg .arco-textarea-wrapper {
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.052);
-  border-color: rgba(255, 255, 255, 0.088);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  border-radius: var(--md-shape-sm);
 }
 
 .rightbg .arco-input-wrapper:focus-within,
 .rightbg .arco-input-group-wrapper:focus-within,
 .rightbg .arco-textarea-wrapper:focus-within {
-  border-color: rgba(0, 245, 212, 0.28);
-  box-shadow:
-    0 0 0 4px rgba(0, 245, 212, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border-color: rgb(var(--primary-6)) !important;
+  box-shadow: 0 0 0 2px rgba(var(--primary-6), 0.14);
 }
 
 .rightbg .arco-btn {
-  border-radius: 16px;
-  font-weight: 700;
+  border-radius: var(--md-shape-sm);
+  font-weight: 500;
 }
 
-.rightbg .arco-btn-primary.arco-btn-status-danger {
-  background: linear-gradient(135deg, #ff6a5c 0%, #ef4444 100%);
-  box-shadow: 0 12px 30px rgba(239, 68, 68, 0.22);
+.rightbg .arco-textarea {
+  min-height: 120px;
 }
 
 .rightbg .arco-typography {
@@ -198,39 +191,13 @@ const handleClickXiMa = async () => {
 
 .rightbg li {
   margin-bottom: 8px;
-  color: rgba(232, 236, 239, 0.68);
+  color: var(--md-on-surface-variant);
 }
 
 .helptxt {
   margin-top: 8px;
-  color: rgba(232, 236, 239, 0.58);
+  color: var(--md-on-surface-variant);
   font-size: 13px;
   line-height: 1.7;
-}
-
-[arco-theme='dark'] .rightbg {
-  background:
-    radial-gradient(circle at top left, rgba(81, 124, 255, 0.2), transparent 28%),
-    radial-gradient(circle at top right, rgba(255, 145, 77, 0.18), transparent 24%),
-    linear-gradient(180deg, #101722 0%, #111927 36%, #0c1420 100%);
-}
-
-[arco-theme='dark'] .rightbg .settingcard {
-  background: rgba(18, 26, 39, 0.72);
-  border-color: rgba(148, 163, 184, 0.12);
-  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.26);
-}
-
-[arco-theme='dark'] .rightbg .settinghead {
-  color: rgba(241, 245, 249, 0.96);
-}
-
-[arco-theme='dark'] .rightbg .settingrow,
-[arco-theme='dark'] .rightbg li {
-  color: rgba(203, 213, 225, 0.86);
-}
-
-[arco-theme='dark'] .helptxt {
-  color: rgba(148, 163, 184, 0.86);
 }
 </style>
