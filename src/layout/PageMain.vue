@@ -593,7 +593,7 @@ body {
 #xbybody {
   position: relative;
   padding: 0 3px 0 2px;
-  height: calc(100% - 42px - 24px - 20px);
+  height: calc(100% - 42px - 24px);
   overflow: hidden;
   color: var(--md-on-surface);
   background: var(--md-surface-dim);
@@ -705,13 +705,20 @@ body {
   background: transparent;
 }
 
-#xbybody .splitline .line {
+#xbybody .splitline::before {
   left: 6px;
+  width: 1px;
+  background: var(--md-outline-variant);
+}
+
+#xbybody .splitline:hover::before,
+#xbybody .splitline.resize::before {
   width: 2px;
-  height: 72px;
-  margin-top: -36px;
-  border-radius: var(--md-shape-full);
-  background: rgba(var(--primary-6),.5);
+  background: rgb(var(--primary-6));
+}
+
+#xbybody .splitline .line {
+  display: none;
 }
 
 #xbybody .headdesc {

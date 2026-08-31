@@ -707,6 +707,11 @@ body[arco-theme='dark'] .toppanarea .cell {
     color: rgb(217, 48, 37);
 }
 
+body[arco-theme='dark'] .cell.sharetime.active,
+body[arco-theme='dark'] .cell.sharestate.forbidden {
+    color: #ff8a80;
+}
+
 .cell.sharestate {
     width: 60px;
     font-size: 12px;
@@ -951,6 +956,45 @@ body[arco-theme='dark'] .toppanarea {
 
 .arco-scrollbar {
     height: 100%;
+}
+
+/* Inline emphasis chips used across settings / plugin copy.
+   Red is reserved for destructive warnings; orange and blue carry their own hues. */
+.opred,
+.oporg,
+.opblue {
+    padding: 0 4px;
+    border-radius: var(--md-shape-xs);
+}
+
+.opred {
+    color: #c62828;
+    background: rgba(198, 40, 40, 0.10);
+}
+
+.oporg {
+    color: #a05a00;
+    background: rgba(230, 145, 20, 0.14);
+}
+
+.opblue {
+    color: rgb(var(--primary-7));
+    background: rgba(var(--primary-6), 0.12);
+}
+
+body[arco-theme='dark'] .opred {
+    color: #ff8a80;
+    background: rgba(255, 92, 82, 0.14);
+}
+
+body[arco-theme='dark'] .oporg {
+    color: #ffb74d;
+    background: rgba(255, 167, 38, 0.13);
+}
+
+body[arco-theme='dark'] .opblue {
+    color: var(--md-primary-text);
+    background: rgba(var(--primary-6), 0.20);
 }
 
 /* ===== Material surfaces: menus, popovers, dialogs ===== */

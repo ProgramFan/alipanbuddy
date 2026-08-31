@@ -465,14 +465,6 @@ body[arco-theme='dark'] .settingrow .iconbulb {
   padding-top: 8px;
 }
 
-.opred,
-.oporg,
-.opblue {
-  padding: 0 2px;
-  color: rgb(211, 80, 75);
-  background: rgba(211, 80, 75, 0.1);
-}
-
 .arco-popover-content hr {
   opacity: 0.2;
   border-top: none;
@@ -570,14 +562,6 @@ body[arco-theme='dark'] .settingrow .iconbulb {
 
 .settingcard .arco-divider-line {
   border-color: var(--md-outline-variant);
-}
-
-body:not([arco-theme='dark']) #xbybody #SettingObserver .settings-app-badge,
-body:not([arco-theme='dark']) #xbybody #SettingObserver .play-settings-kicker,
-body:not([arco-theme='dark']) #xbybody #SettingObserver .settings-panel-kicker,
-body:not([arco-theme='dark']) #xbybody #SettingObserver .settings-proxy-kicker,
-body:not([arco-theme='dark']) #xbybody #SettingObserver .settings-log-kicker {
-  color: var(--color-primary-6) !important;
 }
 
 @media (max-width: 1080px) {

@@ -464,13 +464,14 @@ body[arco-theme='dark'] .ant-tree-node-selected .ant-tree-title > span {
   left: 0;
   right: 0;
   top: 32px;
-  border-bottom: 1px solid var(--color-neutral-3);
+  border-bottom: 1px solid var(--md-outline-variant);
   z-index: -1;
 }
 
 .headswitch .sw {
   margin: 0 auto;
-  background: var(--color-bg-1);
+  background: var(--md-surface-dim);
+  border-radius: var(--md-shape-full);
   width: fit-content;
 }
 
@@ -494,7 +495,8 @@ body[arco-theme='dark'] .ant-tree-node-selected .ant-tree-title > span {
   height: 50px;
   flex-shrink: 0;
   flex-grow: 0;
-  border: 3px dotted var(--color-border-2);
+  border: 1.5px dashed var(--md-outline-variant);
+  border-radius: var(--md-shape-sm);
   display: flex;
   margin-left: -18px;
   align-items: center;

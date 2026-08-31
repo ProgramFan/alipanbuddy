@@ -141,11 +141,11 @@ const handleProxyConn = async () => {
   display: inline-flex;
   align-self: flex-start;
   padding: 4px 10px;
-  border-radius: 999px;
-  background: rgba(88, 130, 255, 0.12);
-  color: var(--color-primary-6);
+  border-radius: var(--md-shape-full);
+  background: var(--md-state-selected);
+  color: var(--md-primary-text);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -157,8 +157,4 @@ const handleProxyConn = async () => {
   line-height: 1.7;
 }
 
-:global(html.dark) .settings-proxy-kicker {
-  background: rgba(120, 160, 255, 0.2);
-  color: #dbe6ff;
-}
 </style>

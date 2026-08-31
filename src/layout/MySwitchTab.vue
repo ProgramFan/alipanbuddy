@@ -68,7 +68,7 @@ export default defineComponent({
   display: inline-flex;
   flex-direction: row;
   background-color: var(--color-fill-2);
-  border-radius: 4px;
+  border-radius: var(--md-shape-full);
   overflow: hidden;
   padding: 4px;
   z-index: 2;
@@ -79,7 +79,7 @@ export default defineComponent({
   flex: 1 1 0%;
   z-index: 2;
   margin-left: 2px;
-  border-radius: 4px;
+  border-radius: var(--md-shape-full);
 }
 .mantine-item:first-of-type {
   margin-left: 0;
@@ -98,46 +98,36 @@ export default defineComponent({
   opacity: 0;
 }
 .mantine-label {
-  border-radius: 4px;
+  border-radius: var(--md-shape-full);
   font-weight: 500;
   font-size: 14px;
   cursor: pointer;
   display: block;
   text-align: center;
-  padding: 5px 10px;
+  padding: 5px 12px;
   overflow: hidden;
   white-space: nowrap;
   word-break: keep-all;
   text-overflow: ellipsis;
   user-select: none;
-  color: var(--color-text-2);
+  color: var(--md-on-surface-variant);
   transition: color 200ms ease 0s;
   line-height: 16px;
 }
 
 .mantine-label-active,
 .mantine-label-active:hover {
-  color: rgb(0, 0, 0);
-}
-
-body[arco-theme='dark'] .mantine-label-active,
-body[arco-theme='dark'] .mantine-label-active:hover {
-  color: rgb(255, 255, 255);
+  color: var(--md-primary-text);
+  font-weight: 600;
 }
 
 .mantine-bgblock {
   box-sizing: border-box;
-  border-radius: 4px;
+  border-radius: var(--md-shape-full);
   position: absolute;
   z-index: 1;
-  box-shadow: rgb(0 0 0 / 5%) 0px 1px 3px, rgb(0 0 0 / 10%) 0px 1px 2px;
   transition: transform 200ms ease 0s, width 100ms ease 0s;
-  background-color: rgb(255, 255, 255);
+  background-color: var(--md-state-selected);
   height: 26px;
-}
-
-body[arco-theme='dark'] .mantine-bgblock {
-  box-shadow: rgba(0, 0, 0, 0.25) 0px 1px 3px, rgba(0, 0, 0, 0.5) 0px 1px 2px;
-  background-color: rgb(var(--primary-6));
 }
 </style>

@@ -152,11 +152,11 @@ function openSupport() {
   display: inline-flex;
   align-self: flex-start;
   padding: 4px 10px;
-  border-radius: 999px;
-  background: rgba(88, 130, 255, 0.12);
-  color: var(--color-primary-6);
+  border-radius: var(--md-shape-full);
+  background: var(--md-state-selected);
+  color: var(--md-primary-text);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -177,20 +177,13 @@ function openSupport() {
   margin-left: 0 !important;
 }
 
-:global(html.dark) .settings-app-badge {
-  background: rgba(120, 160, 255, 0.2);
-  color: #dbe6ff;
-}
-
 @media (max-width: 900px) {
   .appver {
     font-size: 24px;
   }
 }
 
-.appver-badge{display:inline-flex;align-items:center;gap:6px;margin-left:10px;padding:5px 11px;font-size:12px;font-weight:800;line-height:1;letter-spacing:.05em;color:var(--color-text-1);background:var(--color-fill-3);border:1px solid var(--color-border-2);border-radius:6px;vertical-align:middle;box-shadow:0 1px 3px rgba(15,23,42,.12)}
-:global(html.dark) .appver-badge{color:#e5e7eb;background:rgba(148,163,184,.16);border-color:rgba(148,163,184,.38)}
-:global(html.dark) 
+.appver-badge{display:inline-flex;align-items:center;gap:6px;margin-left:10px;padding:5px 11px;font-size:12px;font-weight:600;line-height:1;letter-spacing:.05em;color:var(--md-on-surface-variant);background:var(--color-fill-2);border:1px solid var(--md-outline-variant);border-radius:var(--md-shape-full);vertical-align:middle}
 .spin{animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 </style>

@@ -13,10 +13,10 @@ const useWinStore = defineStore('win', {
 
   getters: {
     GetListHeight(state: WinState): string {
-      return (state.height - 192).toString() + 'px'
+      return (state.height - 164).toString() + 'px'
     },
     GetListHeightNumber(state: WinState): number {
-      return state.height - 192
+      return state.height - 164
     }
   },
 

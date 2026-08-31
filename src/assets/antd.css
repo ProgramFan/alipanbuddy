@@ -17,7 +17,7 @@
 }
 
 body[arco-theme='dark'] .ant-tree .ant-tree-node-content-wrapper.ant-tree-node-selected {
-    background: rgba(var(--primary-6), 0.5) !important;
+    background: rgba(var(--primary-6), 0.28) !important;
 }
 
 .ant-tree .ant-tree-node-content-wrapper:hover {
@@ -138,17 +138,19 @@ body[arco-theme='dark'] .ant-tree-switcher_open .ant-tree-switcher-icon {
 }
 
 .ant-tree-list-scrollbar[style] {
-    width: 10px !important;
+    width: 6px !important;
+    background: transparent !important;
 }
 
 .ant-tree-list-scrollbar-thumb[style],
 body[arco-theme='dark'] .ant-tree-list-scrollbar-thumb[style] {
-    background: rgb(201, 201, 202) !important;
+    background: var(--color-fill-3) !important;
+    border-radius: 3px !important;
 }
 
 .ant-tree-list-scrollbar-thumb:hover[style],
 body[arco-theme='dark'] .ant-tree-list-scrollbar-thumb:hover[style] {
-    background: rgb(162, 162, 163) !important;
+    background: var(--color-fill-4) !important;
 }
 
 .ant-tree-checkbox-inner::after,
