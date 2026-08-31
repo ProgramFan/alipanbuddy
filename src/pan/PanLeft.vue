@@ -470,7 +470,7 @@ body[arco-theme='dark'] .ant-tree-node-selected .ant-tree-title > span {
 
 .headswitch .sw {
   margin: 0 auto;
-  background: var(--md-surface-dim);
+  background: var(--md-surface-container-low);
   border-radius: var(--md-shape-full);
   width: fit-content;
 }

@@ -649,10 +649,8 @@ body {
 #xbybody .settings-sider,
 #xbybody .rss-sider {
   position: relative;
-  flex: 0 0 218px !important;
-  width: 218px !important;
-  min-width: 218px !important;
-  max-width: 218px !important;
+  min-width: 176px !important;
+  max-width: 420px !important;
   height: 100% !important;
   margin: 0 !important;
   padding: 12px 10px !important;
@@ -663,6 +661,25 @@ body {
   border-radius: 0 !important;
   overflow: hidden;
   box-shadow: none;
+}
+
+/* Sider resize handle (resize-directions=['right']): invisible strip on the
+   divider, highlighted while hovering / dragging — no drag-dot icon. */
+#xbybody .arco-layout-sider .arco-resizebox-trigger-icon-wrapper {
+  display: none !important;
+}
+
+#xbybody .arco-layout-sider .arco-resizebox-trigger-vertical {
+  width: 8px;
+  margin-right: -4px;
+  background: transparent;
+  cursor: col-resize;
+  z-index: 3;
+}
+
+#xbybody .arco-layout-sider .arco-resizebox-trigger-vertical:hover,
+#xbybody .arco-layout-sider .arco-resizebox-trigger-vertical:active {
+  background: linear-gradient(90deg, transparent 3px, rgba(var(--primary-6), .55) 3px 5px, transparent 5px);
 }
 
 #xbybody .xbyright,
@@ -690,7 +707,8 @@ body {
 }
 
 #xbybody .MySplit .arco-split-pane-first {
-  background: transparent !important;
+  background: var(--md-surface-container-low) !important;
+  border-right: 1px solid var(--md-outline-variant);
 }
 
 #xbybody .splitline {
@@ -705,10 +723,12 @@ body {
   background: transparent;
 }
 
+/* The pane itself draws the divider hairline; the drag strip stays invisible
+   until hovered so it doesn't double the line. */
 #xbybody .splitline::before {
   left: 6px;
   width: 1px;
-  background: var(--md-outline-variant);
+  background: transparent;
 }
 
 #xbybody .splitline:hover::before,

@@ -41,7 +41,7 @@ const handleHideLeft = (val: boolean) => {
 
 <template>
   <a-layout style='height: 100%'>
-    <a-layout-sider v-show="sidebarVisible && !hideLeft" hide-trigger :width='218' class='xbyleft single-boundary-sidebar'>
+    <a-layout-sider v-show="sidebarVisible && !hideLeft" hide-trigger :width='218' :resize-directions="['right']" class='xbyleft single-boundary-sidebar'>
       <div class='headdesc'>{{ t('share.title') }}</div>
       <a-menu v-if="isAliyunAccount" :selected-keys='[appStore.GetAppTabMenu]' :style="{ width: '100%' }" class='xbyleftmenu single-boundary-sidebar-menu'
               @update:selected-keys="appStore.toggleTabMenu('share', $event[0])">

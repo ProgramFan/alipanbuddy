@@ -17,7 +17,7 @@ withDefaults(defineProps<{ sidebarVisible?: boolean }>(), { sidebarVisible: true
 
 <template>
   <a-layout style="height: 100%">
-    <a-layout-sider v-show="sidebarVisible" hide-trigger :width="218" class="xbyleft rss-sider single-boundary-sidebar">
+    <a-layout-sider v-show="sidebarVisible" hide-trigger :width="218" :resize-directions="['right']" class="xbyleft rss-sider single-boundary-sidebar">
       <div class="headdesc">{{ t('plugins.title') }}</div>
       <a-menu :style="{ width: '100%' }" class="xbyleftmenu rss-leftmenu single-boundary-sidebar-menu"
               :selected-keys="[appStore.GetAppTabMenu]"
@@ -80,10 +80,6 @@ withDefaults(defineProps<{ sidebarVisible?: boolean }>(), { sidebarVisible: true
 .iconnode-tree1,
 .iconshuzhuangtu {
   opacity: 0.8;
-}
-
-.rss-sider {
-  min-width: 218px;
 }
 
 .rss-leftmenu .arco-menu-item {

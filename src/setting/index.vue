@@ -132,7 +132,7 @@ onUnmounted(() => {
 
 <template>
   <a-layout class="settings-shell">
-    <a-layout-sider v-show="sidebarVisible" hide-trigger :width="188" class="xbyleft settings-sider single-boundary-sidebar" tabindex="-1" @keydown.tab.prevent="() => true">
+    <a-layout-sider v-show="sidebarVisible" hide-trigger :width="188" :resize-directions="['right']" class="xbyleft settings-sider single-boundary-sidebar" tabindex="-1" @keydown.tab.prevent="() => true">
       <div class='headdesc settings-side-title'>
         <span class="settings-side-kicker">{{ t('settings.preferences') }}</span>
         <strong>{{ t('settings.center') }}</strong>

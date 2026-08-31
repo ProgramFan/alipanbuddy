@@ -13,7 +13,7 @@ withDefaults(defineProps<{ sidebarVisible?: boolean }>(), { sidebarVisible: true
 
 <template>
   <a-layout style="height: 100%">
-    <a-layout-sider v-show="sidebarVisible" hide-trigger :width="218" class="xbyleft single-boundary-sidebar">
+    <a-layout-sider v-show="sidebarVisible" hide-trigger :width="218" :resize-directions="['right']" class="xbyleft single-boundary-sidebar">
       <div class="headdesc">{{ t('transfer.title') }}</div>
       <a-menu :style="{ width: '100%' }" class="xbyleftmenu single-boundary-sidebar-menu" :selected-keys="[appStore.GetAppTabMenu]" @update:selected-keys="appStore.toggleTabMenu('down', $event[0])">
         <a-menu-item key="DowningRight">
