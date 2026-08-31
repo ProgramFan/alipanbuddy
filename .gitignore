@@ -59,10 +59,11 @@ SKILL_ITERATION_LOG.md
 node_modules/
 
 
-# 文档与媒体产物：只保留 README 类 Markdown
+# 文档与媒体产物：只保留 README 类 Markdown 与发行说明
 *.md
 !README*.md
 !**/README*.md
+!docs/releases/*.md
 *.html
 *.mp4
 *.mov
