@@ -96,8 +96,11 @@ pub fn window_cmd(app: AppHandle, window: Window, cmd: String) -> String {
     }
 }
 
+// Window-creating commands are async on purpose: a synchronous command runs on the
+// main thread, and building a second webview inside the blocked IPC handler can
+// deadlock the GTK main loop on Linux (window appears, whole app freezes).
 #[tauri::command]
-pub fn open_page_window(app: AppHandle, page: String, data: serde_json::Value, theme: String) -> Result<(), String> {
+pub async fn open_page_window(app: AppHandle, page: String, data: serde_json::Value, theme: String) -> Result<(), String> {
     windows::open_page_window(&app, page, data, theme).map_err(|e| e.to_string())
 }
 
@@ -117,7 +120,7 @@ pub fn get_page_context(app: AppHandle, window: Window) -> PageContext {
 }
 
 #[tauri::command]
-pub fn ensure_transfer_worker(app: AppHandle, kind: String) -> Result<(), String> {
+pub async fn ensure_transfer_worker(app: AppHandle, kind: String) -> Result<(), String> {
     windows::ensure_transfer_worker(&app, &kind).map_err(|e| e.to_string())
 }
 
@@ -128,7 +131,7 @@ pub fn worker_ready(app: AppHandle, kind: String) {
 }
 
 #[tauri::command]
-pub fn open_login_window(app: AppHandle, url: String, referer: Option<String>, clear_data: Option<bool>) -> Result<(), String> {
+pub async fn open_login_window(app: AppHandle, url: String, referer: Option<String>, clear_data: Option<bool>) -> Result<(), String> {
     let _ = referer;
     windows::open_login_window(&app, &url, clear_data.unwrap_or(false)).map_err(|e| e.to_string())
 }
@@ -139,7 +142,7 @@ pub fn close_login_window(app: AppHandle) {
 }
 
 #[tauri::command]
-pub fn open_site_window(app: AppHandle, url: String) -> Result<(), String> {
+pub async fn open_site_window(app: AppHandle, url: String) -> Result<(), String> {
     windows::open_site_window(&app, &url).map_err(|e| e.to_string())
 }
 

@@ -15,6 +15,14 @@ use crate::state::AppState;
 pub fn run() {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
+    // webkit2gtk's DMA-BUF renderer is known to hang the GTK main loop when a second
+    // webview window (login / share-site browser) is created on some Linux drivers.
+    // Users can opt back in by exporting WEBKIT_DISABLE_DMABUF_RENDERER=0 themselves.
+    #[cfg(target_os = "linux")]
+    if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
+        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
             if argv.iter().any(|a| a.contains("exit")) {
