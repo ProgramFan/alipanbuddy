@@ -30,7 +30,7 @@
 
 ## 神行云盘助手 是什么
 
-神行云盘助手（AlipanBuddy）源自 BoxPlayer / “小白羊网盘”，是一个专注于阿里云盘的跨平台桌面客户端：
+神行云盘助手（AlipanBuddy）是 BoxPlayer（源自“小白羊网盘” aliyunpan）的一个 fork，并朝着更「纯粹」的方向持续演进：只做阿里云盘桌面客户端，砍掉一切与之无关的功能。
 
 - 多账号登录，备份盘 / 资源盘 / 相册 / 安全盘统一浏览。
 - 文件管理：新建、重命名、移动、复制、收藏、回收站、搜索、属性、压缩包解压。
@@ -38,6 +38,14 @@
 - 分享：创建分享链接、导入他人分享、分享历史、快传、订阅。
 - 上传下载：多线程 aria2c 下载、断点续传、加密上传 / 解密下载。
 - 插件工具：文件加密 / 解密、喜马拉雅解密、空文件夹清理、重复文件 / 大文件扫描、违规文件扫描、相册批量复制。
+
+### 与上游（BoxPlayer）的差异
+
+- **只支持阿里云盘**：其他网盘的支持与多云抽象层已删除，不会再加回来。
+- **不再内置播放器 / 媒体库 / 阅读器等附加系统**，专注文件管理、分享与传输本身。
+- **没有自动更新、也不内置任何凭据**：这是一个「自带凭据」的私有客户端——每位用户都需要在
+  [阿里云盘开放平台](https://www.aliyundrive.com/developer) 申请自己的 client id / client secret 才能登录使用。
+- 从 Electron 迁移到 Tauri 2（Rust），体积与内存占用大幅下降。
 
 <p align="center">
   <img src="screenshot/drive_home.png" width="720" alt="网盘首页">
@@ -47,18 +55,33 @@
 
 ## 安装
 
+> **使用前提：自备阿里云盘开放平台凭据。**
+> 发行版不内置任何 client id / secret。请先在
+> [阿里云盘开放平台](https://www.aliyundrive.com/developer) 申请自己的凭据，
+> 启动后在「设置 → 账户设置 → OpenAPI 授权」中选择“自定义凭据”填入，即可完成登录。
+
 在 GitHub Releases 下载对应平台安装包：
 
 [https://github.com/programfan/alipanbuddy/releases](https://github.com/programfan/alipanbuddy/releases)
 
 | 平台 | 推荐文件 |
 |---|---|
-| macOS Apple Silicon | `*-mac-arm64.dmg` |
-| macOS Intel | `*-mac-x64.dmg` |
-| Windows | `*-win.exe` |
+| macOS Apple Silicon | `*_aarch64.dmg` |
+| macOS Intel | `*_x64.dmg` |
+| Windows（x64 / ARM64） | `*-setup.exe` |
 | Debian / Ubuntu | `*.deb` |
-| Linux 通用 | `*.AppImage` |
-| Arch / Manjaro | `*.pacman` |
+| Fedora / openSUSE | `*.rpm` |
+| Linux 通用（免安装） | `*.AppImage` |
+| Linux 通用（tar 包安装） | `alipanbuddy-*-linux-<arch>.tar.gz` |
+
+Linux tar 包遵循 FHS 目录结构，自带桌面图标与菜单项，解压后运行 `install.sh` 即可作为桌面应用安装：
+
+```bash
+tar -xzf alipanbuddy-<版本>-linux-x86_64.tar.gz
+cd alipanbuddy-<版本>-linux-x86_64
+sudo ./install.sh          # 安装到 /usr/local；或 ./install.sh --user 安装到 ~/.local
+# 卸载：sudo ./install.sh --uninstall
+```
 
 macOS 如果提示“文件已损坏”或被 Gatekeeper 拦截，可在确认来源可信后执行：
 
@@ -109,7 +132,7 @@ pnpm run secrets:generate   # 生成 src/secrets.generated.ts（已 ignore，已
 ## 项目结构
 
 ```text
-src-tauri/            Tauri（Rust）应用：窗口、托盘、命令、自动更新、aria2c 引擎、本地解密代理
+src-tauri/            Tauri（Rust）应用：窗口、托盘、命令、aria2c 引擎、本地解密代理
 src-tauri/crates/alipancore/  与 GTK 无关的核心库（加密流、文件名编码、代理、上传、哈希），含单元测试
 src/tauri/            渲染端 ↔ Rust 桥（window.WebXxx API、axios 适配器、fs/hash/upload 封装）
 src/aliapi/           阿里云盘 API：文件、目录、分享、上传、相册、回收站
@@ -143,7 +166,7 @@ static/engine/        各平台 aria2c 可执行文件与 aria2.conf
 
 ## 鸣谢
 
-本项目基于 [liupan1890/aliyunpan](https://github.com/liupan1890/aliyunpan) 继续开发，感谢原作者和社区贡献。
+本项目 fork 自 BoxPlayer，其前身为 [liupan1890/aliyunpan](https://github.com/liupan1890/aliyunpan)（小白羊网盘）。感谢原作者与社区的贡献。
 
 ---
 

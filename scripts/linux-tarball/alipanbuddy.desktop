@@ -1,0 +1,15 @@
+[Desktop Entry]
+Type=Application
+Name=AlipanBuddy
+Name[zh_CN]=神行云盘助手
+GenericName=Aliyun Drive Client
+GenericName[zh_CN]=阿里云盘客户端
+Comment=Aliyun Drive desktop client
+Comment[zh_CN]=阿里云盘桌面客户端：多账号、文件管理、分享与加密传输
+Exec=alipanbuddy
+Icon=alipanbuddy
+Terminal=false
+Categories=Network;FileTransfer;Utility;
+Keywords=aliyun;drive;netdisk;
+Keywords[zh_CN]=阿里云盘;网盘;云盘;
+StartupWMClass=alipanbuddy

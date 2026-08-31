@@ -31,6 +31,9 @@ scripts/
 scripts/*
 !scripts/generate-secrets.mjs
 !scripts/version-utils.mjs
+!scripts/prepare-sidecars.mjs
+!scripts/build-linux-tarball.sh
+!scripts/linux-tarball/
 
 src/secrets.generated.ts
 
