@@ -711,11 +711,14 @@ body {
   border-right: 1px solid var(--md-outline-variant);
 }
 
+/* Straddle the pane divider: the 14px strip is pulled 7px left so its center
+   (and hover highlight at left 6px) sits exactly on the pane-first border. */
 #xbybody .splitline {
   width: 14px;
-  margin: 0;
+  margin: 0 7px 0 -7px;
   border: 0;
   background: transparent;
+  z-index: 5;
 }
 
 #xbybody .splitline:hover,
