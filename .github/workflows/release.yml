@@ -41,16 +41,10 @@ jobs:
             args: --target aarch64-pc-windows-msvc --bundles nsis
           - os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
-            args: --target x86_64-unknown-linux-gnu --bundles deb,rpm,appimage
+            args: --target x86_64-unknown-linux-gnu
           - os: ubuntu-22.04-arm
             target: aarch64-unknown-linux-gnu
-            args: --target aarch64-unknown-linux-gnu --bundles deb,rpm,appimage
-          - os: macos-14
-            target: aarch64-apple-darwin
-            args: --target aarch64-apple-darwin --bundles dmg
-          - os: macos-13
-            target: x86_64-apple-darwin
-            args: --target x86_64-apple-darwin --bundles dmg
+            args: --target aarch64-unknown-linux-gnu
     runs-on: ${{ matrix.os }}
 
     permissions:
@@ -115,16 +109,11 @@ jobs:
         run: |
           node scripts/prepare-sidecars.mjs ${{ matrix.target }}
 
-      - name: Build Tauri App
+      - name: Build Tauri App (Windows installers)
+        if: startsWith(matrix.os, 'windows')
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
           releaseName: AlipanBuddy ${{ github.ref_name }}
@@ -132,22 +121,29 @@ jobs:
           prerelease: true
           args: ${{ matrix.args }}
 
-      - name: Build Linux tarball
+      # Linux skips Tauri's bundler: scripts/build-linux-packages.sh assembles the
+      # tar.gz / deb / rpm from one FHS staging tree (binaries in /usr/lib/alipanbuddy
+      # with a /usr/bin symlink, so the bundled aria2c never collides with the system one).
+      - name: Build Tauri App (Linux binary)
         if: startsWith(matrix.os, 'ubuntu')
-        run: bash scripts/build-linux-tarball.sh ${{ matrix.target }}
+        run: pnpm exec tauri build ${{ matrix.args }} --no-bundle
 
-      - name: Upload Linux tarball to release
+      - name: Build Linux packages
+        if: startsWith(matrix.os, 'ubuntu')
+        run: bash scripts/build-linux-packages.sh ${{ matrix.target }} --require-all
+
+      - name: Upload Linux packages to release
         if: startsWith(matrix.os, 'ubuntu') && startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${GITHUB_REF_NAME}" dist-tarball/*.tar.gz --repo "${GITHUB_REPOSITORY}" --clobber
+        run: gh release upload "${GITHUB_REF_NAME}" dist-linux/*.tar.gz dist-linux/*.deb dist-linux/*.rpm --repo "${GITHUB_REPOSITORY}" --clobber
 
-      - name: Archive Linux tarball (manual run)
+      - name: Archive Linux packages (manual run)
         if: startsWith(matrix.os, 'ubuntu') && !startsWith(github.ref, 'refs/tags/')
         uses: actions/upload-artifact@v4
         with:
-          name: linux-tarball-${{ matrix.target }}
-          path: dist-tarball/*.tar.gz
+          name: linux-packages-${{ matrix.target }}
+          path: dist-linux/*
 
   finalize-release:
     name: Finalize Release

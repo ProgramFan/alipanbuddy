@@ -51,12 +51,9 @@ Download the installer for your platform from GitHub Releases:
 
 | Platform | File |
 |---|---|
-| macOS Apple Silicon | `*_aarch64.dmg` |
-| macOS Intel | `*_x64.dmg` |
 | Windows (x64 / ARM64) | `*-setup.exe` |
 | Debian / Ubuntu | `*.deb` |
 | Fedora / openSUSE | `*.rpm` |
-| Generic Linux (portable) | `*.AppImage` |
 | Generic Linux (tarball) | `alipanbuddy-*-linux-<arch>.tar.gz` |
 
 The Linux tarball follows the FHS layout and ships a desktop entry and icons; extract it and run `install.sh` to install it as a desktop application:
@@ -68,11 +65,13 @@ sudo ./install.sh          # installs into /usr/local; or ./install.sh --user fo
 # uninstall: sudo ./install.sh --uninstall
 ```
 
-If macOS reports the app as damaged, run after verifying the source:
+All three Linux packages share one layout: the app and its bundled aria2c live in
+`/usr/lib/alipanbuddy/` with `/usr/bin/alipanbuddy` as a symlink, so nothing collides
+with the system aria2 package.
 
-```sh
-sudo xattr -d com.apple.quarantine /Applications/alipanbuddy.app
-```
+macOS installers are no longer prebuilt; build one yourself with `pnpm run build:mac`
+(if Gatekeeper blocks it, run `sudo xattr -d com.apple.quarantine /Applications/alipanbuddy.app`
+after verifying the source).
 
 ---
 

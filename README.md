@@ -66,12 +66,9 @@
 
 | 平台 | 推荐文件 |
 |---|---|
-| macOS Apple Silicon | `*_aarch64.dmg` |
-| macOS Intel | `*_x64.dmg` |
 | Windows（x64 / ARM64） | `*-setup.exe` |
 | Debian / Ubuntu | `*.deb` |
 | Fedora / openSUSE | `*.rpm` |
-| Linux 通用（免安装） | `*.AppImage` |
 | Linux 通用（tar 包安装） | `alipanbuddy-*-linux-<arch>.tar.gz` |
 
 Linux tar 包遵循 FHS 目录结构，自带桌面图标与菜单项，解压后运行 `install.sh` 即可作为桌面应用安装：
@@ -83,11 +80,11 @@ sudo ./install.sh          # 安装到 /usr/local；或 ./install.sh --user 安�
 # 卸载：sudo ./install.sh --uninstall
 ```
 
-macOS 如果提示“文件已损坏”或被 Gatekeeper 拦截，可在确认来源可信后执行：
+三种 Linux 包共用同一套目录结构：主程序与自带的 aria2c 位于 `/usr/lib/alipanbuddy/`，
+`/usr/bin/alipanbuddy` 是符号链接，因此不会与系统的 aria2 软件包冲突。
 
-```bash
-sudo xattr -d com.apple.quarantine /Applications/alipanbuddy.app
-```
+macOS 不再提供预构建安装包，可自行构建：`pnpm run build:mac`。构建产物如被 Gatekeeper
+拦截，可在确认来源可信后执行 `sudo xattr -d com.apple.quarantine /Applications/alipanbuddy.app`。
 
 ---
 

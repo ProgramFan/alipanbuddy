@@ -86,6 +86,7 @@ static/engine/            aria2c binaries per platform/arch + aria2.conf (copied
 - **Vitest**: Node environment only, explicit test directory list in `vitest.config.ts` (not glob patterns). Add new test dirs to config.
 - **No auto-updater**: the app is private (every user brings their own Aliyun developer credentials), so there is
   no update check, updater plugin or release feed — do not reintroduce them.
-- **CI**: `.github/workflows/release.yml` runs on `v<major>.<minor>.<patch>` tags (plus manual dispatch): tauri-action matrix →
-  draft GitHub Release; the Linux jobs additionally attach an FHS tarball (`scripts/build-linux-tarball.sh`: `usr/` tree +
-  `install.sh` + desktop entry + icons)
+- **CI**: `.github/workflows/release.yml` runs on `v<major>.<minor>.<patch>` tags (plus manual dispatch) → draft GitHub Release.
+  Windows jobs use tauri-action (nsis); Linux jobs build with `--no-bundle` and package via `scripts/build-linux-packages.sh`
+  (one FHS staging tree → tar.gz + deb + rpm; binaries in `/usr/lib/alipanbuddy` with a `/usr/bin` symlink so the bundled
+  aria2c never collides with the system aria2). No macOS or AppImage builds.
