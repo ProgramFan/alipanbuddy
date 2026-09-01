@@ -1423,12 +1423,6 @@ const onPanDragEnd = (ev: any) => {
   line-height: 26px !important;
 }
 
-.rightmenu.arco-dropdown-list-wrapper,
-.rightmenu .arco-dropdown-list-wrapper {
-  max-height: 300px !important;
-  overflow-y: auto;
-}
-
 .draging .fileitem.selected,
 .draging .griditem.selected {
   opacity: 0.6;
