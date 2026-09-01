@@ -114,7 +114,15 @@ pub fn create_main_window(app: &AppHandle, show: bool) -> tauri::Result<WebviewW
         WindowEvent::CloseRequested { api, .. } => {
             // Save now rather than waiting out the debounce: the window is about to go away.
             save_window_geometry(&handle);
-            if cfg!(target_os = "macos") {
+            // Only the in-app close button used to consult uiExitOnClose, because it routes
+            // through the renderer. Every other way of closing the window — Alt+F4, the window
+            // manager, a session logout — lands here instead, so the setting has to be honoured
+            // in both places or "quit on close" appears to work only some of the time.
+            let exit_on_close = {
+                let user_data = handle.state::<AppState>().user_data.clone();
+                paths::setting_bool(&user_data, "uiExitOnClose")
+            };
+            if cfg!(target_os = "macos") || exit_on_close {
                 // the main window closing ends the app (Electron: mainWindow 'closed' -> app.quit())
                 handle.exit(0);
             } else {
