@@ -55,6 +55,59 @@ stage_tree() {
   install -m 644 "$ROOT/scripts/linux-tarball/alipanbuddy.desktop" "$dest/usr/share/applications/alipanbuddy.desktop"
 }
 
+BINARY="$RELEASE_DIR/alipanbuddy"
+
+# Shared libraries the built binary links against. aria2c is statically linked,
+# so the main binary is the only thing that pulls runtime dependencies in.
+needed_sonames() {
+  if command -v objdump >/dev/null 2>&1; then
+    objdump -p "$BINARY" | awk '/NEEDED/ { print $2 }'
+  elif command -v readelf >/dev/null 2>&1; then
+    readelf -d "$BINARY" | sed -n 's/.*(NEEDED).*\[\(.*\)\]/\1/p'
+  else
+    echo "neither objdump nor readelf found — cannot derive package dependencies" >&2
+    if [ "$REQUIRE_ALL" = 1 ]; then exit 1; fi
+  fi
+}
+
+SONAMES="$(needed_sonames)"
+[ -n "$SONAMES" ] || echo "warning: no NEEDED entries read from $BINARY" >&2
+
+# libayatana-appindicator is opened with dlopen() for the tray icon, so it never
+# shows up in NEEDED — both packages have to name it by hand.
+DEB_EXTRA_DEPENDS="libayatana-appindicator3-1 | libappindicator3-1, hicolor-icon-theme"
+# Used when dpkg-shlibdeps is unavailable; keep in sync with the Ubuntu build image.
+DEB_FALLBACK_DEPENDS="libwebkit2gtk-4.1-0, libjavascriptcoregtk-4.1-0, libgtk-3-0, libglib2.0-0, libsoup-3.0-0, libssl3"
+
+# Maps the binary's sonames onto Debian packages (versioned, from the build image).
+deb_depends() {
+  local resolved=""
+  if command -v dpkg-shlibdeps >/dev/null 2>&1; then
+    local work="$OUT/shlibdeps"
+    rm -rf "$work"
+    mkdir -p "$work/debian"
+    printf 'Source: alipanbuddy\n\nPackage: alipanbuddy\nArchitecture: any\n' > "$work/debian/control"
+    resolved="$(cd "$work" && dpkg-shlibdeps -O --ignore-missing-info "$BINARY" 2>/dev/null | sed -n 's/^shlibs:Depends=//p' || true)"
+    rm -rf "$work"
+  fi
+  if [ -z "$resolved" ]; then
+    echo "warning: dpkg-shlibdeps produced nothing — falling back to the curated Depends list" >&2
+    resolved="$DEB_FALLBACK_DEPENDS"
+  fi
+  echo "$resolved, $DEB_EXTRA_DEPENDS"
+}
+
+# rpm generates its own soname requires, but only when its ELF helpers are installed
+# (they are not, on the Ubuntu build image). Listing them keeps the .rpm honest either way.
+rpm_requires() {
+  local soname
+  for soname in $SONAMES; do
+    echo "Requires: ${soname}()(64bit)"
+  done
+  echo "Requires: (libayatana-appindicator3.so.1()(64bit) or libappindicator3.so.1()(64bit))"
+  echo "Requires: hicolor-icon-theme"
+}
+
 # --- tar.gz (self-installing: install.sh at the root) ---
 NAME="alipanbuddy-$VERSION-linux-$ARCH"
 stage_tree "$OUT/$NAME"
@@ -78,7 +131,7 @@ Installed-Size: $installed_size
 Section: net
 Priority: optional
 Homepage: https://github.com/programfan/alipanbuddy
-Depends: libwebkit2gtk-4.1-0, libgtk-3-0, libayatana-appindicator3-1 | libappindicator3-1
+Depends: $(deb_depends)
 Description: $SUMMARY
  Aliyun Drive desktop client: multi-account login, file and album
  management, sharing, aria2c downloads, encrypted transfers.
@@ -112,6 +165,7 @@ Release: 1
 Summary: $SUMMARY
 License: GPL-3.0-only
 URL: https://github.com/programfan/alipanbuddy
+$(rpm_requires)
 
 %description
 Aliyun Drive desktop client: multi-account login, file and album

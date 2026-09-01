@@ -13,15 +13,40 @@ describe('Tauri bundle configuration', () => {
     expect(config.bundle.externalBin).toContain('binaries/aria2c')
   })
 
-  it('bundles the Linux, Windows and macOS targets', () => {
-    for (const target of ['deb', 'rpm', 'appimage', 'nsis', 'dmg']) {
-      expect(config.bundle.targets).toContain(target)
+  it('leaves the Linux packages to scripts/build-linux-packages.sh', () => {
+    expect(config.bundle.targets).toContain('nsis')
+    for (const target of ['deb', 'rpm', 'appimage']) {
+      expect(config.bundle.targets).not.toContain(target)
+    }
+  })
+})
+
+describe('Linux package dependencies', () => {
+  const script = readFileSync(resolve(process.cwd(), 'scripts/build-linux-packages.sh'), 'utf8')
+
+  it('derives the .deb Depends from the built binary', () => {
+    expect(script).toContain('dpkg-shlibdeps')
+    expect(script).toContain('Depends: $(deb_depends)')
+  })
+
+  it('falls back to the full webkit/gtk/soup/tls dependency set', () => {
+    for (const pkg of ['libwebkit2gtk-4.1-0', 'libjavascriptcoregtk-4.1-0', 'libgtk-3-0', 'libglib2.0-0', 'libsoup-3.0-0', 'libssl3']) {
+      expect(script).toContain(pkg)
     }
   })
 
-  it('does not require Electron runtime libraries for the Linux packages', () => {
-    const depends: string[] = config.bundle?.linux?.deb?.depends || []
-    expect(depends).not.toContain('http-parser')
-    expect(depends).not.toContain('libnotify')
+  it('names the dlopen-only tray library both packages need', () => {
+    expect(script).toContain('libayatana-appindicator3-1 | libappindicator3-1')
+    expect(script).toContain('(libayatana-appindicator3.so.1()(64bit) or libappindicator3.so.1()(64bit))')
+  })
+
+  it('gives the .rpm explicit soname requires instead of trusting rpmbuild on Ubuntu', () => {
+    expect(script).toContain('Requires: ${soname}()(64bit)')
+    expect(script).toContain('$(rpm_requires)')
+  })
+
+  it('does not require Electron runtime libraries', () => {
+    expect(script).not.toContain('http-parser')
+    expect(script).not.toContain('libnotify')
   })
 })

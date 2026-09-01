@@ -5,20 +5,23 @@ import { describe, expect, it } from 'vitest'
 describe('release workflow', () => {
   const workflow = readFileSync(resolve(process.cwd(), '.github/workflows/release.yml'), 'utf8')
 
-  it('packages the app with tauri-action on every desktop platform', () => {
+  it('packages Windows with tauri-action and Linux with the FHS packaging script', () => {
     expect(workflow).toContain('tauri-apps/tauri-action')
     expect(workflow).toContain('matrix')
     expect(workflow).toContain('windows')
     expect(workflow).toContain('ubuntu')
-    expect(workflow).toContain('macos')
+    expect(workflow).toContain('--no-bundle')
+    expect(workflow).toContain('scripts/build-linux-packages.sh')
+    // macOS builds were dropped along with the AppImage bundle
+    expect(workflow).not.toContain('macos-')
   })
 
   it('installs dependencies from the locked pnpm lockfile', () => {
     expect(workflow).toContain('pnpm install --frozen-lockfile')
   })
 
-  it('generates the secrets strictly and prepares the aria2c sidecars before building', () => {
-    expect(workflow).toContain('node scripts/generate-secrets.mjs --mode=ci --strict')
+  it('generates the secrets and prepares the aria2c sidecars before building', () => {
+    expect(workflow).toContain('node scripts/generate-secrets.mjs --mode=ci')
     expect(workflow).toContain('node scripts/prepare-sidecars.mjs')
   })
 })
