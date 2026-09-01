@@ -222,7 +222,7 @@ const onTreeScroll = () => {
 </script>
 
 <template>
-  <div style='width: 100%; height: 100%; overflow: hidden; min-width: 300px' tabindex='-1'
+  <div style='width: 100%; height: 100%; overflow: hidden' tabindex='-1'
        @keydown.tab.prevent='() => true'>
     <div class='headswitch'>
       <div class='bghr'></div>
@@ -287,7 +287,6 @@ const onTreeScroll = () => {
             selectable
             :auto-expand-parent='false'
             show-icon
-            :style="{ marginLeft: '-18px' }"
             :item-height='30'
             :show-line='false'
             :open-animation='{}'
@@ -318,7 +317,7 @@ const onTreeScroll = () => {
             :auto-expand-parent='false'
             show-icon
             :height='quickHeight'
-            :style="{ height: quickHeight + 'px', marginLeft: '-18px' }"
+            :style="{ height: quickHeight + 'px' }"
             :item-height='30'
             :show-line='false'
             :open-animation='{}'
@@ -350,12 +349,11 @@ const onTreeScroll = () => {
 </template>
 
 <style lang="less">
-.treeleft {
-  margin-left: -6px;
-}
-
+/* The folder tree is nudged left so its expander column hugs the sidebar edge;
+   the tag / quick-file panes stay centred on the pane instead. */
 .dirtree {
   height: 100%;
+  margin-left: -6px;
 }
 
 .dirtree .iconfont,
@@ -449,12 +447,12 @@ body[arco-theme='dark'] .ant-tree-node-selected .ant-tree-title > span {
   width: 100%;
   height: 56px;
   overflow: hidden;
-  text-align: center;
+  display: flex;
+  align-items: flex-start;
   justify-content: center;
   position: relative;
   padding-top: 16px;
   padding-bottom: 6px;
-  margin-left: -18px;
   flex-shrink: 0;
   flex-grow: 0;
 }
@@ -469,7 +467,6 @@ body[arco-theme='dark'] .ant-tree-node-selected .ant-tree-title > span {
 }
 
 .headswitch .sw {
-  margin: 0 auto;
   background: var(--md-surface-container-low);
   border-radius: var(--md-shape-full);
   width: fit-content;
@@ -491,6 +488,24 @@ body[arco-theme='dark'] .ant-tree-node-selected .ant-tree-title > span {
   flex-grow: 0;
 }
 
+/* Tag and quick-file rows are leaves: hiding the 24px expander placeholder lets
+   the row use the whole sidebar width, so tags centre in it and the quick-file
+   delete button reaches the right edge. */
+.colortree .ant-tree-switcher-noop,
+.quicktree .ant-tree-switcher-noop {
+  display: none;
+}
+
+.colortree .ant-tree-node-content-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.colortree .ant-tree-node-content-wrapper .ant-tree-title {
+  flex: 0 1 auto;
+}
+
 .quickdrop {
   height: 50px;
   flex-shrink: 0;
@@ -498,7 +513,6 @@ body[arco-theme='dark'] .ant-tree-node-selected .ant-tree-title > span {
   border: 1.5px dashed var(--md-outline-variant);
   border-radius: var(--md-shape-sm);
   display: flex;
-  margin-left: -18px;
   align-items: center;
   justify-content: center;
   color: var(--color-text-3);
