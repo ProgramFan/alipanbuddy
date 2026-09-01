@@ -42,7 +42,6 @@
   },
   "devDependencies": {
     "@arco-design/web-vue": "2.55.1",
-    "@arco-themes/vue-gi-demo": "^0.0.48",
     "@tauri-apps/api": "^2.10.1",
     "@tauri-apps/cli": "^2.11.4",
     "@types/crypto-js": "^4.2.2",

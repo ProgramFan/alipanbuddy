@@ -6,8 +6,8 @@ import { createApp } from 'vue'
 // in global.css, antd.css and every component <style> block). Importing the app
 // before the framework is what forced hundreds of !important declarations: our
 // rules were losing every equal-specificity tie to Arco.
-// Stock Arco, not the vue-gi-demo theme: that theme hardcodes 45 literal radii
-// and 24 literal hex colours, which the token bridge below cannot reach.
+// Stock Arco. The @arco-themes/vue-gi-demo theme this replaced hardcoded 45
+// literal radii and 24 literal hex colours, which the token bridge cannot reach.
 import '@arco-design/web-vue/dist/arco.css'
 import './assets/arco-tokens.css'
 import App from './App.vue'

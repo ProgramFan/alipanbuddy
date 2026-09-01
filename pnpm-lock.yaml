@@ -11,9 +11,6 @@ importers:
       '@arco-design/web-vue':
         specifier: 2.55.1
         version: 2.55.1(vue@3.4.21(typescript@5.9.3))
-      '@arco-themes/vue-gi-demo':
-        specifier: ^0.0.48
-        version: 0.0.48(@arco-design/web-vue@2.55.1(vue@3.4.21(typescript@5.9.3)))
       '@tauri-apps/api':
         specifier: ^2.10.1
         version: 2.11.1
@@ -134,11 +131,6 @@ packages:
     resolution: {integrity: sha512-MI0mteI4B1+UAKAslCrV2zqRKHWwkjLjdOpOLAR36cAbYhtlj7Tel3yAjGHk5zsQ1ODZX60OFfRfl66pq6919A==}
     peerDependencies:
       vue: ^3.1.0
-
-  '@arco-themes/vue-gi-demo@0.0.48':
-    resolution: {integrity: sha512-HUdIvGcKgHtmqMk1aMmRC1klDP2Ki1La/f+TUB4CpqkWNfiKtMmqpGcMyQeX7iNCE04m86DbCJL5v/BqGxcPuw==}
-    peerDependencies:
-      '@arco-design/web-vue': ^2.53.2
 
   '@babel/helper-string-parser@7.29.7':
     resolution: {integrity: sha512-Pb5ijPrZ89GDH8223L4UP8i6QApWxs04RbPQJTeWDV0/keR2E36MeKnyr6LYmUUvqRRI+Iv87SuF1W6ErINzYw==}
@@ -1944,10 +1936,6 @@ snapshots:
       resize-observer-polyfill: 1.5.1
       scroll-into-view-if-needed: 2.2.31
       vue: 3.4.21(typescript@5.9.3)
-
-  '@arco-themes/vue-gi-demo@0.0.48(@arco-design/web-vue@2.55.1(vue@3.4.21(typescript@5.9.3)))':
-    dependencies:
-      '@arco-design/web-vue': 2.55.1(vue@3.4.21(typescript@5.9.3))
 
   '@babel/helper-string-parser@7.29.7': {}
 
