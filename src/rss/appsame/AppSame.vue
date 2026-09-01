@@ -261,7 +261,7 @@ const handleScan = () => {
 }
 .samehash {
   font-size: 14px;
-  color: #8a9ca5;
+  color: var(--md-on-surface-variant);
   margin-bottom: 12px;
 }
 .samefileinfo {

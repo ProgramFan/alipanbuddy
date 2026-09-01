@@ -91,7 +91,7 @@ const handleClickJiaMi = async () => {
 <template>
   <div class="fullscroll rightbg">
     <div class="settingcard">
-      <div class="settinghead">加密或解密</div>
+      <div class="settinghead"><span class="stepnum">1</span>加密或解密</div>
       <div class="settingrow">
         <a-radio-group v-model="mode" type="button" tabindex="-1">
           <a-radio tabindex="-1" value="enc">加密文件</a-radio>
@@ -100,7 +100,7 @@ const handleClickJiaMi = async () => {
         </a-radio-group>
       </div>
       <div class="settingspace"></div>
-      <div class="settinghead">0:选择加密算法</div>
+      <div class="settinghead"><span class="stepnum">2</span>选择加密算法</div>
       <div class="settingrow">
         <a-radio-group v-model="encType" type="radio" tabindex="-1">
           <a-radio tabindex="-1" value="aesctr">AES-CTR</a-radio>
@@ -108,7 +108,7 @@ const handleClickJiaMi = async () => {
         </a-radio-group>
       </div>
       <div class="settingspace"></div>
-      <div class="settinghead">1:选择加密类型</div>
+      <div class="settinghead"><span class="stepnum">3</span>选择加密类型</div>
       <div class="settingrow">
         <a-radio-group v-model="encDecType" type="radio" tabindex="-1" @change="handleDecType">
           <a-radio tabindex="-1" value="xbyEncrypt1">加密</a-radio>
@@ -117,13 +117,13 @@ const handleClickJiaMi = async () => {
       </div>
       <template v-if="mode != 'decName'">
         <div class="settingspace"></div>
-        <div class="settinghead">2:选择输入的文件夹</div>
+        <div class="settinghead"><span class="stepnum">4</span>选择输入的文件夹</div>
         <div class="settingrow">
           <a-input-search tabindex="-1" :readonly="true" button-text="选择文件夹" search-button :model-value="encPath"
                           @search="handleSelectDir(true)" />
         </div>
         <div class="settingspace"></div>
-        <div class="settinghead">3:选择输出的文件夹</div>
+        <div class="settinghead"><span class="stepnum">5</span>选择输出的文件夹</div>
         <div class="settingrow">
           <a-input-search tabindex="-1" :readonly="true" button-text="选择文件夹" search-button :model-value="outPath"
                           @search="handleSelectDir(false)" />
@@ -131,12 +131,12 @@ const handleClickJiaMi = async () => {
       </template>
       <template v-else>
         <div class="settingspace"></div>
-        <div class="settinghead">2:输入加密的内容</div>
+        <div class="settinghead"><span class="stepnum">4</span>输入加密的内容</div>
         <a-textarea v-model='encContent' placeholder='加密的名称' show-word-limit
                     @keydown='(e:any) => e.stopPropagation()' />
         <template v-if="encDecType === 'xbyEncrypt1'">
           <div class="settingspace"></div>
-          <div class="settinghead">3:填写解密的密码</div>
+          <div class="settinghead"><span class="stepnum">5</span>填写解密的密码</div>
           <div class="settingrow">
             <a-input v-model="password" tabindex="-1" :style="{ width: '257px' }"
                      placeholder="没有不填" allow-clear />
@@ -144,13 +144,13 @@ const handleClickJiaMi = async () => {
           </div>
         </template>
         <div class="settingspace"></div>
-        <div class="settinghead">4:解密结果</div>
+        <div class="settinghead"><span class="stepnum">6</span>解密结果</div>
         <a-textarea v-model='decContent' placeholder='解密的名称' show-word-limit
                     @keydown='(e:any) => e.stopPropagation()' disabled />
       </template>
       <div v-if="mode == 'enc'">
         <div class="settingspace"></div>
-        <div class="settinghead">4:选择要加密的格式</div>
+        <div class="settinghead"><span class="stepnum">6</span>选择要加密的格式</div>
         <div class="settingrow">
           <MyTags :value="matchExtList" :maxlen="20" @update:value="handleAddExtList" />
           <div class="helptxt">默认不填，对文件夹内的全部文件，执行一次加密</div>
@@ -158,7 +158,7 @@ const handleClickJiaMi = async () => {
         </div>
         <template v-if="encDecType === 'xbyEncrypt1'">
           <div class="settingspace"></div>
-          <div class="settinghead">5:填写加密的密码</div>
+          <div class="settinghead"><span class="stepnum">7</span>填写加密的密码</div>
           <div class="settingrow">
             <a-input v-model="password" tabindex="-1" :style="{ width: '257px' }" placeholder="可以不填" allow-clear />
             <div class="helptxt">默认不填，解密时无需密码直接解密</div>
@@ -176,7 +176,7 @@ const handleClickJiaMi = async () => {
       </div>
       <div v-else-if="mode == 'dec'">
         <div class="settingspace"></div>
-        <div class="settinghead">4:选择要解密的格式</div>
+        <div class="settinghead"><span class="stepnum">6</span>选择要解密的格式</div>
         <div class="settingrow">
           <MyTags :value="matchExtList" :maxlen="20" @update:value="handleAddExtList" />
           <div class="helptxt">默认不填，对文件夹内的全部文件，执行一次加密</div>
@@ -184,7 +184,7 @@ const handleClickJiaMi = async () => {
         </div>
         <template v-if="encDecType === 'xbyEncrypt1'">
           <div class="settingspace"></div>
-          <div class="settinghead">5:填写解密的密码</div>
+          <div class="settinghead"><span class="stepnum">7</span>填写解密的密码</div>
           <div class="settingrow">
             <a-input v-model="password" tabindex="-1" :style="{ width: '257px' }" placeholder="没有不填" allow-clear />
             <div class="helptxt">如果文件加密时设置了密码，则解密必须提供密码</div>
@@ -204,7 +204,7 @@ const handleClickJiaMi = async () => {
     </div>
 
     <div class="settingcard">
-      <div class="settinghead">:注意事项</div>
+      <div class="settinghead">注意事项</div>
       <div class="settingrow">
         <span class="oporg">警告</span>：仅支持加密文件，不限制文件格式！ <br />
         <span class="oporg">警告</span>：不能把文件夹打包加密成一个文件！ <br />
@@ -212,34 +212,32 @@ const handleClickJiaMi = async () => {
     </div>
 
     <div class="settingcard">
-      <div class="settinghead">:为什么要加密？</div>
+      <div class="settinghead">为什么要加密？</div>
       <div class="settingrow">
         网盘里存放了一些个人数据 <br />
         1.想要保护个人隐私，杜绝可能的AI审查 <br />
         2.对文件安全隐私有一定的需求，防止云盘扫描删除，有实时播放视频和下载的需求<br />
       </div>
       <div class="settingspace"></div>
-      <div class="settinghead">:我直接打压缩包不就好了吗？</div>
+      <div class="settinghead">我直接打压缩包不就好了吗？</div>
       <div class="settingrow">
         1.
-        <a-typography-text type="success">加密的文件，使用神行云盘助手下载时会自动解密</a-typography-text>
+        加密的文件，使用神行云盘助手下载时会自动解密
         <br />
         2.
-        <a-typography-text type="success">加密的视频文件，神行云盘助手支持直接在线播放</a-typography-text>
+        加密的视频文件，神行云盘助手支持直接在线播放
         <br />
         3.
-        <a-typography-text type="success">加密的文件，无法通过其他软件解密查看原始数据</a-typography-text>
+        加密的文件，无法通过其他软件解密查看原始数据
         <br />
       </div>
       <div class="settingspace"></div>
-      <div class="settinghead">:文件加密方式说明</div>
+      <div class="settinghead">文件加密方式说明</div>
       <div class="settingrow">
         1.AES-CTR 更加安全，速度最快。推荐 armV8 以上的 cpu 使用，X86 架构的也推荐在支持 AES 指令的机器使用<br />
         2.RC4-MD5 由于使用 nodejs 进行实现，性能会稍微差一些。适合在 CPU 不支持 AES 指令的设备中使用<br />
         3.
-        <a-typography-text type="danger">
-          加密上传的文件需要设置安全密码解密，私密上传的文件仅加密上传的用户可以解密（和用户相关，无需输入密码）
-        </a-typography-text>
+        <span class="oporg">加密上传的文件需要设置安全密码解密，私密上传的文件仅加密上传的用户可以解密（和用户相关，无需输入密码）</span>
         <br />
         4.被加密的文件可以认为是全世界独一无二的<br />
         <div class="hrspace"></div>
