@@ -143,9 +143,15 @@ body {
     --md-surface-container-low: #f2f3f9;   /* sidebars */
     --md-surface-container: #eceef5;       /* app bar, footer */
     --md-surface-container-high: #ffffff;  /* popups, dialogs */
+    --md-surface-container-highest: #e2e4ee; /* pressed / strongest fill */
     --md-outline-variant: #e1e3ec;         /* hairline dividers */
+    --md-outline: #c7cad6;                 /* input + control borders */
     --md-on-surface: #1b1c22;
     --md-on-surface-variant: #5c5f6c;
+    --md-on-surface-muted: #8b8e9b;        /* secondary labels, placeholders */
+    --md-on-surface-disabled: #b6b9c4;
+    --md-error: #c62828;                   /* destructive warnings only */
+    --md-error-container: rgba(198, 40, 40, 0.10);
     --md-primary-text: rgb(var(--primary-6));
     --md-state-hover: rgba(27, 28, 34, 0.06);
     --md-state-selected: rgba(var(--primary-6), 0.12);
@@ -160,7 +166,6 @@ body {
     --rightbg2: #f2f3f5;
     --listhoverbg: rgba(27, 28, 34, 0.045);
     --listselectbg: rgba(var(--primary-6), 0.10);
-    --color-text-1: var(--color-neutral-9) !important;
     --color-mask-bg: rgba(29, 33, 41, 0.3) !important;
 }
 
@@ -174,9 +179,15 @@ body[arco-theme='dark'] {
     --md-surface-container-low: #1b1c23;
     --md-surface-container: #1f2028;
     --md-surface-container-high: #24252e;
+    --md-surface-container-highest: #2b2c36;
     --md-outline-variant: #2e2f39;
+    --md-outline: #3f4150;
     --md-on-surface: #e4e5ec;
     --md-on-surface-variant: #a4a6b3;
+    --md-on-surface-muted: #7c7f8d;
+    --md-on-surface-disabled: #55586a;
+    --md-error: #ff8a80;
+    --md-error-container: rgba(255, 92, 82, 0.14);
     --md-primary-text: #aab6ff;
     --md-state-hover: rgba(228, 229, 236, 0.08);
     --md-state-selected: rgba(var(--primary-6), 0.22);
@@ -184,11 +195,7 @@ body[arco-theme='dark'] {
     --md-elevation-2: 0 1px 2px rgba(0, 0, 0, 0.30), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
     --md-elevation-3: 0 1px 3px rgba(0, 0, 0, 0.30), 0 4px 8px 3px rgba(0, 0, 0, 0.15);
 
-    --color-text-2: rgba(255, 255, 255, 0.8) !important;
-    color: var(--color-text-2) !important;
-    --color-menu-light-bg: var(--md-surface-container-low) !important;
-    --color-bg-1: #16171d !important;
-    --color-bg-popup: var(--md-surface-container-high) !important;
+    color: var(--color-text-2);
     --color-spin-layer-bg: rgba(51, 51, 51, 0.3) !important;
 
     --foot-bg: var(--md-surface-container);
@@ -198,7 +205,6 @@ body[arco-theme='dark'] {
     --rightbg2: rgba(255, 255, 255, 0.05);
     --listhoverbg: rgba(255, 255, 255, 0.058);
     --listselectbg: rgba(var(--primary-6), 0.16);
-    --color-text-1: rgba(255, 255, 255, 0.8) !important;
     --color-mask-bg: rgba(29, 33, 41, 0.5) !important;
 }
 
@@ -968,8 +974,8 @@ body[arco-theme='dark'] .toppanarea {
 }
 
 .opred {
-    color: #c62828;
-    background: rgba(198, 40, 40, 0.10);
+    color: var(--md-error);
+    background: var(--md-error-container);
 }
 
 .oporg {
@@ -980,11 +986,6 @@ body[arco-theme='dark'] .toppanarea {
 .opblue {
     color: rgb(var(--primary-7));
     background: rgba(var(--primary-6), 0.12);
-}
-
-body[arco-theme='dark'] .opred {
-    color: #ff8a80;
-    background: rgba(255, 92, 82, 0.14);
 }
 
 body[arco-theme='dark'] .oporg {
@@ -1049,6 +1050,17 @@ body .arco-dropdown-list-wrapper {
     max-height: calc(100vh - 120px);
 }
 
+/* Arco's virtual scrollbar latches "is this scrollable?" from a single
+   measurement taken while the popup is still being laid out, so a menu that
+   fits comfortably keeps a full-height thumb that fades in on every hover.
+   Popups use the native scrollbar instead: the browser re-evaluates overflow
+   on its own, so the bar shows up only when there is really something to
+   scroll, and the ::-webkit-scrollbar rules at the top of this file already
+   style it to match the rest of the app. */
+body .arco-trigger-popup .arco-scrollbar-track {
+    display: none;
+}
+
 /* Arco draws its own scrollbar inside popups (dropdowns, selects, cascaders):
    a 15px track with a 9px opaque thumb, more than twice the 4px thumbs the
    webkit rules give every other scrollbar in the app, so any menu long enough
@@ -1084,6 +1096,16 @@ body .arco-scrollbar-thumb-bar {
 body .arco-scrollbar-thumb:hover .arco-scrollbar-thumb-bar,
 body .arco-scrollbar-thumb-dragging .arco-scrollbar-thumb-bar {
     background-color: var(--color-fill-4);
+}
+
+.rightmenu .arco-dropdown-option:first-child,
+.rightmenu.arco-dropdown .arco-dropdown-option:first-child {
+    margin-top: 0 !important;
+}
+
+.rightmenu .arco-dropdown-option:last-child,
+.rightmenu.arco-dropdown .arco-dropdown-option:last-child {
+    margin-bottom: 0 !important;
 }
 
 .rightmenu .arco-dropdown-option,

@@ -1,0 +1,47 @@
+/* ============================================================================
+   Arco -> Material bridge
+   ----------------------------------------------------------------------------
+   Arco's components are built on these CSS variables. Defining them from the
+   --md-* layer is what makes the two systems one system: a component picks up
+   the Material shape, surface and text roles on its own, instead of being
+   repainted class by class with !important.
+
+   Imported from main.ts immediately AFTER the Arco theme, so plain declarations
+   win the cascade and nothing here needs !important. The dark selector is
+   repeated because Arco defines its dark values at body[arco-theme='dark']
+   specificity; the values themselves are theme-agnostic, since every --md-*
+   token already switches with the theme.
+   ========================================================================== */
+
+body,
+body[arco-theme='dark'] {
+    /* ----- shape: Arco ships 2 / 4 / 8px, the Material scale is 4 / 8 / 12 ----- */
+    --border-radius-small: var(--md-shape-xs);
+    --border-radius-medium: var(--md-shape-sm);
+    --border-radius-large: var(--md-shape-md);
+
+    /* ----- surfaces ----- */
+    --color-bg-1: var(--md-surface);
+    --color-bg-5: var(--md-surface-container-high);
+    --color-bg-popup: var(--md-surface-container-high);
+    --color-bg-white: var(--md-surface);
+    --color-menu-light-bg: var(--md-surface-container-low);
+
+    /* ----- text ----- */
+    --color-text-1: var(--md-on-surface);
+    --color-text-2: var(--md-on-surface-variant);
+    --color-text-3: var(--md-on-surface-muted);
+    --color-text-4: var(--md-on-surface-disabled);
+
+    /* ----- outline: Arco spends four greys on one Material role ----- */
+    --color-border-1: var(--md-outline-variant);
+    --color-border-2: var(--md-outline-variant);
+    --color-border-3: var(--md-outline);
+    --color-border-4: var(--md-outline);
+
+    /* ----- fills: subtle backgrounds and state layers ----- */
+    --color-fill-1: var(--md-surface-dim);
+    --color-fill-2: var(--md-surface-container-low);
+    --color-fill-3: var(--md-surface-container);
+    --color-fill-4: var(--md-surface-container-highest);
+}

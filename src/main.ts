@@ -1,10 +1,18 @@
 import './polyfills'
 import './axios'
 import { createApp } from 'vue'
+// Stylesheet order is load-bearing. The framework theme goes first, then the
+// Arco -> Material token bridge, and only then the app's own CSS (App.vue pulls
+// in global.css, antd.css and every component <style> block). Importing the app
+// before the framework is what forced hundreds of !important declarations: our
+// rules were losing every equal-specificity tie to Arco.
+// Stock Arco, not the vue-gi-demo theme: that theme hardcodes 45 literal radii
+// and 24 literal hex colours, which the token bridge below cannot reach.
+import '@arco-design/web-vue/dist/arco.css'
+import './assets/arco-tokens.css'
 import App from './App.vue'
 import ArcoVue from '@arco-design/web-vue'
 import store, { useAppStore, useSettingStore } from './store'
-import '@arco-themes/vue-gi-demo/css/arco.css'
 import message from './utils/message'
 import DebugLog from './utils/debuglog'
 import { PageMain } from './layout/PageMain'
