@@ -56,7 +56,7 @@ Download the installer for your platform from GitHub Releases:
 | Fedora / openSUSE | `*.rpm` |
 | Generic Linux (tarball) | `alipanbuddy-*-linux-<arch>.tar.gz` |
 
-The Linux tarball follows the FHS layout and ships a desktop entry and icons; extract it and run `install.sh` to install it as a desktop application:
+The Linux tarball unpacks as a ready-made FHS prefix (`bin/`, `lib/alipanbuddy/`, `share/`) with a desktop entry and icons; extract it and run `install.sh` to install it as a desktop application:
 
 ```bash
 tar -xzf alipanbuddy-<version>-linux-x86_64.tar.gz

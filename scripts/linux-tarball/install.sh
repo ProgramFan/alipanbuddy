@@ -52,18 +52,18 @@ fi
 mkdir -p "$BINDIR" "$LIBDIR" "$APPDIR"
 # aria2c must stay next to the alipanbuddy executable (the app looks it up there),
 # so both live in lib/alipanbuddy with a bin/ symlink for PATH.
-install -m 755 "$SRC/usr/lib/alipanbuddy/alipanbuddy" "$LIBDIR/alipanbuddy"
-install -m 755 "$SRC/usr/lib/alipanbuddy/aria2c" "$LIBDIR/aria2c"
+install -m 755 "$SRC/lib/alipanbuddy/alipanbuddy" "$LIBDIR/alipanbuddy"
+install -m 755 "$SRC/lib/alipanbuddy/aria2c" "$LIBDIR/aria2c"
 ln -sf ../lib/alipanbuddy/alipanbuddy "$BINDIR/alipanbuddy"
 
 for size in 32x32 128x128 256x256; do
   mkdir -p "$ICONROOT/$size/apps"
-  install -m 644 "$SRC/usr/share/icons/hicolor/$size/apps/alipanbuddy.png" "$ICONROOT/$size/apps/alipanbuddy.png"
+  install -m 644 "$SRC/share/icons/hicolor/$size/apps/alipanbuddy.png" "$ICONROOT/$size/apps/alipanbuddy.png"
 done
 
 # Absolute Exec so the launcher works even when $PREFIX/bin is not on the
 # desktop session's PATH (typical for --user installs).
-sed "s|^Exec=.*|Exec=$BINDIR/alipanbuddy|" "$SRC/usr/share/applications/alipanbuddy.desktop" > "$APPDIR/alipanbuddy.desktop"
+sed "s|^Exec=.*|Exec=$BINDIR/alipanbuddy|" "$SRC/share/applications/alipanbuddy.desktop" > "$APPDIR/alipanbuddy.desktop"
 chmod 644 "$APPDIR/alipanbuddy.desktop"
 
 refresh_caches

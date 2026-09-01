@@ -71,7 +71,8 @@
 | Fedora / openSUSE | `*.rpm` |
 | Linux 通用（tar 包安装） | `alipanbuddy-*-linux-<arch>.tar.gz` |
 
-Linux tar 包遵循 FHS 目录结构，自带桌面图标与菜单项，解压后运行 `install.sh` 即可作为桌面应用安装：
+Linux tar 包本身就是一份 FHS 前缀目录（`bin/`、`lib/alipanbuddy/`、`share/`），自带桌面图标与
+菜单项，解压后运行 `install.sh` 即可作为桌面应用安装：
 
 ```bash
 tar -xzf alipanbuddy-<版本>-linux-x86_64.tar.gz

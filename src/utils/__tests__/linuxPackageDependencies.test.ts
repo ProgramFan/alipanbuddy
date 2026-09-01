@@ -21,6 +21,23 @@ describe('Tauri bundle configuration', () => {
   })
 })
 
+describe('Linux tarball layout', () => {
+  const script = readFileSync(resolve(process.cwd(), 'scripts/build-linux-packages.sh'), 'utf8')
+  const installer = readFileSync(resolve(process.cwd(), 'scripts/linux-tarball/install.sh'), 'utf8')
+
+  it('stages the tarball without the usr/ prefix the packages use', () => {
+    expect(script).toContain('stage_tree "$OUT/$NAME" ""')
+    expect(script).toContain('stage_tree "$DEBROOT"\n')
+    expect(script).toContain('stage_tree "$RPMSRC"\n')
+  })
+
+  it('installs from the prefix-relative tarball tree', () => {
+    expect(installer).not.toContain('$SRC/usr/')
+    expect(installer).toContain('"$SRC/lib/alipanbuddy/alipanbuddy"')
+    expect(installer).toContain('"$SRC/share/applications/alipanbuddy.desktop"')
+  })
+})
+
 describe('Linux package dependencies', () => {
   const script = readFileSync(resolve(process.cwd(), 'scripts/build-linux-packages.sh'), 'utf8')
 
