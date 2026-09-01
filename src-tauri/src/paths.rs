@@ -68,19 +68,44 @@ pub fn write_theme(user_data: &Path, theme: &str) {
     let _ = std::fs::write(user_data.join("theme.json"), format!("{{\"theme\":\"{theme}\"}}"));
 }
 
-pub fn read_window_size(user_data: &Path) -> Option<(f64, f64)> {
-    let v = read_json(&user_data.join("config.json"))?;
-    let w = v.get("width")?.as_f64()?;
-    let h = v.get("height")?.as_f64()?;
-    if w > 0.0 && h > 0.0 {
-        Some((w, h))
-    } else {
-        None
-    }
+/// Main-window geometry remembered across launches (`config.json`). `width`/`height` are logical
+/// pixels (as the Electron build wrote them); `position` is physical, so it can be handed straight
+/// back to the window manager without guessing which monitor's scale factor applied.
+#[derive(Debug, Clone, Copy)]
+pub struct WindowState {
+    pub width: f64,
+    pub height: f64,
+    pub position: Option<(i32, i32)>,
+    pub maximized: bool
 }
 
-pub fn write_window_size(user_data: &Path, width: f64, height: f64) {
-    let _ = std::fs::write(user_data.join("config.json"), format!("{{\"width\":{},\"height\": {}}}", width as u64, height as u64));
+pub fn read_window_state(user_data: &Path) -> Option<WindowState> {
+    let v = read_json(&user_data.join("config.json"))?;
+    let width = v.get("width")?.as_f64()?;
+    let height = v.get("height")?.as_f64()?;
+    if width <= 0.0 || height <= 0.0 {
+        return None;
+    }
+    let x = v.get("x").and_then(|n| n.as_i64());
+    let y = v.get("y").and_then(|n| n.as_i64());
+    let position = match (x, y) {
+        (Some(x), Some(y)) => Some((x as i32, y as i32)),
+        _ => None
+    };
+    Some(WindowState { width, height, position, maximized: v.get("maximized").and_then(|b| b.as_bool()).unwrap_or(false) })
+}
+
+pub fn write_window_state(user_data: &Path, state: &WindowState) {
+    let mut value = serde_json::json!({
+        "width": state.width.round() as i64,
+        "height": state.height.round() as i64,
+        "maximized": state.maximized
+    });
+    if let Some((x, y)) = state.position {
+        value["x"] = serde_json::json!(x);
+        value["y"] = serde_json::json!(y);
+    }
+    let _ = std::fs::write(user_data.join("config.json"), value.to_string());
 }
 
 pub fn read_setting(user_data: &Path) -> Option<serde_json::Value> {

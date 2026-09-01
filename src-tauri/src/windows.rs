@@ -5,9 +5,10 @@ use std::path::PathBuf;
 
 use serde_json::json;
 use tauri::window::Color;
-use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent};
+use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent};
 
 use crate::paths;
+use crate::paths::WindowState;
 use crate::state::{AppState, PageContext};
 
 pub const APP_UA: &str = "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) aDrive/4.12.0 Chrome/108.0.5359.215 Electron/22.3.24 Safari/537.36";
@@ -25,7 +26,13 @@ fn background(theme: &str) -> Color {
     }
 }
 
-fn app_window(app: &AppHandle, label: &str, hash: &str, width: f64, height: f64, center: bool, theme: &str, visible: bool) -> tauri::Result<WebviewWindow> {
+/// Where a new window starts out. `Default` leaves it to the window manager (hidden workers).
+enum Placement {
+    Default,
+    Center
+}
+
+fn app_window(app: &AppHandle, label: &str, hash: &str, width: f64, height: f64, placement: Placement, theme: &str, visible: bool) -> tauri::Result<WebviewWindow> {
     let url = WebviewUrl::App(PathBuf::from(format!("index.html#{hash}")));
     let mut builder = WebviewWindowBuilder::new(app, label, url)
         .title("神行云盘助手")
@@ -36,7 +43,7 @@ fn app_window(app: &AppHandle, label: &str, hash: &str, width: f64, height: f64,
         .shadow(width > 680.0)
         .background_color(background(theme))
         .user_agent(APP_UA);
-    if center {
+    if let Placement::Center = placement {
         builder = builder.center();
     }
     builder.build()
@@ -72,13 +79,30 @@ fn default_size(app: &AppHandle) -> (f64, f64) {
     (width, height)
 }
 
+/// A remembered position is only reused while the window's top-left still lands on a connected
+/// monitor, so unplugging the screen it was on doesn't park the app out of reach. Enough of the
+/// window has to stay inside for its (undecorated) title bar to be grabbable.
+fn is_on_screen(app: &AppHandle, (x, y): (i32, i32)) -> bool {
+    let Ok(monitors) = app.available_monitors() else { return false };
+    monitors.iter().any(|monitor| {
+        let origin = monitor.position();
+        let size = monitor.size();
+        x + 120 >= origin.x && x + 120 <= origin.x + size.width as i32 && y >= origin.y && y + 40 <= origin.y + size.height as i32
+    })
+}
+
 pub fn create_main_window(app: &AppHandle, show: bool) -> tauri::Result<WebviewWindow> {
     let state = app.state::<AppState>();
     let user_data = state.user_data.clone();
-    let (width, height) = paths::read_window_size(&user_data).unwrap_or_else(|| default_size(app));
+    let saved = paths::read_window_state(&user_data);
+    let (width, height) = saved.map(|s| (s.width, s.height)).unwrap_or_else(|| default_size(app));
     let theme = paths::read_theme(&user_data);
-    let win = app_window(app, MAIN, "page=PageMain", width, height, true, &theme, false)?;
-    if paths::setting_bool(&user_data, "uiLaunchMaximized") {
+    let win = app_window(app, MAIN, "page=PageMain", width, height, Placement::Center, &theme, false)?;
+    // The window is still hidden here, so moving it onto its remembered spot costs no visible jump.
+    if let Some(position) = saved.and_then(|s| s.position).filter(|p| is_on_screen(app, *p)) {
+        let _ = win.set_position(PhysicalPosition::new(position.0, position.1));
+    }
+    if saved.map(|s| s.maximized).unwrap_or(false) || paths::setting_bool(&user_data, "uiLaunchMaximized") {
         let _ = win.maximize();
     }
     if show {
@@ -88,6 +112,8 @@ pub fn create_main_window(app: &AppHandle, show: bool) -> tauri::Result<WebviewW
     let handle = app.clone();
     win.on_window_event(move |event| match event {
         WindowEvent::CloseRequested { api, .. } => {
+            // Save now rather than waiting out the debounce: the window is about to go away.
+            save_window_geometry(&handle);
             if cfg!(target_os = "macos") {
                 // the main window closing ends the app (Electron: mainWindow 'closed' -> app.quit())
                 handle.exit(0);
@@ -98,7 +124,7 @@ pub fn create_main_window(app: &AppHandle, show: bool) -> tauri::Result<WebviewW
                 }
             }
         }
-        WindowEvent::Resized(_) => schedule_size_save(&handle),
+        WindowEvent::Resized(_) | WindowEvent::Moved(_) => schedule_geometry_save(&handle),
         WindowEvent::ThemeChanged(theme) => {
             let dark = matches!(theme, tauri::Theme::Dark);
             let _ = handle.emit("setTheme", json!({ "dark": dark }));
@@ -108,29 +134,48 @@ pub fn create_main_window(app: &AppHandle, show: bool) -> tauri::Result<WebviewW
     Ok(win)
 }
 
-fn schedule_size_save(app: &AppHandle) {
+/// Resize / move events arrive in bursts; only the last one in a burst reaches `config.json`.
+fn schedule_geometry_save(app: &AppHandle) {
     let state = app.state::<AppState>();
     let now = std::time::Instant::now();
     *state.last_resize.lock() = now;
     let handle = app.clone();
     tauri::async_runtime::spawn(async move {
-        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-        let state = handle.state::<AppState>();
-        if *state.last_resize.lock() != now {
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        if *handle.state::<AppState>().last_resize.lock() != now {
             return;
         }
-        let Some(win) = main_window(&handle) else { return };
-        if win.is_maximized().unwrap_or(false) || win.is_minimized().unwrap_or(false) || win.is_fullscreen().unwrap_or(false) {
-            return;
-        }
-        if let (Ok(size), Ok(scale)) = (win.inner_size(), win.scale_factor()) {
-            let w = size.width as f64 / scale;
-            let h = size.height as f64 / scale;
-            if w > 0.0 && h > 0.0 {
-                paths::write_window_size(&state.user_data, w, h);
-            }
-        }
+        save_window_geometry(&handle);
     });
+}
+
+/// Remembers the main window's size and position. A maximised window keeps whatever restore
+/// geometry is already on disk and only records that it was maximised; fullscreen is left alone.
+pub fn save_window_geometry(app: &AppHandle) {
+    let Some(win) = main_window(app) else { return };
+    if win.is_minimized().unwrap_or(false) || win.is_fullscreen().unwrap_or(false) {
+        return;
+    }
+    let user_data = app.state::<AppState>().user_data.clone();
+    if win.is_maximized().unwrap_or(false) {
+        let mut previous = paths::read_window_state(&user_data).unwrap_or_else(|| {
+            let (width, height) = default_size(app);
+            WindowState { width, height, position: None, maximized: false }
+        });
+        if !previous.maximized {
+            previous.maximized = true;
+            paths::write_window_state(&user_data, &previous);
+        }
+        return;
+    }
+    let (Ok(size), Ok(scale)) = (win.inner_size(), win.scale_factor()) else { return };
+    let width = size.width as f64 / scale;
+    let height = size.height as f64 / scale;
+    if width <= 0.0 || height <= 0.0 {
+        return;
+    }
+    let position = win.outer_position().ok().map(|p| (p.x, p.y));
+    paths::write_window_state(&user_data, &WindowState { width, height, position, maximized: false });
 }
 
 /// `WebOpenWindow({ page: 'PageImage', data, theme })`
@@ -144,7 +189,7 @@ pub fn open_page_window(app: &AppHandle, page: String, data: serde_json::Value, 
     let width = main_w.max(1080.0);
     let dark = main_window(app).and_then(|w| w.theme().ok()).map(|t| matches!(t, tauri::Theme::Dark)).unwrap_or(false);
     state.page_contexts.lock().insert(label.clone(), PageContext { page: page.clone(), data, theme: theme.clone(), dark, window_type: "preview".into() });
-    let win = app_window(app, &label, &format!("page={page}&label={label}"), width, main_h, true, &theme, true)?;
+    let win = app_window(app, &label, &format!("page={page}&label={label}"), width, main_h, Placement::Center, &theme, true)?;
     let _ = win.set_title("预览窗口");
     let handle = app.clone();
     let label_for_event = label.clone();
@@ -166,7 +211,7 @@ pub fn ensure_transfer_worker(app: &AppHandle, kind: &str) -> tauri::Result<()> 
         return Ok(());
     }
     let _ = app.emit_to(MAIN, "worker-reset", json!({ "kind": kind }));
-    let win = app_window(app, kind, &format!("page=PageWorker&type={kind}"), 10.0, 10.0, false, "dark", false)?;
+    let win = app_window(app, kind, &format!("page=PageWorker&type={kind}"), 10.0, 10.0, Placement::Default, "dark", false)?;
     let _ = win.set_title(if kind == "upload" { "神行云盘助手上传进程" } else { "神行云盘助手下载进程" });
     let handle = app.clone();
     let kind_owned = kind.to_string();

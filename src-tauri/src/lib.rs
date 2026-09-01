@@ -145,6 +145,8 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             RunEvent::Reopen { .. } => windows::show_main(app),
             RunEvent::Exit => {
+                // covers the quit paths that never raise CloseRequested (tray quit, quit_app)
+                windows::save_window_geometry(app);
                 let handle = app.clone();
                 tauri::async_runtime::block_on(commands::proxy::stop_server(&handle));
                 aria::shutdown_blocking(app);

@@ -1,6 +1,20 @@
 <script lang="ts">
-import { defineComponent, ref, watchEffect } from 'vue'
+import { defineComponent, ref, watch } from 'vue'
 import { useWinStore, WinState } from '../store'
+
+/** Smallest sidebar width we are willing to restore: below this the divider is hard to grab. */
+const OPEN_MIN_WIDTH = 160
+const RIGHT_MIN_WIDTH = 220
+const DEFAULT_WIDTH = 240
+
+function readStoredSize(key: string): number {
+  try {
+    const raw = parseInt(localStorage.getItem(key) || '', 10)
+    return Number.isFinite(raw) && raw >= OPEN_MIN_WIDTH ? raw : 0
+  } catch {
+    return 0
+  }
+}
 
 export default defineComponent({
   props: {
@@ -9,38 +23,53 @@ export default defineComponent({
       required: false,
       default: true
     },
+    /** localStorage key the divider position is remembered under. */
+    storageKey: {
+      type: String,
+      required: false,
+      default: 'mysplit-pan'
+    }
   },
   emits: ['splitSize'],
   setup(props) {
     const leftMinWidth = 0
-    const rightMinWidth = 220
     const winStore = useWinStore()
     const bodyWidth = ref(Math.max(winStore.width, 900))
     const splitMoveing = ref(false)
-    const splitSize = ref(bodyWidth.value < 900 ? '220px' : '240px')
-    const splitSizeMax = ref(bodyWidth.value - rightMinWidth)
+    const splitSizeMax = ref(bodyWidth.value - RIGHT_MIN_WIDTH)
+
+    const clamp = (size: number) => Math.min(Math.max(size, OPEN_MIN_WIDTH), Math.max(splitSizeMax.value, OPEN_MIN_WIDTH))
+    /** Width the sidebar returns to when shown — restored from the last drag. */
+    const openSize = ref(clamp(readStoredSize(props.storageKey) || DEFAULT_WIDTH))
+    const splitSize = ref(props.visible ? openSize.value + 'px' : '0px')
 
     winStore.$subscribe((_m: any, state: WinState) => {
       const width = state.width
-      if (width > 0 && bodyWidth.value != width) {
-        bodyWidth.value = width
-        splitSizeMax.value = width - rightMinWidth
-        const tempSize = parseInt(splitSize.value, 10)
-        if (tempSize < leftMinWidth) {
-          splitSize.value = leftMinWidth.toString() + 'px'
-        } else if (tempSize > leftMinWidth && tempSize > splitSizeMax.value) {
-          splitSize.value = splitSizeMax.value.toString() + 'px'
-        }
-      }
+      if (width <= 0 || bodyWidth.value == width) return
+      bodyWidth.value = width
+      splitSizeMax.value = width - RIGHT_MIN_WIDTH
+      openSize.value = clamp(openSize.value)
+      if (props.visible && parseInt(splitSize.value, 10) > splitSizeMax.value) splitSize.value = openSize.value + 'px'
     })
-    watchEffect(() => {
-      if(props.visible){
-        splitSize.value = bodyWidth.value < 900 ? '220px' : '240px'
-      }else {
-        splitSize.value = '0px'
-      }
+
+    watch(() => props.visible, (visible) => {
+      splitSize.value = visible ? openSize.value + 'px' : '0px'
     })
-    return { splitSize, leftMinWidth, splitSizeMax, splitMoveing,  }
+
+    const onMoveEnd = () => {
+      splitMoveing.value = false
+      if (!props.visible) return
+      const size = parseInt(splitSize.value, 10)
+      if (!Number.isFinite(size)) return
+      openSize.value = clamp(size)
+      try {
+        localStorage.setItem(props.storageKey, String(openSize.value))
+      } catch {
+        /* private mode / storage disabled: the divider just won't be remembered */
+      }
+    }
+
+    return { splitSize, leftMinWidth, splitSizeMax, splitMoveing, onMoveEnd }
   }
 })
 </script>
@@ -48,7 +77,7 @@ export default defineComponent({
 <template>
   <a-split v-model:size="splitSize" class="MySplit" style="height: 100%; width: 100%;"
            :min="leftMinWidth" :max="splitSizeMax" tabindex="-1"
-           @move-start="splitMoveing = true" @move-end="splitMoveing = false">
+           @move-start="splitMoveing = true" @move-end="onMoveEnd">
     <template #first>
       <slot name="first">first</slot>
     </template>
