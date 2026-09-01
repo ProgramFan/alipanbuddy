@@ -1049,6 +1049,43 @@ body .arco-dropdown-list-wrapper {
     max-height: calc(100vh - 120px);
 }
 
+/* Arco draws its own scrollbar inside popups (dropdowns, selects, cascaders):
+   a 15px track with a 9px opaque thumb, more than twice the 4px thumbs the
+   webkit rules give every other scrollbar in the app, so any menu long enough
+   to scroll grew a bar far heavier than the rest of the UI. Match the webkit
+   geometry and colours instead.
+
+   Not scoped to #xbybody — these popups are teleported to <body>, out of its
+   reach — and body-prefixed because arco.css is injected after global.css, so
+   an equal-specificity rule would lose. */
+body .arco-scrollbar-track-direction-vertical {
+    width: 8px;
+}
+
+body .arco-scrollbar-track-direction-horizontal {
+    height: 8px;
+}
+
+body .arco-scrollbar-thumb-direction-vertical .arco-scrollbar-thumb-bar {
+    width: 4px;
+    margin: 0 2px;
+}
+
+body .arco-scrollbar-thumb-direction-horizontal .arco-scrollbar-thumb-bar {
+    height: 4px;
+    margin: 2px 0;
+}
+
+body .arco-scrollbar-thumb-bar {
+    background-color: var(--color-fill-3);
+    border-radius: var(--md-shape-full);
+}
+
+body .arco-scrollbar-thumb:hover .arco-scrollbar-thumb-bar,
+body .arco-scrollbar-thumb-dragging .arco-scrollbar-thumb-bar {
+    background-color: var(--color-fill-4);
+}
+
 .rightmenu .arco-dropdown-option,
 .rightmenu.arco-dropdown .arco-dropdown-option {
     width: 100% !important;

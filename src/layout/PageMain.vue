@@ -1116,10 +1116,6 @@ body > .arco-trigger-popup :where(.arco-dropdown-option, .arco-select-option, .a
   font-size: var(--app-type-control) !important;
 }
 
-#xbybody .arco-scrollbar-thumb {
-  background: var(--color-fill-3) !important;
-}
-
 @media (prefers-reduced-motion: reduce) {
   #xbybody *,
   #xbybody *::before,
