@@ -240,7 +240,7 @@ const handleDeleteSelectedLink = (delby: any) => {
       okText: '继续',
       bodyStyle: { minWidth: '340px' },
       content: () => h('div', {
-        style: 'color: red',
+        style: 'color: var(--md-error)',
         innerText: '该操作不可逆，是否继续？'
       }),
       onOk: async () => {

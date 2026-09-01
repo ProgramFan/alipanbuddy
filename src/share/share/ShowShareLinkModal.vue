@@ -640,8 +640,8 @@ async function getNodeAllFiles(share_id: string, share_token: string, file_id: s
 }
 
 .sharetree .sharetitleleft .filter-text {
-  color: red;
-  font-weight: bold;
+  color: rgb(var(--primary-6));
+  font-weight: 600;
 }
 
 .sharetree .sharetitleright {

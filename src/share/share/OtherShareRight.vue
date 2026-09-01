@@ -252,7 +252,7 @@ const handleDeleteSelectedLink = (delby: any) => {
       okText: t('share.continue'),
       bodyStyle: { minWidth: '340px' },
       content: () => h('div', {
-        style: 'color: red',
+        style: 'color: var(--md-error)',
         innerText: t('share.irreversible')
       }),
       onOk: async () => {

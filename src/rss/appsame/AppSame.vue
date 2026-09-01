@@ -183,7 +183,7 @@ const handleScan = () => {
       <a-row justify="space-between" align="center" style="margin: 12px; height: 28px; flex-grow: 0; flex-shrink: 0; flex-wrap: nowrap; overflow: hidden">
         <span v-if="scanLoaded" class="checkedInfo">已选中 {{ checkedCount }} 个文件 {{ humanSize(checkedSize) }}</span>
         <span v-else-if="scanLoading" class="checkedInfo">正在列出文件 {{ Processing }} </span>
-        <span v-else class="checkedInfo">手机APP--容量管理--重复文件清理(<span style='color: crimson'>仅阿里云盘会员可用</span>)</span>
+        <span v-else class="checkedInfo">手机APP--容量管理--重复文件清理(<span class="oporg">仅阿里云盘会员可用</span>)</span>
         <div style="flex: auto"></div>
 
         <a-button v-if="scanLoaded" size="small" tabindex="-1" style="margin-right: 12px" @click="handleReset">取消</a-button>

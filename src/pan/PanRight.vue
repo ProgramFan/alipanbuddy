@@ -613,19 +613,19 @@ const onPanDragEnd = (ev: any) => {
     <DirTopPath />
     <div style='flex-grow: 1'></div>
     <div v-if="panfileStore.SelectDirType == 'trash'" class='toppantip'>
-      <span style='color: crimson'>{{ t('pan.trashTipAliyun') }}</span>
+      <span>{{ t('pan.trashTipAliyun') }}</span>
     </div>
     <div v-if="panfileStore.SelectDirType == 'recover'" class='toppantip'>
-      <span style='color: crimson'>{{ t('pan.recoverTip') }}</span>
+      <span>{{ t('pan.recoverTip') }}</span>
     </div>
     <div v-if="panfileStore.SelectDirType == 'favorite'" class='toppantip'>
-      <span style='color: crimson'>{{ t('pan.favoriteTip') }}</span>
+      <span>{{ t('pan.favoriteTip') }}</span>
     </div>
     <div v-if="panfileStore.SelectDirType == 'color'" class='toppantip'>
-      <span style='color: crimson'>{{ t('pan.colorTip') }}</span>
+      <span>{{ t('pan.colorTip') }}</span>
     </div>
     <div v-if="panfileStore.SelectDirType == 'video'" class='toppantip'>
-      <span style='color: crimson'>{{ t('pan.videoTip') }}</span>
+      <span>{{ t('pan.videoTip') }}</span>
     </div>
   </div>
   <div style='height: 14px'></div>
