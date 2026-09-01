@@ -482,6 +482,11 @@ const onRowItemDragStart = (ev: any, file_id: string) => {
   }
 
   if (ev.dataTransfer) {
+    // WebKit refuses to complete a drop when the drag data store is left empty:
+    // dragenter/dragover fire, but no target ever accepts. Chromium (the Electron
+    // build this came from) tolerated it, which is why dragging rows onto the
+    // folder tree or the shortcuts box stopped working after the Tauri port.
+    ev.dataTransfer.setData('text/plain', files.map((file) => file.name).join('\n'))
     document.body.appendChild(dragImage)
     ev.dataTransfer.setDragImage(dragImage, -16, 10)
     ev.dataTransfer.effectAllowed = 'copyMove'
