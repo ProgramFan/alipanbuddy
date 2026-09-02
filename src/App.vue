@@ -10,6 +10,7 @@ import './assets/global.css'
 import './assets/fileitem.css'
 
 const PageImage = defineAsyncComponent(() => import('./layout/PageImage.vue'))
+const PageOffice = defineAsyncComponent(() => import('./layout/PageOffice.vue'))
 
 export default {
   setup() {
@@ -19,6 +20,7 @@ export default {
     return () => {
       let page
       if (appStore.appPage == 'PageImage') page = h(PageImage)
+      else if (appStore.appPage == 'PageOffice') page = h(PageOffice)
       else page = h(PageMain)
       return h(ConfigProvider, { locale: arcoLocale.value }, () => page)
     }

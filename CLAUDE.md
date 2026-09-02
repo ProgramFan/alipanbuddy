@@ -27,9 +27,9 @@ Linux build prerequisites: `webkit2gtk4.1-devel gtk3-devel libsoup3-devel librsv
 
 AlipanBuddy (神行云盘助手, forked from BoxPlayer) is an **Aliyun Drive–only** desktop client. Supported functionality:
 multi-account login, file/album management, sharing, upload/download (aria2c), file encryption/decryption and the add-on
-tools under `src/rss`. Other cloud providers, media library/servers, players, readers, AI agents and the clouddrive-cli were
-removed on purpose — do not reintroduce provider abstractions or feature gates for them. Planned follow-up: office/pdf
-preview through Aliyun's WebOffice endpoint (no video player).
+tools under `src/rss`, plus office/pdf preview through Aliyun's WebOffice viewer (`PageOffice`, SDK loaded on demand).
+Other cloud providers, media library/servers, players, readers, AI agents and the clouddrive-cli were removed on purpose —
+do not reintroduce provider abstractions, feature gates for them, or a video player.
 
 Platforms: Windows (x64, arm64 via the x64 aria2c) and Linux (x64, arm64). macOS builds are dropped for now; the code
 must stay platform-agnostic so they can return (feature detection, no `platform ===` gates unless a native capability
@@ -64,7 +64,7 @@ src/                      Vue 3 renderer (entry: src/main.ts → App.vue → lay
   module/flow-enc/        Encrypted file-name codec (ciphers themselves run in Rust)
   user/                   Login (Tauri `login` window with navigation interception), token refresh, account UI
   setting/                Settings pages + settingstore (setting.config preloaded by the backend)
-  layout/                 PageMain shell, PageImage viewer, shared widgets
+  layout/                 PageMain shell, PageImage viewer, PageOffice (WebOffice/pdf preview), shared widgets
   store/                  Pinia stores; selectableList.ts is the factory behind every selectable list store
   utils/                  Shared, feature-agnostic helpers (db, path shim, mime, modal registry, openfile)
   i18n/                   zh-CN / en-US strings (hand-rolled t(); every key must be referenced)
@@ -83,7 +83,7 @@ docs/releases/            release notes, picked up by the release workflow
   headers are not an issue). Add new native capabilities as `#[tauri::command]`s in `src-tauri/src/commands/`.
 - **Renderer ↔ Rust contract**: command names/args in `src-tauri/src/lib.rs` `generate_handler!`; events
   (`setTheme`, `sha1-progress`, `upload-progress`, `proxy-need-url`, `login-navigation`, `site-navigation`, ...)
-- **Windows**: `main`, `preview-*` (PageImage), `login`, `site`; routed by `index.html#page=...` (see `parsePageRoute`
+- **Windows**: `main`, `preview-*` (PageImage, PageOffice), `login`, `site`; routed by `index.html#page=...` (see `parsePageRoute`
   in `src/tauri/bridge.ts`). Uploads and downloads run in the main window; there are no hidden worker windows.
 - **Formatting**: single quotes, no semicolons, 260 printWidth, no trailing commas, LF, `sortAttributes: true` in Vue
 - **TypeScript**: strict mode, `noUnusedLocals`/`noUnusedParameters`, ESNext target, node moduleResolution

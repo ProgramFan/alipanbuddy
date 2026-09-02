@@ -111,6 +111,11 @@ async function bootstrap() {
     if (ctx?.theme) appStore.toggleTheme(ctx.theme)
     appStore.pageImage = ctx?.data
     appStore.togglePage('PageImage')
+  } else if (route.page === 'PageOffice') {
+    const ctx = await getPageContext()
+    if (ctx?.theme) appStore.toggleTheme(ctx.theme)
+    appStore.pageOffice = ctx?.data
+    appStore.togglePage('PageOffice')
   } else {
     installProxyUrlResolver()
     installDragDropUpload()

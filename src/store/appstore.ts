@@ -13,6 +13,15 @@ export interface IPageImage {
   imageList: IAliGetFileModel[]
 }
 
+export interface IPageOffice {
+  user_id: string
+  drive_id: string
+  file_id: string
+  file_name: string
+  preview_url: string
+  access_token: string
+}
+
 interface AppState {
   appTheme: string
 
@@ -26,6 +35,7 @@ interface AppState {
 
 
   pageImage?: IPageImage
+  pageOffice?: IPageOffice
 }
 
 const useAppStore = defineStore('app', {

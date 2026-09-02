@@ -20,7 +20,7 @@ function readMessages(): Record<string, Record<string, string>> {
 
 /** Every file tracked under src/, minus the i18n module itself (a key may not count as used by its own declaration). */
 function trackedSourceFiles(): string[] {
-  const listed = execFileSync('git', ['ls-files', 'src'], { cwd: repoRoot, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 })
+  const listed = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', 'src'], { cwd: repoRoot, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 })
   return listed
     .split('\n')
     .map((line) => line.trim())

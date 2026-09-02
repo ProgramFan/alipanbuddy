@@ -3,13 +3,15 @@ import AliArchive from '../aliapi/archive'
 import AliFile from '../aliapi/file'
 import ServerHttp from '../aliapi/server'
 import { ITokenInfo, usePanFileStore, usePanTreeStore, useSettingStore, useUserStore } from '../store'
-import { IPageImage } from '../store/appstore'
+import { IPageImage, IPageOffice } from '../store/appstore'
 import UserDAL, { resolveDriveFileToken } from '../user/userdal'
 import { clickWait } from './debounce'
 import DebugLog from './debuglog'
 import message from './message'
 import { modalArchive, modalArchivePassword } from './modal'
 import { openPageWindow } from '../tauri/app'
+import { isOfficePreviewFile } from './officefile'
+import { t } from '../i18n'
 
 async function resolveTokenForFile(file: IAliGetFileModel): Promise<ITokenInfo | undefined> {
   return resolveDriveFileToken(file as IAliGetFileModel & { user_id?: string }, useUserStore().user_id)
@@ -28,6 +30,14 @@ export async function menuOpenFile(file: IAliGetFileModel, password: string = ''
   }
   if (file.category == 'image' || file.category == 'image2') {
     await Image(file, password)
+    return
+  }
+  if (isOfficePreviewFile(file.ext)) {
+    if (file.description && file.description.includes('xbyEncrypt')) {
+      message.error(t('office.encrypted'))
+      return
+    }
+    await Office(file)
     return
   }
   message.info('该文件类型不支持预览，请下载后查看')
@@ -83,6 +93,33 @@ async function Archive(drive_id: string, file_id: string, file_name: string, par
     message.error('在线解压失败 ' + resp.state + '，操作取消')
     DebugLog.mSaveDanger('在线解压失败 ' + resp.state, drive_id + ' ' + file_id)
   }
+}
+
+async function Office(file: IAliGetFileModel): Promise<void> {
+  if (file.icon == 'iconweifa') {
+    message.error('违规文件，操作取消')
+    return
+  }
+  const token = await resolveTokenForFile(file)
+  if (!token || !token.access_token) {
+    message.error('在线预览失败 账号失效，操作取消')
+    return
+  }
+  message.loading('加载中...', 2)
+  const data = await AliFile.ApiOfficePreViewUrl(token.user_id, file.drive_id, file.file_id)
+  if (!data) {
+    message.error(t('office.linkFailed'))
+    return
+  }
+  const pageOffice: IPageOffice = {
+    user_id: token.user_id,
+    drive_id: file.drive_id,
+    file_id: file.file_id,
+    file_name: file.name,
+    preview_url: data.preview_url,
+    access_token: data.access_token
+  }
+  openPageWindow('PageOffice', pageOffice, 'light')
 }
 
 async function Image(file: IAliGetFileModel, password: string = ''): Promise<void> {

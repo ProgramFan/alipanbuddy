@@ -21,6 +21,7 @@ AlipanBuddy (神行云盘助手) is a fork of [BoxPlayer](https://github.com/gao
 - Multiple accounts; browse backup / resource / album / safe-box drives.
 - File management: create, rename, move, copy, favorites, recycle bin, search, properties, archive extraction.
 - Album management and an image viewer.
+- Online preview of Office documents and PDFs (Aliyun Drive's WebOffice viewer).
 - Sharing: create share links, import other people's shares, share history, quick transfer, following.
 - Upload / download: multi-connection aria2c downloads, resume, encrypted upload / decrypted download.
 - Add-on tools: file encryption / decryption, Ximalaya decryption, empty-folder cleanup, duplicate / large-file scan, violation scan, batch album copy.

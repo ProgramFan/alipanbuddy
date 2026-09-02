@@ -7,7 +7,23 @@ import { IDownloadUrl } from './models'
 import { DecodeEncName, GetDriveType } from './utils'
 import UserDAL from '../user/userdal'
 
+export interface IOfficePreViewUrl {
+  preview_url: string
+  access_token: string
+}
+
 export default class AliFile {
+  /** WebOffice preview page + the token the viewer expects through the SDK (private web API; no OpenAPI equivalent). */
+  static async ApiOfficePreViewUrl(user_id: string, drive_id: string, file_id: string): Promise<IOfficePreViewUrl | undefined> {
+    if (!user_id || !drive_id || !file_id) return undefined
+    const resp = await AliHttp.Post('v2/file/get_office_preview_url', { drive_id, file_id, url_expire_sec: 14400 }, user_id, '')
+    if (AliHttp.IsSuccess(resp.code) && resp.body?.preview_url) {
+      return { preview_url: resp.body.preview_url, access_token: resp.body.access_token || '' }
+    }
+    if (!AliHttp.HttpCodeBreak(resp.code)) DebugLog.mSaveWarning('ApiOfficePreViewUrl err=' + file_id + ' ' + (resp.code || ''), resp.body)
+    return undefined
+  }
+
 
   static async ApiFileInfo(user_id: string, drive_id: string, file_id: string, ispic: boolean = false): Promise<any | undefined> {
     if (!drive_id || !file_id) return undefined
