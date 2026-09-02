@@ -70,8 +70,19 @@
 | Windows（x64 / ARM64） | `*-setup.exe` |
 | Debian / Ubuntu | `*.deb` |
 | Fedora / openSUSE | `*.rpm` |
+| Linux 通用（tar 包安装） | `alipanbuddy-*-linux-<arch>.tar.gz` |
 
-两种 Linux 包共用同一套目录结构：主程序与自带的 aria2c 位于 `/usr/lib/alipanbuddy/`，
+Linux tar 包本身就是一份 FHS 前缀目录（`bin/`、`lib/alipanbuddy/`、`share/`），自带桌面图标与
+菜单项，解压后运行 `install.sh` 即可作为桌面应用安装：
+
+```bash
+tar -xzf alipanbuddy-<版本>-linux-x86_64.tar.gz
+cd alipanbuddy-<版本>-linux-x86_64
+sudo ./install.sh          # 安装到 /usr/local；或 ./install.sh --user 安装到 ~/.local
+# 卸载：sudo ./install.sh --uninstall
+```
+
+三种 Linux 包共用同一套目录结构：主程序与自带的 aria2c 位于 `/usr/lib/alipanbuddy/`，
 `/usr/bin/alipanbuddy` 是符号链接，因此不会与系统的 aria2 软件包冲突。
 
 macOS 不再支持：既不提供预构建安装包，也不再维护本地构建路径。

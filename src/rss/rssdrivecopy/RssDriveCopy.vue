@@ -1,4 +1,5 @@
 <script setup lang='ts'>
+import { treeVirtualListProps } from '../../utils/arcotree'
 import message from '../../utils/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { UserTokenMap } from '../../user/userdal'
@@ -197,7 +198,7 @@ const handleRightUser = (driveType: any) => {
               block-node
               selectable
               :auto-expand-parent='false'
-              :virtual-list-props="{ height: treeHeight }"
+              :virtual-list-props="treeVirtualListProps(treeHeight)"
               :style="{ height: treeHeight + 'px' }"
               checkable
               @select='handleLeftTreeSelect'>
@@ -226,7 +227,7 @@ const handleRightUser = (driveType: any) => {
               block-node
               selectable
               :auto-expand-parent='false'
-              :virtual-list-props="{ height: treeHeight }"
+              :virtual-list-props="treeVirtualListProps(treeHeight)"
               :style="{ height: treeHeight + 'px' }"
               :data='TreeState.RightTreeData'
               @select='handleRightTreeSelect'>

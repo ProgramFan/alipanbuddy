@@ -55,8 +55,18 @@ Download the installer for your platform from GitHub Releases:
 | Windows (x64 / ARM64) | `*-setup.exe` |
 | Debian / Ubuntu | `*.deb` |
 | Fedora / openSUSE | `*.rpm` |
+| Generic Linux (tarball) | `alipanbuddy-*-linux-<arch>.tar.gz` |
 
-Both Linux packages share one layout: the app and its bundled aria2c live in
+The Linux tarball unpacks as a ready-made FHS prefix (`bin/`, `lib/alipanbuddy/`, `share/`) with a desktop entry and icons; extract it and run `install.sh` to install it as a desktop application:
+
+```bash
+tar -xzf alipanbuddy-<version>-linux-x86_64.tar.gz
+cd alipanbuddy-<version>-linux-x86_64
+sudo ./install.sh          # installs into /usr/local; or ./install.sh --user for ~/.local
+# uninstall: sudo ./install.sh --uninstall
+```
+
+All three Linux packages share one layout: the app and its bundled aria2c live in
 `/usr/lib/alipanbuddy/` with `/usr/bin/alipanbuddy` as a symlink, so nothing collides
 with the system aria2 package.
 

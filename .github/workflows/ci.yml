@@ -31,6 +31,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # src/secrets.generated.ts is gitignored; the renderer imports it, so generate the (empty) module first.
+      - name: Generate secrets module
+        run: node scripts/generate-secrets.mjs --mode=ci
+
       - name: Typecheck
         run: pnpm run typecheck
 
@@ -58,6 +62,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --fix-missing libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev
+
+      # tauri-build validates the aria2c sidecar (externalBin) and the frontendDist directory at compile time.
+      - name: Prepare sidecar and frontend dist placeholder
+        run: |
+          node scripts/prepare-sidecars.mjs
+          mkdir -p dist
 
       - name: Cargo check
         run: cargo check --manifest-path src-tauri/Cargo.toml --all-targets

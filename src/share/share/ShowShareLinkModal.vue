@@ -11,7 +11,7 @@ import { modalCloseAll, modalSelectPanDir } from '../../utils/modal'
 import ShareDAL from './ShareDAL'
 import AliFileCmd from '../../aliapi/filecmd'
 import PanDAL from '../../pan/pandal'
-import { treeSelectToCheck } from '../../utils/arcotree'
+import { treeSelectToCheck, treeVirtualListProps } from '../../utils/arcotree'
 import { HanToPin } from '../../utils/utils'
 
 interface TreeNodeData {
@@ -515,7 +515,7 @@ async function getNodeAllFiles(share_id: string, share_token: string, file_id: s
         action-on-node-click='expand'
         :animation='false'
         :auto-expand-parent='false'
-        :virtual-list-props="{ height: treeHeight }"
+        :virtual-list-props="treeVirtualListProps(treeHeight)"
         :style="{ height: treeHeight + 'px' }"
         @select='handleTreeSelect'>
         <template #switcher-icon>

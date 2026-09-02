@@ -38,3 +38,11 @@ export function treeSelectToCheck(tree: any, node?: { key?: string | number; isL
   if (!tree || !node || !node.isLeaf || node.key === undefined) return
   tree.toggleCheck(node.key)
 }
+
+/**
+ * Arco's virtual list renders only `buffer * 3` rows and defaults `buffer` to 10 (about 960px of 32px tree rows),
+ * so on a tall window the rest of the viewport stays blank. Size the buffer from the viewport instead.
+ */
+export function treeVirtualListProps(height: number, rowHeight = 32): { height: number; buffer: number } {
+  return { height, buffer: Math.max(10, Math.ceil(height / rowHeight)) }
+}

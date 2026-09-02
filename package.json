@@ -27,6 +27,7 @@
     "build:windows": "tauri build --bundles nsis",
     "build:windows:arm64": "tauri build --target aarch64-pc-windows-msvc --bundles nsis",
     "tauri": "tauri",
+    "pretypecheck": "node scripts/generate-secrets.mjs --mode=local",
     "typecheck": "vue-tsc --noEmit",
     "knip": "knip",
     "typecheck:rust": "cargo check --manifest-path src-tauri/Cargo.toml",

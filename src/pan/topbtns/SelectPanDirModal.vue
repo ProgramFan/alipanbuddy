@@ -9,7 +9,7 @@ import message from '../../utils/message'
 import AliFileCmd from '../../aliapi/filecmd'
 import PanDAL from '../pandal'
 import { Sleep } from '../../utils/format'
-import { findTreeRootKey } from '../../utils/arcotree'
+import { findTreeRootKey, treeVirtualListProps } from '../../utils/arcotree'
 import AliTrash from '../../aliapi/trash'
 import { fileiconfn } from '../pantreestore'
 import { GetDriveID, GetDriveType } from '../../aliapi/utils'
@@ -477,7 +477,7 @@ const handleOK = () => {
         action-on-node-click='expand'
         :animation='false'
         :auto-expand-parent='false'
-        :virtual-list-props="{ height: treeHeight }"
+        :virtual-list-props="treeVirtualListProps(treeHeight)"
         :style="{ height: treeHeight + 'px' }"
         :expanded-keys='treeExpandedKeys'
         :selected-keys='treeSelectedKeys'

@@ -1,4 +1,5 @@
 <script setup lang='ts'>
+import { treeVirtualListProps } from '../../utils/arcotree'
 import message from '../../utils/message'
 import { humanSize } from '../../utils/format'
 import { computed, ref, watch } from 'vue'
@@ -304,7 +305,7 @@ const panType = ref('backup')
           :selectable='false'
           check-strictly
           auto-expand-parent
-          :virtual-list-props="{ height: treeHeight }"
+          :virtual-list-props="treeVirtualListProps(treeHeight)"
           :style="{ height: treeHeight + 'px' }"
           @select='handleTreeSelect'
           @check='handleTreeCheck'>

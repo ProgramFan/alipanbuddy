@@ -6,7 +6,7 @@ import { useFootStore, useSettingStore, useWinStore } from '../../store'
 
 import { modalCloseAll, modalSelectPanDir } from '../../utils/modal'
 import PanDAL from '../../pan/pandal'
-import { treeSelectToCheck } from '../../utils/arcotree'
+import { treeSelectToCheck, treeVirtualListProps } from '../../utils/arcotree'
 import AliFile from '../../aliapi/file'
 import ServerHttp from '../../aliapi/server'
 import AliArchive, { ILinkTxt, ILinkTxtFile } from '../../aliapi/archive'
@@ -189,7 +189,7 @@ export default defineComponent({
 
     const handleTreeSelect = (_keys: any[], info: { node?: any }) => treeSelectToCheck(treeref.value, info?.node)
 
-    return { okLoading, fileLoading, saveInfo, handleOpen, handleClose, treeHeight, treeref, handleTreeSelect, treeData, treeExpandedKeys, treeSelectedKeys, treeCheckedKeys, fileInfo }
+    return { okLoading, fileLoading, saveInfo, handleOpen, handleClose, treeHeight, treeVirtualListProps, treeref, handleTreeSelect, treeData, treeExpandedKeys, treeSelectedKeys, treeCheckedKeys, fileInfo }
   },
   methods: {
     handleHide() {
@@ -245,7 +245,7 @@ export default defineComponent({
           action-on-node-click="expand"
           :animation="false"
           :auto-expand-parent="false"
-          :virtual-list-props="{ height: treeHeight }"
+          :virtual-list-props="treeVirtualListProps(treeHeight)"
           :style="{ height: treeHeight + 'px' }"
           @select="handleTreeSelect">
           <template #switcher-icon>

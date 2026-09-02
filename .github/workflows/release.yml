@@ -121,7 +121,7 @@ jobs:
         if: startsWith(matrix.os, 'ubuntu')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${GITHUB_REF_NAME}" dist-linux/*.deb dist-linux/*.rpm --repo "${GITHUB_REPOSITORY}" --clobber
+        run: gh release upload "${GITHUB_REF_NAME}" dist-linux/*.tar.gz dist-linux/*.deb dist-linux/*.rpm --repo "${GITHUB_REPOSITORY}" --clobber
 
   finalize-release:
     name: Finalize Release

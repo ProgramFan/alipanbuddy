@@ -13,7 +13,7 @@ import { NewRenameConfigData, RunAllNode, RunReplaceName, TreeNodeData } from '.
 import PanDAL from '../pandal'
 import { throttle } from '../../utils/debounce'
 import { IAliGetFileModel } from '../../aliapi/alimodels'
-import { treeSelectToCheck } from '../../utils/arcotree'
+import { treeSelectToCheck, treeVirtualListProps } from '../../utils/arcotree'
 import { copyToClipboard } from '../../tauri/app'
 import path from '../../utils/path'
 
@@ -1032,7 +1032,7 @@ const handleSelectRow = (visible: boolean, treeNodeKey: string) => {
               action-on-node-click='expand'
               :animation='false'
               :auto-expand-parent='false'
-              :virtual-list-props="{ height: treeHeight }"
+              :virtual-list-props="treeVirtualListProps(treeHeight)"
               :style="{ height: treeHeight + 'px' }"
               draggable
               @select='handleTreeSelect'

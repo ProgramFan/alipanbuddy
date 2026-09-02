@@ -1,4 +1,5 @@
 <script setup lang='ts'>
+import { treeVirtualListProps } from '../utils/arcotree'
 import { computed, ref, watchEffect } from 'vue'
 
 import usePanTreeStore, { PanTreeState } from './pantreestore'
@@ -241,7 +242,7 @@ const onTreeScroll = () => {
             selectable
             :animation='false'
             :auto-expand-parent='false'
-            :virtual-list-props="{ height: treeHeight }"
+            :virtual-list-props="treeVirtualListProps(treeHeight)"
             :style="{ height: treeHeight + 'px' }"
             :expanded-keys='pantreeStore.treeExpandedKeys'
             :selected-keys='pantreeStore.treeSelectedKeys'
@@ -302,7 +303,7 @@ const onTreeScroll = () => {
             selectable
             :animation='false'
             :auto-expand-parent='false'
-            :virtual-list-props="{ height: quickHeight }"
+            :virtual-list-props="treeVirtualListProps(quickHeight)"
             :style="{ height: quickHeight + 'px' }"
             :selected-keys='quickSelectedKeys'
             :data='pantreeStore.quickData'

@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# Assemble the Linux packages (.deb, .rpm) from a finished `tauri build`
-# for the given target triple. Both share one staging layout: binaries in
-# usr/lib/alipanbuddy with a usr/bin symlink, so the bundled aria2c never
-# collides with the system aria2c package.
+# Assemble the Linux artifacts (FHS tar.gz, .deb, .rpm) from a finished
+# `tauri build` for the given target triple. All three share one staging
+# layout: binaries in lib/alipanbuddy with a bin/ symlink, so the bundled
+# aria2c never collides with the system aria2c package. The packages put
+# that tree under usr/; the tarball is prefix-relative, so it unpacks as
+# bin/ lib/ share/ next to install.sh.
 #
 #   scripts/build-linux-packages.sh [target-triple] [--require-all]
 #
@@ -38,10 +40,13 @@ OUT="$ROOT/dist-linux"
 rm -rf "$OUT"
 mkdir -p "$OUT"
 
-# Writes the shared FHS tree into "$1/usr". The bin/ symlink is relative, so it
-# stays valid wherever the packaged tree is unpacked.
+# Writes the shared FHS tree into "$1". "$2" is the prefix directory inside it:
+# "usr" for the packages, "" for the tarball, which extracts straight to
+# bin/ lib/ share/. The bin/ symlink is relative, so it survives either way.
 stage_tree() {
-  local root="$1/usr"
+  local dest="$1" prefix="${2-usr}"
+  local root="$dest"
+  if [ -n "$prefix" ]; then root="$dest/$prefix"; fi
   mkdir -p "$root/bin" "$root/lib/alipanbuddy" "$root/share/applications"
   install -m 755 "$RELEASE_DIR/alipanbuddy" "$root/lib/alipanbuddy/alipanbuddy"
   install -m 755 "$RELEASE_DIR/aria2c" "$root/lib/alipanbuddy/aria2c"
@@ -57,6 +62,14 @@ stage_tree() {
 }
 
 BINARY="$RELEASE_DIR/alipanbuddy"
+
+# --- tar.gz (self-installing: install.sh at the root) ---
+NAME="alipanbuddy-$VERSION-linux-$ARCH"
+stage_tree "$OUT/$NAME" ""
+install -m 755 "$ROOT/scripts/linux/install.sh" "$OUT/$NAME/install.sh"
+tar -C "$OUT" -czf "$OUT/$NAME.tar.gz" "$NAME"
+rm -rf "$OUT/$NAME"
+echo "built $OUT/$NAME.tar.gz"
 
 # Shared libraries the built binary links against. aria2c is statically linked,
 # so the main binary is the only thing that pulls runtime dependencies in.

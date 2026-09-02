@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 pnpm install              # pnpm only — never npm/yarn
 pnpm dev                  # tauri dev: Vite dev server (port 1420) + Rust app with hot reload
-pnpm run build:linux      # tauri build --no-bundle + scripts/build-linux-packages.sh → dist-linux/*.deb, *.rpm
+pnpm run build:linux      # tauri build --no-bundle + scripts/build-linux-packages.sh → dist-linux/*.tar.gz, *.deb, *.rpm
 pnpm run build:windows    # tauri build --bundles nsis (also build:windows:arm64)
 pnpm run build:debug      # tauri build --debug --no-bundle (devtools, no minify)
 pnpm run test             # Vitest (Node env): renderer helpers (aria2 rpc, proxy url, flow-enc names, i18n, ...)
@@ -69,7 +69,7 @@ src/                      Vue 3 renderer (entry: src/main.ts → App.vue → lay
   utils/                  Shared, feature-agnostic helpers (db, path shim, mime, modal registry, openfile)
   i18n/                   zh-CN / en-US strings (hand-rolled t(); every key must be referenced)
 
-scripts/                  generate-secrets.mjs, prepare-sidecars.mjs, build-linux-packages.sh, metrics.mjs, linux/ (desktop file)
+scripts/                  generate-secrets.mjs, prepare-sidecars.mjs, build-linux-packages.sh, metrics.mjs, linux/ (desktop file, tarball install.sh)
 static/engine/            aria2c binaries per platform/arch (copied into src-tauri at build time)
 docs/releases/            release notes, picked up by the release workflow
 ```
@@ -94,7 +94,7 @@ docs/releases/            release notes, picked up by the release workflow
   no update check, updater plugin or release feed — do not reintroduce them.
 - **CI**: `.github/workflows/ci.yml` (typecheck, tests, knip, cargo) on pushes and PRs; `release.yml` runs on
   `v<major>.<minor>.<patch>` tags → published GitHub Release. Windows jobs use tauri-action (nsis); Linux jobs build with
-  `--no-bundle` and package via `scripts/build-linux-packages.sh` (one FHS staging tree → deb + rpm; binaries in
+  `--no-bundle` and package via `scripts/build-linux-packages.sh` (one FHS staging tree → tar.gz + deb + rpm; binaries in
   `/usr/lib/alipanbuddy` with a `/usr/bin` symlink so the bundled aria2c never collides with the system aria2).
   Versions are bumped by hand in `package.json` (tauri.conf.json reads it) and `src-tauri/Cargo.toml`.
 
