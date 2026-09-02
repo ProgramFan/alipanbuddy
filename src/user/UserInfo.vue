@@ -6,14 +6,14 @@ import message from '../utils/message'
 import { modalUserRewardSpace, modalUserSpace } from '../utils/modal'
 import AliUser from '../aliapi/user'
 import type { ITokenInfo } from './userstore'
-import { isAliyunUser } from '../aliapi/utils'
 import { Modal } from '@arco-design/web-vue'
-import { getDriveProviderIcon, getDriveProviderLabel, getDriveProviderMeta } from '../utils/driveProvider'
 import { t } from '../i18n'
 import { clearCookies } from '../tauri/app'
 
+const providerLabel = '阿里云盘'
+const providerIcon = 'images/drive-icons/aliyun.svg'
+
 const userStore = useUserStore()
-const isAliyunAccount = computed(() => isAliyunUser(userStore.user_id || userStore.GetUserToken))
 const avatarErrorKeys = ref<Set<string>>(new Set())
 
 const handleUserChange = (val: any, user_id: string) => {
@@ -83,12 +83,12 @@ const userList = computed(() => {
 
 const getAccountDisplayName = (token: ITokenInfo) => {
   const displayName = token.nick_name || token.user_name || token.name || ''
-  return displayName || getDriveProviderLabel(token.tokenfrom)
+  return displayName || providerLabel
 }
 
 const getUserName = computed(() => {
   const userName = getAccountDisplayName(userStore.GetUserToken)
-  const limit = isAliyunAccount.value ? 3 : 10
+  const limit = 3
   if (userName.length > limit) {
     return userName.substring(0, limit) + '...'
   } else {
@@ -97,11 +97,6 @@ const getUserName = computed(() => {
 })
 
 const storageText = computed(() => userStore.GetUserToken.spaceinfo || '容量信息暂不可用')
-
-const activeProviderMeta = computed(() => getDriveProviderMeta(userStore.GetUserToken.tokenfrom))
-const activeProviderIcon = computed(() => activeProviderMeta.value.icon)
-const getProviderLabel = (tokenfrom: string) => getDriveProviderLabel(tokenfrom)
-const getProviderIcon = (tokenfrom: string) => getDriveProviderIcon(tokenfrom)
 
 const getAvatarKey = (token: ITokenInfo) => `${token.user_id || token.user_name || 'current'}:${token.avatar || ''}`
 
@@ -143,7 +138,7 @@ watch(
 
 <template>
   <a-popover position='br' trigger='hover'>
-    <div v-if='userStore.userLogined' class='user-avatar-trigger' :title='activeProviderMeta.label'>
+    <div v-if='userStore.userLogined' class='user-avatar-trigger' :title='providerLabel'>
       <a-avatar :size='28' class='user-avatar-placeholder'>
         <img
           v-if='hasUsableAvatar(userStore.GetUserToken)'
@@ -152,8 +147,8 @@ watch(
         />
         <span v-else>{{ getAvatarText(userStore.GetUserToken) }}</span>
       </a-avatar>
-      <span v-if='activeProviderIcon' class='user-drive-badge'>
-        <img :src='activeProviderIcon' :alt='activeProviderMeta.label' />
+      <span class='user-drive-badge'>
+        <img :src='providerIcon' :alt='providerLabel' />
       </span>
     </div>
     <a-avatar v-else :size='28' style='margin-right: 12px' :style="{ backgroundColor: '#3370ff' }">{{ t('user.login') }}</a-avatar>
@@ -162,13 +157,8 @@ watch(
       <div v-if='userStore.userLogined' style='width: 430px'>
         <a-row class='userinfo-row' justify='space-between' align='center'>
           <a-col class='userinfo-left' flex='1'>
-            <div class='username' :class="{ 'username-wide': !isAliyunAccount }">
-              <img
-                v-if='activeProviderIcon'
-                class='user-provider-heading-icon'
-                :src='activeProviderIcon'
-                :alt='activeProviderMeta.label'
-              />
+            <div class='username'>
+              <img class='user-provider-heading-icon' :src='providerIcon' :alt='providerLabel' />
               Hi {{ getUserName }}
               <span v-if='userStore.GetUserToken.vipIcon'>
                 <img width='65'
@@ -184,7 +174,7 @@ watch(
                       title='刷新账号信息'
                       @click='handleRefreshUserInfo()'>{{ t('user.refresh') }}
             </a-button>
-            <a-button v-if='isAliyunAccount' type='text' size='small' tabindex='-1'
+            <a-button type='text' size='small' tabindex='-1'
                       style='min-width: 20px; padding: 0 8px'
                       title='每日签到'
                       @click='handleSign()'>{{ t('user.signIn') }}
@@ -203,10 +193,10 @@ watch(
           </a-col>
           <a-col flex='auto'></a-col>
           <a-col flex='none'>
-            <a-button v-if='isAliyunAccount' type='text' size='small' tabindex='-1' style='min-width: 20px; padding: 0 8px' status='warning'
+            <a-button type='text' size='small' tabindex='-1' style='min-width: 20px; padding: 0 8px' status='warning'
                       @click='handleUserSpace()'>容量详情
             </a-button>
-            <a-button v-if='isAliyunAccount' type='text' size='small' tabindex='-1' style='min-width: 20px; padding: 0 8px' status='success'
+            <a-button type='text' size='small' tabindex='-1' style='min-width: 20px; padding: 0 8px' status='success'
                       @click='handleUserRewardSpace()'>福利兑换
             </a-button>
           </a-col>
@@ -223,13 +213,12 @@ watch(
                 <div class='user-quota' :title='item.spaceinfo'>
                   <a-progress type='circle' size='mini' status='warning' :percent='getQuotaPercent(item)' />
                 </div>
-                <div class='user-drive-icon' :title='getProviderLabel(item.tokenfrom)'>
-                  <img v-if='getProviderIcon(item.tokenfrom)' :src='getProviderIcon(item.tokenfrom)' :alt='getProviderLabel(item.tokenfrom)' />
-                  <span v-else>{{ getProviderLabel(item.tokenfrom).substring(0, 1) }}</span>
+                <div class='user-drive-icon' :title='providerLabel'>
+                  <img :src='providerIcon' :alt='providerLabel' />
                 </div>
                 <div class='user-list-main'>
                   <span class='user-list-name' :title='getAccountDisplayName(item)'>{{ getAccountDisplayName(item) }}</span>
-                  <span class='user-provider' :title='getProviderLabel(item.tokenfrom)'>{{ getProviderLabel(item.tokenfrom) }}</span>
+                  <span class='user-provider' :title='providerLabel'>{{ providerLabel }}</span>
                 </div>
                 <div class='user-list-actions'>
                   <a-switch size='small' :model-value='userStore.user_id == item.user_id' title='切换到这个账号'
@@ -300,10 +289,6 @@ watch(
   white-space: nowrap;
   word-break: keep-all;
   text-overflow: ellipsis;
-}
-
-.username-wide {
-  width: 220px;
 }
 
 .userinfo-row {

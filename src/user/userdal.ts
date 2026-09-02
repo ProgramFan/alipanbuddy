@@ -15,7 +15,7 @@ import {
 import PanDAL from '../pan/pandal'
 import DebugLog from '../utils/debuglog'
 import { supportsAliyunAutoSign } from './autoSignPolicy'
-import { getStoredTokenProvider } from '../utils/driveProvider'
+import type { IAliGetFileModel } from '../aliapi/alimodels'
 import { withStartupTimeout } from '../utils/startupTask'
 import { setActiveUserToken } from '../tauri/app'
 
@@ -125,8 +125,8 @@ export default class UserDAL {
   static GetUserToken(user_id: string): ITokenInfo {
     if (user_id && UserTokenMap.has(user_id)) {
       const token = UserTokenMap.get(user_id)!
-      const provider = getStoredTokenProvider(token)
-      if (provider !== 'unknown' && token.tokenfrom !== provider) token.tokenfrom = provider
+      // 历史账号在 tokenfrom 成为必填项之前就已经保存过了
+      if (token.user_id && token.tokenfrom !== 'aliyun') token.tokenfrom = 'aliyun'
       return token
     }
 
@@ -416,4 +416,14 @@ export default class UserDAL {
     }
     UserDAL.SaveUserToken(token)
   }
+}
+
+/** 找到能访问这个文件所在网盘的账号Token，优先用文件自己记录的账号 */
+export const resolveDriveFileToken = async (file: Pick<IAliGetFileModel, 'drive_id'> & { user_id?: string }, preferredUserId = ''): Promise<ITokenInfo | undefined> => {
+  const candidateUserIds = [file.user_id, preferredUserId].filter((userId, index, values): userId is string => !!userId && values.indexOf(userId) === index)
+  for (const userId of candidateUserIds) {
+    const token = await UserDAL.GetUserTokenFromDB(userId)
+    if (token?.access_token && token.user_id && file.drive_id) return token
+  }
+  return undefined
 }

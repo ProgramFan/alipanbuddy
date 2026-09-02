@@ -4,12 +4,11 @@ import AliFile from '../aliapi/file'
 import ServerHttp from '../aliapi/server'
 import { ITokenInfo, usePanFileStore, usePanTreeStore, useSettingStore, useUserStore } from '../store'
 import { IPageImage } from '../store/appstore'
-import UserDAL from '../user/userdal'
+import UserDAL, { resolveDriveFileToken } from '../user/userdal'
 import { clickWait } from './debounce'
 import DebugLog from './debuglog'
 import message from './message'
 import { modalArchive, modalArchivePassword } from './modal'
-import { resolveDriveFileToken } from '../drive/account'
 import { openPageWindow } from '../tauri/app'
 
 async function resolveTokenForFile(file: IAliGetFileModel): Promise<ITokenInfo | undefined> {

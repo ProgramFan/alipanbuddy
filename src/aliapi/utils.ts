@@ -16,17 +16,27 @@ import { decodeName, encodeName } from '../module/flow-enc/utils'
 import path from '../utils/path'
 import mime from '../utils/mime'
 import { getEncPassword, getEncType } from '../utils/proxyhelper'
-import { getDriveId, getDriveType } from '../drive/context'
+import UserDAL from '../user/userdal'
+
+export type DriveContext = { title: string; name: string; key: string }
 
 export function GetDriveID(user_id: string, drive: string): string {
-  return getDriveId(user_id, drive)
+  const token = UserDAL.GetUserToken(user_id)
+  if (!token) return ''
+  if (drive.includes('backup')) return token.backup_drive_id || ''
+  if (drive.includes('resource')) return token.resource_drive_id || ''
+  if (drive.includes('pic')) return token.pic_drive_id || ''
+  return ''
 }
 
-export function GetDriveType(user_id: string, drive_id: string): any {
-  return getDriveType(user_id, drive_id)
+export function GetDriveType(user_id: string, drive_id: string): DriveContext {
+  const token = UserDAL.GetUserToken(user_id)
+  if (!token) return { title: '未知网盘', name: 'unknown', key: '' }
+  if (drive_id === token.backup_drive_id) return { title: '备份盘', name: 'backup', key: 'backup_root' }
+  if (drive_id === token.resource_drive_id) return { title: '资源盘', name: 'resource', key: 'resource_root' }
+  if (drive_id === token.pic_drive_id) return { title: '全部相册', name: 'pic', key: 'pic_root' }
+  return { title: '未知网盘', name: 'unknown', key: '' }
 }
-
-export { isAliyunUser } from '../utils/driveProvider'
 
 export function GetSignature(nonce: number, user_id: string, deviceId: string) {
   const toHex = (bytes: Uint8Array) => {

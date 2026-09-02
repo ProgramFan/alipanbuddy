@@ -1,50 +1,20 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { KeyboardState, useAppStore, useKeyboardStore, useUserStore, useWinStore } from '../../store'
+import { useUserStore } from '../../store'
+import { KeyboardMessage } from '../../store/keyboardstore'
 import ShareDAL from './ShareDAL'
-import {
-  onHideRightMenuScroll,
-  onShowRightMenu,
-  TestCtrl,
-  TestKey,
-  TestKeyboardScroll,
-  TestKeyboardSelect
-} from '../../utils/keyboardhelper'
+import { TestCtrl } from '../../utils/keyboardhelper'
 import { copyToClipboard, openExternal } from '../../tauri/app'
 import message from '../../utils/message'
 
 import { modalShowShareLink } from '../../utils/modal'
 import { GetShareUrlFormate } from '../../utils/shareurl'
 import useShareBottleFishStore from './ShareBottleFishStore'
+import ShareListPage from '../ShareListPage.vue'
 
-const viewlist = ref()
-const inputsearch = ref()
-
-const appStore = useAppStore()
-const winStore = useWinStore()
 const shareBottleFishStore = useShareBottleFishStore()
 
-const keyboardStore = useKeyboardStore()
-keyboardStore.$subscribe((_m: any, state: KeyboardState) => {
-  if (appStore.appTab != 'share' || appStore.GetAppTabMenu != 'ShareBottleFishRight') return
-  if (TestCtrl('a', state.KeyDownEvent, () => shareBottleFishStore.mSelectAll())) return
-  if (TestCtrl('b', state.KeyDownEvent, handleBrowserLink)) return
-  if (TestCtrl('c', state.KeyDownEvent, handleCopySelectedLink)) return
-  if (TestCtrl('f', state.KeyDownEvent, () => inputsearch.value.focus())) return
-  if (TestKey('f3', state.KeyDownEvent, () => inputsearch.value.focus())) return
-  if (TestKey(' ', state.KeyDownEvent, () => inputsearch.value.focus())) return
-  if (TestKey('f5', state.KeyDownEvent, handleRefresh)) return
-  if (TestKeyboardSelect(state.KeyDownEvent, viewlist.value, shareBottleFishStore, handleOpenLink)) return
-  if (TestKeyboardScroll(state.KeyDownEvent, viewlist.value, shareBottleFishStore)) return
-})
-
 const handleRefresh = () => ShareDAL.aReloadShareBottleFish(useUserStore().user_id, true)
-const handleSelectAll = () => shareBottleFishStore.mSelectAll()
 const handleOrder = (order: string) => shareBottleFishStore.mOrderListData(order)
-const handleSelect = (shareId: string, event: any, isCtrl: boolean = false) => {
-  onHideRightMenuScroll()
-  shareBottleFishStore.mMouseSelect(shareId, event.ctrlKey || isCtrl, event.shiftKey)
-}
 
 const handleOpenLink = (share: any) => {
   if (share && share.shareId) {
@@ -80,153 +50,69 @@ const handleBrowserLink = () => {
   }
 }
 
-const handleSearchInput = (value: string) => {
-  shareBottleFishStore.mSearchListData(value)
-  viewlist.value.scrollIntoView(0)
-}
-const handleSearchEnter = (event: any) => {
-  event.target.blur()
-  viewlist.value.scrollIntoView(0)
-}
-const handleRightClick = (e: { event: MouseEvent; node: any }) => {
-  const key = e.node.key
-  if (!shareBottleFishStore.ListSelected.has(key)) shareBottleFishStore.mMouseSelect(key, false, false)
-  onShowRightMenu('rightsharebottlefishmenu', e.event.clientX, e.event.clientY)
+const handleShortcuts = (event: KeyboardMessage) => {
+  if (TestCtrl('b', event, handleBrowserLink)) return true
+  return TestCtrl('c', event, handleCopySelectedLink)
 }
 </script>
 
 <template>
-  <div style="height: 7px"></div>
-  <div class='toppanbtns' style='height: 26px'>
-    <div style="min-height: 26px; max-width: 100%; flex-shrink: 0; flex-grow: 0">
-      <div class="toppannav">
-        <div class="toppannavitem" title="好运分享">
-          <span> 好运分享 </span>
+  <ShareListPage :enter-fun="handleOpenLink" :range-select="false" :shortcuts="handleShortcuts"
+                 :store="shareBottleFishStore" empty="没导入过任何分享链接" key-field="shareId"
+                 menu="ShareBottleFishRight" menu-id="rightsharebottlefishmenu" title="好运分享" @refresh="handleRefresh">
+    <template #buttons>
+      <div v-show="shareBottleFishStore.IsListSelected" class="toppanbtn">
+        <a-button type="text" size="small" tabindex="-1" title="Ctrl+O" @click="handleOpenLink">
+          <IconFont name="iconchakan" />查看
+        </a-button>
+        <a-button type="text" size="small" tabindex="-1" title="Ctrl+C" @click="handleCopySelectedLink">
+          <IconFont name="iconcopy" />复制链接
+        </a-button>
+        <a-button type="text" size="small" tabindex="-1" title="Ctrl+B" @click="handleBrowserLink">
+          <IconFont name="iconchrome" />浏览器
+        </a-button>
+      </div>
+    </template>
+
+    <template #columns>
+      <div :class="'cell sharetime'">
+        是否保存
+      </div>
+      <div :class="'cell sharetime order ' + (shareBottleFishStore.ListOrderKey == 'mtime' ? 'active' : '')" @click="handleOrder('mtime')">
+        修改时间
+        <IconFont name="iconxia" />
+      </div>
+    </template>
+
+    <template #row="{ item }">
+      <div class="fileicon">
+        <IconFont name="iconlink2" aria-hidden="true" />
+      </div>
+      <div class="filename">
+        <div :title="'https://www.aliyundrive.com/s/' + item.shareId" @click="handleOpenLink(item)">
+          {{ item.share_name }}
         </div>
       </div>
-    </div>
-    <div class='flex flexauto'></div>
-  </div>
-  <div style="height: 14px"></div>
-  <div class="toppanbtns" style="height: 26px">
-    <div class="toppanbtn">
-      <a-button type="text" size="small" tabindex="-1" :loading="shareBottleFishStore.ListLoading" title="F5"
-                @click="handleRefresh">
-        <template #icon>
-          <IconFont name="iconreload-1-icon" />
-        </template>
-        刷新
-      </a-button>
-    </div>
-    <div v-show="shareBottleFishStore.IsListSelected" class="toppanbtn">
-      <a-button type="text" size="small" tabindex="-1" title="Ctrl+O" @click="handleOpenLink">
-        <IconFont name="iconchakan" />查看
-      </a-button>
-      <a-button type="text" size="small" tabindex="-1" title="Ctrl+C" @click="handleCopySelectedLink">
-        <IconFont name="iconcopy" />复制链接
-      </a-button>
-      <a-button type="text" size="small" tabindex="-1" title="Ctrl+B" @click="handleBrowserLink">
-        <IconFont name="iconchrome" />浏览器
-      </a-button>
-    </div>
-    <div style="flex-grow: 1"></div>
-    <div style="flex-grow: 1"></div>
-    <div class="toppanbtn">
-      <a-input-search ref="inputsearch" tabindex="-1" size="small" title="Ctrl+F / F3 / Space" placeholder="快速筛选"
-                      v-model="shareBottleFishStore.ListSearchKey" allow-clear
-                      @clear='(e:any)=>handleSearchInput("")'
-                      @input="(val:any)=>handleSearchInput(val as string)"
-                      @press-enter="handleSearchEnter"
-                      @keydown.esc=";($event.target as any).blur()" />
-    </div>
-    <div></div>
-  </div>
-  <div style="height: 9px"></div>
-  <div class="toppanarea">
-    <div style="margin: 0 3px">
-      <a-tooltip mini content="点击全选" position="left">
-        <a-button shape="circle" type="text" tabindex="-1" class="select all" title="Ctrl+A" @click="handleSelectAll">
-          <IconFont :name="shareBottleFishStore.IsListSelectedAll ? 'iconrsuccess' : 'iconpic2'" />
-        </a-button>
-      </a-tooltip>
-    </div>
-    <div class="selectInfo">{{ shareBottleFishStore.ListDataSelectCountInfo }}</div>
+      <div class="cell sharestate active">{{ item.saved_msg }}</div>
+      <div class="cell sharetime">{{ item.gmt_created }}</div>
+    </template>
 
-    <div style="flex-grow: 1"></div>
-    <div :class="'cell sharetime'">
-      是否保存
-    </div>
-    <div :class="'cell sharetime order ' + (shareBottleFishStore.ListOrderKey == 'mtime' ? 'active' : '')" @click="handleOrder('mtime')">
-      修改时间
-      <IconFont name="iconxia" />
-    </div>
-    <div class="cell pr"></div>
-  </div>
-  <div class="toppanlist" @keydown.space.prevent="() => true">
-    <a-list
-      ref="viewlist"
-      :bordered="false"
-      :split="false"
-      :max-height="winStore.GetListHeightNumber"
-      :virtual-list-props="{
-        height: winStore.GetListHeightNumber,
-        fixedSize: true,
-        estimatedSize: 50,
-        threshold: 1,
-        itemKey: 'shareId'
-      }"
-      style="width: 100%"
-      :data="shareBottleFishStore.ListDataShow"
-      tabindex="-1"
-      @scroll="onHideRightMenuScroll">
-      <template #empty>
-        <a-empty description="没导入过任何分享链接" />
-      </template>
-      <template #item="{ item, index }">
-        <div :key="item.shareId" class="listitemdiv">
-          <div
-            :class="'fileitem' + (shareBottleFishStore.ListSelected.has(item.shareId) ? ' selected' : '') + (shareBottleFishStore.ListFocusKey == item.shareId ? ' focus' : '')"
-            @click="handleSelect(item.shareId, $event)"
-            @contextmenu="(event:MouseEvent)=>handleRightClick({event,node:{key:item.shareId}} )">
-            <div style="margin: 2px">
-              <a-button shape="circle" type="text" tabindex="-1" class="select" :title="index"
-                        @click.prevent.stop="handleSelect(item.shareId, $event, true)">
-                <IconFont :name="shareBottleFishStore.ListSelected.has(item.shareId) ? 'iconrsuccess' : 'iconpic2'" />
-              </a-button>
-            </div>
-            <div class="fileicon">
-              <IconFont name="iconlink2" aria-hidden="true" />
-            </div>
-            <div class="filename">
-              <div :title="'https://www.aliyundrive.com/s/' + item.shareId" @click="handleOpenLink(item)">
-                {{ item.share_name }}
-              </div>
-            </div>
-            <div class="cell sharestate active">{{ item.saved_msg }}</div>
-            <div class="cell sharetime">{{ item.gmt_created }}</div>
-          </div>
-        </div>
-      </template>
-    </a-list>
+    <template #menu>
+      <a-doption @click="handleOpenLink">
+        <template #icon><IconFont name="iconchakan" /></template>
+        <template #default>查看</template>
+      </a-doption>
 
-    <a-dropdown id="rightsharebottlefishmenu" class="rightmenu" :popup-visible="true" style="z-index: -1; left: -200px; opacity: 0">
-      <template #content>
-        <a-doption @click="handleOpenLink">
-          <template #icon><IconFont name="iconchakan" /></template>
-          <template #default>查看</template>
-        </a-doption>
-
-        <a-doption @click="handleCopySelectedLink">
-          <template #icon><IconFont name="iconcopy" /></template>
-          <template #default>复制链接</template>
-        </a-doption>
-        <a-doption @click="handleBrowserLink">
-          <template #icon><IconFont name="iconchrome" /></template>
-          <template #default>浏览器</template>
-        </a-doption>
-      </template>
-    </a-dropdown>
-  </div>
+      <a-doption @click="handleCopySelectedLink">
+        <template #icon><IconFont name="iconcopy" /></template>
+        <template #default>复制链接</template>
+      </a-doption>
+      <a-doption @click="handleBrowserLink">
+        <template #icon><IconFont name="iconchrome" /></template>
+        <template #default>浏览器</template>
+      </a-doption>
+    </template>
+  </ShareListPage>
 </template>
 
 <style></style>

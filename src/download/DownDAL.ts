@@ -22,7 +22,7 @@ import { getEncType } from '../utils/proxyhelper'
 import { SHA256 } from 'crypto-js'
 import { shouldRemoveAriaStoppedResult } from './aria2Rpc'
 import { resolveAriaProgressErrorState } from './integration/downloadProgressState'
-import { resolveDriveFileToken } from '../drive/account'
+import { resolveDriveFileToken } from '../user/userdal'
 import { notifyDownloadCompleted, setProgressBar } from '../tauri/app'
 import { playDownloadFinished } from '../utils/finishsound'
 

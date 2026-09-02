@@ -10,7 +10,7 @@ import { ref } from 'vue'
 import DebugLog from '../../utils/debuglog'
 import { GetDriveID } from '../../aliapi/utils'
 import { getEncType, getRawUrl } from '../../utils/proxyhelper'
-import { resolveDriveFileToken } from '../../drive/account'
+import { resolveDriveFileToken } from '../../user/userdal'
 
 const props = defineProps({
   visible: {

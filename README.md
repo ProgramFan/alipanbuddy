@@ -122,13 +122,13 @@ pnpm run secrets:generate   # 生成 src/secrets.generated.ts（已 ignore，已
 ```text
 src-tauri/            Tauri（Rust）应用：窗口、托盘、命令、aria2c 引擎、本地解密代理
 src-tauri/crates/alipancore/  与 GTK 无关的核心库（加密流、文件名编码、代理、上传、哈希），含单元测试
-src/tauri/            渲染端 ↔ Rust 桥（window.WebXxx API、axios 适配器、fs/hash/upload 封装）
+src/tauri/            渲染端 ↔ Rust 桥（类型化的 invoke 封装、axios 适配器、fs/hash/upload 封装）
 src/aliapi/           阿里云盘 API：文件、目录、分享、上传、相册、回收站
 src/pan/              文件管理器 UI（目录树、列表、菜单、弹窗）
 src/share/            分享 / 订阅
-src/down/             上传下载任务与 aria2 集成
-src/transfer/         上传队列
-src/workerpage/       上传 / 下载工作窗口
+src/upload/           上传队列、执行器（哈希与分片上传在 Rust 中完成）、持久化与 UI
+src/download/         aria2 客户端与下载队列、持久化与 UI
+src/transfer/         传输页面外壳（承载上传 / 下载面板）
 src/rss/              插件工具（加密、扫描、清理等）
 src/module/flow-enc/  加密文件名编码（文件内容加密在 Rust 中完成）
 src/user/             登录与账号
@@ -136,7 +136,7 @@ src/setting/          设置页
 src/layout/           主布局、图片查看器
 src/store/            Pinia 状态
 src/utils/            通用工具
-scripts/              密钥生成、aria2c sidecar 准备、Linux 打包
+scripts/              密钥生成、aria2c sidecar 准备、Linux 打包、体积指标
 static/engine/        各平台 aria2c 可执行文件
 ```
 

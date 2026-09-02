@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 
-const batchResumeTasks = vi.fn()
+const AriaStartList = vi.fn()
 
-vi.mock('./aria2TaskApi', () => ({
-  batchPauseTasks: vi.fn(),
-  batchResumeTasks,
-  batchRemoveTasks: vi.fn()
+vi.mock('../aria2c', () => ({
+  AriaStartList,
+  AriaStopList: vi.fn(),
+  AriaDeleteList: vi.fn()
 }))
 
 vi.mock('../../utils/message', () => ({
@@ -37,7 +37,7 @@ vi.mock('../DownDAL', () => ({
 describe('DowningStore start state', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    batchResumeTasks.mockReset()
+    AriaStartList.mockReset()
   })
 
   it('resumes a paused aria task when selected task is started', async () => {
@@ -83,7 +83,7 @@ describe('DowningStore start state', () => {
     await store.mStartDowning()
 
     expect(store.ListDataRaw[0].Down.DownState).toBe('队列中')
-    expect(batchResumeTasks).toHaveBeenCalledWith(['gid-1'])
+    expect(AriaStartList).toHaveBeenCalledWith(['gid-1'])
   })
 
   it('keeps task info mutable for aria2 gid and target path updates', async () => {

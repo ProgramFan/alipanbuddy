@@ -1,188 +1,26 @@
 <script setup lang="ts">
-import { h, ref } from 'vue'
+import { h } from 'vue'
 import { IAliShareItem } from '../../aliapi/alimodels'
-import {
-  KeyboardState,
-  MouseState,
-  useAppStore,
-  useKeyboardStore,
-  useMouseStore,
-  useMyShareStore,
-  useUserStore,
-  useWinStore
-} from '../../store'
+import { useMyShareStore, useUserStore } from '../../store'
+import { KeyboardMessage } from '../../store/keyboardstore'
 import { humanCount } from '../../utils/format'
 import ShareDAL from './ShareDAL'
-import {
-  onHideRightMenuScroll,
-  onShowRightMenu,
-  TestCtrl,
-  TestKey,
-  TestKeyboardScroll,
-  TestKeyboardSelect
-} from '../../utils/keyboardhelper'
+import { TestCtrl, TestKey } from '../../utils/keyboardhelper'
 import { copyToClipboard, openExternal } from '../../tauri/app'
 import message from '../../utils/message'
 import AliShare from '../../aliapi/share'
 
 import { modalEditShareLink, modalShowShareLink } from '../../utils/modal'
-import { ArrayKeyList, ArrayXorWith } from '../../utils/utils'
+import { ArrayKeyList } from '../../utils/utils'
 import { GetShareUrlFormate } from '../../utils/shareurl'
-import { TestButton } from '../../utils/mosehelper'
 import { Modal } from '@arco-design/web-vue'
 import { t } from '../../i18n'
+import ShareListPage from '../ShareListPage.vue'
 
-const viewlist = ref()
-const inputsearch = ref()
-
-const appStore = useAppStore()
-const winStore = useWinStore()
 const myshareStore = useMyShareStore()
 
-const keyboardStore = useKeyboardStore()
-keyboardStore.$subscribe((_m: any, state: KeyboardState) => {
-  if (appStore.appTab != 'share' || appStore.GetAppTabMenu != 'MyShareRight') return
-
-  if (TestCtrl('a', state.KeyDownEvent, () => myshareStore.mSelectAll())) return
-  if (TestCtrl('b', state.KeyDownEvent, handleBrowserLink)) return
-  if (TestCtrl('c', state.KeyDownEvent, handleCopySelectedLink)) return
-  if (TestCtrl('Delete', state.KeyDownEvent, () => handleDeleteSelectedLink('selected'))) return
-  if (TestCtrl('e', state.KeyDownEvent, handleEdit)) return
-  if (TestKey('f2', state.KeyDownEvent, handleEdit)) return
-  if (TestCtrl('f', state.KeyDownEvent, () => inputsearch.value.focus())) return
-  if (TestKey('f3', state.KeyDownEvent, () => inputsearch.value.focus())) return
-  if (TestKey(' ', state.KeyDownEvent, () => inputsearch.value.focus())) return
-  if (TestKey('f5', state.KeyDownEvent, handleRefresh)) return
-
-  if (TestKeyboardSelect(state.KeyDownEvent, viewlist.value, myshareStore, undefined)) return
-  if (TestKeyboardScroll(state.KeyDownEvent, viewlist.value, myshareStore)) return
-})
-
-const mouseStore = useMouseStore()
-mouseStore.$subscribe((_m: any, state: MouseState) => {
-  if (appStore.appTab != 'share') return
-  const mouseEvent = state.MouseEvent
-  // console.log('MouseEvent', state.MouseEvent)
-  if (TestButton(0, mouseEvent, () => {
-    if (mouseEvent.srcElement) {
-      // @ts-ignore
-      if (mouseEvent.srcElement.className && mouseEvent.srcElement.className.toString().startsWith('arco-virtual-list')) {
-        onSelectCancel()
-      }
-    }
-  })) return
-})
-
-const rangIsSelecting = ref(false)
-const rangSelectID = ref('')
-const rangSelectStart = ref('')
-const rangSelectEnd = ref('')
-const rangSelectFiles = ref<{ [k: string]: any }>({})
-const onSelectRangStart = () => {
-  onHideRightMenuScroll()
-  rangIsSelecting.value = !rangIsSelecting.value
-  rangSelectID.value = ''
-  rangSelectStart.value = ''
-  rangSelectEnd.value = ''
-  rangSelectFiles.value = {}
-  myshareStore.mRefreshListDataShow(false)
-}
-const onSelectCancel = () => {
-  onHideRightMenuScroll()
-  myshareStore.ListSelected.clear()
-  myshareStore.ListFocusKey = ''
-  myshareStore.mRefreshListDataShow(false)
-}
-const onSelectReverse = () => {
-  onHideRightMenuScroll()
-  const listData = myshareStore.ListDataShow
-  const listSelected = myshareStore.GetSelected()
-  const reverseSelect = ArrayXorWith(listData, listSelected, (a, b) => a.share_id === b.share_id)
-  myshareStore.ListSelected.clear()
-  myshareStore.ListFocusKey = ''
-  if (reverseSelect.length > 0) {
-    myshareStore.mRangSelect(reverseSelect[0].share_id, reverseSelect.map(r => r.share_id))
-  }
-  myshareStore.mRefreshListDataShow(false)
-}
-const onSelectRang = (share_id: string) => {
-  if (rangIsSelecting.value && rangSelectID.value != '') {
-    let startid = rangSelectID.value
-    let endid = ''
-    const s: { [k: string]: any } = {}
-    const children = myshareStore.ListDataShow
-    let a = -1
-    let b = -1
-    for (let i = 0, maxi = children.length; i < maxi; i++) {
-      if (children[i].share_id == share_id) a = i
-      if (children[i].share_id == startid) b = i
-      if (a > 0 && b > 0) break
-    }
-    if (a >= 0 && b >= 0) {
-      if (a > b) {
-        ;[a, b] = [b, a]
-        endid = share_id
-      } else {
-        endid = startid
-        startid = share_id
-      }
-      for (let n = a; n <= b; n++) {
-        s[children[n].share_id] = true
-      }
-    }
-    rangSelectStart.value = startid
-    rangSelectEnd.value = endid
-    rangSelectFiles.value = s
-    myshareStore.mRefreshListDataShow(false)
-  }
-}
-
 const handleRefresh = () => ShareDAL.aReloadMyShare(useUserStore().user_id, true)
-const handleSelectAll = () => myshareStore.mSelectAll()
 const handleOrder = (order: string) => myshareStore.mOrderListData(order)
-const handleSelect = (share_id: string, event: any, isCtrl: boolean = false) => {
-  onHideRightMenuScroll()
-  if (rangIsSelecting.value) {
-    if (!rangSelectID.value) {
-      if (!myshareStore.ListSelected.has(share_id)) {
-        myshareStore.mMouseSelect(share_id, true, false)
-      }
-      rangSelectID.value = share_id
-      rangSelectStart.value = share_id
-      rangSelectFiles.value = { [share_id]: true }
-    } else {
-      const start = rangSelectID.value
-      const children = myshareStore.ListDataShow
-      let a = -1
-      let b = -1
-      for (let i = 0, maxi = children.length; i < maxi; i++) {
-        if (children[i].share_id == share_id) a = i
-        if (children[i].share_id == start) b = i
-        if (a > 0 && b > 0) break
-      }
-      const fileList: string[] = []
-      if (a >= 0 && b >= 0) {
-        if (a > b) [a, b] = [b, a]
-        for (let n = a; n <= b; n++) {
-          fileList.push(children[n].share_id)
-        }
-      }
-      myshareStore.mRangSelect(share_id, fileList)
-      rangIsSelecting.value = false
-      rangSelectID.value = ''
-      rangSelectStart.value = ''
-      rangSelectEnd.value = ''
-      rangSelectFiles.value = {}
-    }
-    myshareStore.mRefreshListDataShow(false)
-  } else {
-    myshareStore.mMouseSelect(share_id, event.ctrlKey || isCtrl, event.shiftKey)
-    if (!myshareStore.ListSelected.has(share_id)) {
-      myshareStore.ListFocusKey = ''
-    }
-  }
-}
-
 
 const handleClickName = (share: IAliShareItem) => {
   handleEdit(share)
@@ -278,35 +116,19 @@ const handleDeleteSelectedLink = (delby: any) => {
   }
 }
 
-const handleSearchInput = (value: string) => {
-  myshareStore.mSearchListData(value)
-  viewlist.value.scrollIntoView(0)
-}
-const handleSearchEnter = (event: any) => {
-  event.target.blur()
-  viewlist.value.scrollIntoView(0)
-}
-const handleRightClick = (e: { event: MouseEvent; node: any }) => {
-  const key = e.node.key
-
-  if (!myshareStore.ListSelected.has(key)) myshareStore.mMouseSelect(key, false, false)
-  onShowRightMenu('rightmysharemenu', e.event.clientX, e.event.clientY)
+const handleShortcuts = (event: KeyboardMessage) => {
+  if (TestCtrl('b', event, handleBrowserLink)) return true
+  if (TestCtrl('c', event, handleCopySelectedLink)) return true
+  if (TestCtrl('Delete', event, () => handleDeleteSelectedLink('selected'))) return true
+  if (TestCtrl('e', event, handleEdit)) return true
+  return TestKey('f2', event, handleEdit)
 }
 </script>
 
 <template>
-  <div style="height: 7px"></div>
-  <div class='toppanbtns' style='height: 26px'>
-    <div style="min-height: 26px; max-width: 100%; flex-shrink: 0; flex-grow: 0">
-      <div class="toppannav">
-        <div class="toppannavitem" :title="t('share.mine')">
-          <span> {{ t('share.mine') }} </span>
-        </div>
-      </div>
-    </div>
-    <div class='flex flexauto'></div>
-    <div class="toppanbtns" style="height: 26px;min-width: fit-content">
-      <div class="flex flexauto"></div>
+  <ShareListPage :empty="t('share.empty')" :shortcuts="handleShortcuts" :store="myshareStore" :title="t('share.mine')"
+                 menu="MyShareRight" menu-id="rightmysharemenu" show-loading @refresh="handleRefresh">
+    <template #stats>
       <div class="flex flexnoauto cellcount" :title="t('share.expiringSoon')">
         <a-badge color="#637dff" :text="t('share.expiringSoon') + ' ' + myshareStore.ListStats.expir2day" />
       </div>
@@ -328,210 +150,110 @@ const handleRightClick = (e: { event: MouseEvent; node: any }) => {
       <div class="flex flexnoauto cellcount" :title="t('share.previewCount')">
         <a-badge color="#637dff" :text="t('share.preview') + ' ' + myshareStore.ListStats.previewMax" />
       </div>
-    </div>
-  </div>
-  <div style="height: 14px"></div>
-  <div class="toppanbtns" style="height: 26px">
-    <div class="toppanbtn">
-      <a-button type="text" size="small" tabindex="-1" :loading="myshareStore.ListLoading" title="F5"
-                @click="handleRefresh">
-        <template #icon><IconFont name="iconreload-1-icon" />
-        </template>
-        {{ t('user.refresh') }}
-      </a-button>
-    </div>
-    <div v-show="myshareStore.IsListSelected" class="toppanbtn">
-      <a-button type="text" size="small" tabindex="-1" title="F2 / Ctrl+E" @click="handleEdit"><IconFont name="iconedit-square" />{{ t('share.edit') }}
-      </a-button>
-      <a-button type="text" size="small" tabindex="-1" title="Ctrl+O" @click="handleOpenLink"><IconFont name="iconchakan" />{{ t('share.view') }}
-      </a-button>
-      <a-button type="text" size="small" tabindex="-1" title="Ctrl+C" @click="handleCopySelectedLink"><IconFont name="iconcopy" />{{ t('share.copyLink') }}
-      </a-button>
-      <a-button type="text" size="small" tabindex="-1" title="Ctrl+B" @click="handleBrowserLink"><IconFont name="iconchrome" />{{ t('share.browser') }}
-      </a-button>
-      <a-button type="text" size="small" tabindex="-1" class="danger" title="Ctrl+Delete"
-                @click="handleDeleteSelectedLink('selected')"><IconFont name="icondelete" />{{ t('share.cancelShare') }}
-      </a-button>
-    </div>
-    <div v-show="!myshareStore.IsListSelected" class="toppanbtn">
-      <a-dropdown trigger="hover" position="bl" @select="handleDeleteSelectedLink">
-        <a-button type="text" size="small" tabindex="-1">
-          <IconFont name="iconrest" />{{ t('share.cleanupAll') }}
-          <IconFont name="icondown" /></a-button>
-        <template #content>
-          <a-doption :value="'expired'" class="danger">{{ t('share.deleteAllExpired') }}</a-doption>
-          <a-doption :value="'deleted'" class="danger">{{ t('share.deleteAllDeleted') }}</a-doption>
-        </template>
-      </a-dropdown>
-    </div>
-    <div style="flex-grow: 1"></div>
-    <div class="toppanbtn">
-      <a-input-search ref="inputsearch" tabindex="-1"
-                      size="small" title="Ctrl+F / F3 / Space"
-                      :placeholder="t('share.quickFilter')"
-                      allow-clear @clear='(e:any)=>handleSearchInput("")'
-                      v-model="myshareStore.ListSearchKey"
-                      @input="(val:any)=>handleSearchInput(val as string)"
-                      @press-enter="handleSearchEnter"
-                      @keydown.esc=";($event.target as any).blur()" />
-    </div>
-    <div></div>
-  </div>
-  <div style="height: 9px"></div>
-  <div class="toppanarea">
-    <div style="margin: 0 3px">
-      <a-tooltip mini :content="t('share.selectAll')" position="left">
-        <a-button shape="circle" type="text" tabindex="-1" class="select all" title="Ctrl+A" @click="handleSelectAll">
-          <IconFont :name="myshareStore.IsListSelectedAll ? 'iconrsuccess' : 'iconpic2'" />
+    </template>
+
+    <template #buttons>
+      <div v-show="myshareStore.IsListSelected" class="toppanbtn">
+        <a-button type="text" size="small" tabindex="-1" title="F2 / Ctrl+E" @click="handleEdit"><IconFont name="iconedit-square" />{{ t('share.edit') }}
         </a-button>
-      </a-tooltip>
-      <div class='selectInfo'>{{ myshareStore.ListDataSelectCountInfo }}</div>
-      <div style='margin: 0 2px'>
-        <a-tooltip mini position='rt' v-if="myshareStore.ListDataShow.length > 0">
-          <a-button shape='square' type='text' tabindex='-1' class='qujian'
-                    :status="rangIsSelecting ? 'danger' : 'normal'" title='Ctrl+Q' @click='onSelectRangStart'>
-            {{ rangIsSelecting ? t('share.cancelSelect') : t('share.rangeSelect') }}
-          </a-button>
-          <template #content>
-            <div>
-              第1步: 点击 区间选择 这个按钮
-              <br />
-              第2步: 鼠标点击一个文件
-              <br />
-              第3步: 移动鼠标点击另外一个文件
-            </div>
-          </template>
-        </a-tooltip>
-        <a-button shape='square'
-                  v-if='!rangIsSelecting && myshareStore.ListSelected.size > 0 && myshareStore.ListSelected.size < myshareStore.ListDataShow.length'
-                  type='text'
-                  tabindex='-1'
-                  class='qujian'
-                  status='normal' @click='onSelectReverse'>
-          {{ t('share.reverseSelect') }}
+        <a-button type="text" size="small" tabindex="-1" title="Ctrl+O" @click="handleOpenLink"><IconFont name="iconchakan" />{{ t('share.view') }}
         </a-button>
-        <a-button shape='square' v-if='!rangIsSelecting && myshareStore.ListSelected.size > 0' type='text'
-                  tabindex='-1' class='qujian'
-                  status='normal' @click='onSelectCancel'>
-          {{ t('share.cancelSelectedItems') }}
+        <a-button type="text" size="small" tabindex="-1" title="Ctrl+C" @click="handleCopySelectedLink"><IconFont name="iconcopy" />{{ t('share.copyLink') }}
+        </a-button>
+        <a-button type="text" size="small" tabindex="-1" title="Ctrl+B" @click="handleBrowserLink"><IconFont name="iconchrome" />{{ t('share.browser') }}
+        </a-button>
+        <a-button type="text" size="small" tabindex="-1" class="danger" title="Ctrl+Delete"
+                  @click="handleDeleteSelectedLink('selected')"><IconFont name="icondelete" />{{ t('share.cancelShare') }}
         </a-button>
       </div>
-    </div>
-    <div style="flex-grow: 1"></div>
-    <div class="cell tiquma">{{ t('share.code') }}</div>
-    <div :class="'cell sharetime order ' + (myshareStore.ListOrderKey == 'state' ? 'active' : '')"
-         @click="handleOrder('state')">
-      {{ t('share.validity') }}
-      <IconFont name="iconxia" />
-    </div>
-    <div :class="'cell count order ' + (myshareStore.ListOrderKey == 'preview' ? 'active' : '')"
-         @click="handleOrder('preview')">
-      {{ t('share.previewCount') }}
-      <IconFont name="iconxia" />
-    </div>
-    <div :class="'cell count order ' + (myshareStore.ListOrderKey == 'download' ? 'active' : '')"
-         @click="handleOrder('download')">
-      {{ t('share.downloadCount') }}
-      <IconFont name="iconxia" />
-    </div>
-    <div :class="'cell count order ' + (myshareStore.ListOrderKey == 'save' ? 'active' : '')"
-         @click="handleOrder('save')">
-      {{ t('share.saveCount') }}
-      <IconFont name="iconxia" />
-    </div>
-    <div :class="'cell sharetime order ' + (myshareStore.ListOrderKey == 'time' ? 'active' : '')"
-         @click="handleOrder('time')">
-      {{ t('share.createdAt') }}
-      <IconFont name="iconxia" />
-    </div>
-    <div class="cell pr"></div>
-  </div>
-  <div class="toppanlist" @keydown.space.prevent="() => true">
-    <a-list
-      ref="viewlist"
-      :bordered="false"
-      :split="false"
-      :max-height="winStore.GetListHeightNumber"
-      :virtual-list-props="{
-        height: winStore.GetListHeightNumber,
-        fixedSize: true,
-        estimatedSize: 50,
-        threshold: 1,
-        itemKey: 'share_id'
-      }"
-      style="width: 100%"
-      :data="myshareStore.ListDataShow"
-      :loading="myshareStore.ListLoading"
-      tabindex="-1"
-      @scroll="onHideRightMenuScroll">
-      <template #empty>
-        <a-empty :description="t('share.empty')" />
-      </template>
+      <div v-show="!myshareStore.IsListSelected" class="toppanbtn">
+        <a-dropdown trigger="hover" position="bl" @select="handleDeleteSelectedLink">
+          <a-button type="text" size="small" tabindex="-1">
+            <IconFont name="iconrest" />{{ t('share.cleanupAll') }}
+            <IconFont name="icondown" /></a-button>
+          <template #content>
+            <a-doption :value="'expired'" class="danger">{{ t('share.deleteAllExpired') }}</a-doption>
+            <a-doption :value="'deleted'" class="danger">{{ t('share.deleteAllDeleted') }}</a-doption>
+          </template>
+        </a-dropdown>
+      </div>
+    </template>
 
-      <template #item="{ item, index }">
-        <div :key="item.share_id" class="listitemdiv">
-          <div
-            :class="'fileitem' + (myshareStore.ListSelected.has(item.share_id) ? ' selected' : '') + (myshareStore.ListFocusKey == item.share_id ? ' focus' : '')"
-            @click="handleSelect(item.share_id, $event)"
-            @mouseover='onSelectRang(item.share_id)'
-            @contextmenu="(event:MouseEvent)=>handleRightClick({event,node:{key:item.share_id}} )">
-            <div
-              :class="'rangselect ' + (rangSelectFiles[item.share_id] ? (rangSelectStart == item.share_id ? 'rangstart' : rangSelectEnd == item.share_id ? 'rangend' : 'rang') : '')">
-              <a-button shape="circle" type="text" tabindex="-1" class="select" :title="index"
-                        @click.prevent.stop="handleSelect(item.share_id, $event, true)">
-                <IconFont :name="myshareStore.ListSelected.has(item.share_id) ? 'iconrsuccess' : 'iconpic2'" />
-              </a-button>
-            </div>
-            <div class="fileicon">
-              <IconFont :name="item.icon" aria-hidden="true" />
-            </div>
-            <div class="filename">
-              <div :title="item.share_url || ('https://www.aliyundrive.com/s/' + item.share_id)" @click="handleClickName(item)">
-                {{ item.share_name }}
-              </div>
-            </div>
-            <div class="cell tiquma">{{ item.share_pwd }}</div>
-            <div v-if="item.status == 'forbidden'" class="cell sharestate forbidden">{{ t('share.forbidden') }}</div>
-            <div v-else-if="item.expired" class="cell sharestate expired">{{ t('share.expired') }}</div>
-            <div v-else-if="!item.first_file" class="cell sharestate deleted">{{ t('share.deleted') }}</div>
-            <div v-else class="cell sharestate active">{{ item.share_msg }}</div>
-            <div class="cell count">{{ humanCount(item.preview_count) }}</div>
-            <div class="cell count">{{ humanCount(item.download_count) }}</div>
-            <div class="cell count">{{ humanCount(item.save_count) }}</div>
+    <template #columns>
+      <div class="cell tiquma">{{ t('share.code') }}</div>
+      <div :class="'cell sharetime order ' + (myshareStore.ListOrderKey == 'state' ? 'active' : '')"
+           @click="handleOrder('state')">
+        {{ t('share.validity') }}
+        <IconFont name="iconxia" />
+      </div>
+      <div :class="'cell count order ' + (myshareStore.ListOrderKey == 'preview' ? 'active' : '')"
+           @click="handleOrder('preview')">
+        {{ t('share.previewCount') }}
+        <IconFont name="iconxia" />
+      </div>
+      <div :class="'cell count order ' + (myshareStore.ListOrderKey == 'download' ? 'active' : '')"
+           @click="handleOrder('download')">
+        {{ t('share.downloadCount') }}
+        <IconFont name="iconxia" />
+      </div>
+      <div :class="'cell count order ' + (myshareStore.ListOrderKey == 'save' ? 'active' : '')"
+           @click="handleOrder('save')">
+        {{ t('share.saveCount') }}
+        <IconFont name="iconxia" />
+      </div>
+      <div :class="'cell sharetime order ' + (myshareStore.ListOrderKey == 'time' ? 'active' : '')"
+           @click="handleOrder('time')">
+        {{ t('share.createdAt') }}
+        <IconFont name="iconxia" />
+      </div>
+    </template>
 
-            <div class="cell sharetime">{{ item.created_at.replace(' ', '\n') }}</div>
-          </div>
+    <template #row="{ item }">
+      <div class="fileicon">
+        <IconFont :name="item.icon" aria-hidden="true" />
+      </div>
+      <div class="filename">
+        <div :title="item.share_url || ('https://www.aliyundrive.com/s/' + item.share_id)" @click="handleClickName(item)">
+          {{ item.share_name }}
         </div>
-      </template>
-    </a-list>
-    <a-dropdown id="rightmysharemenu" class="rightmenu" :popup-visible="true"
-                style="z-index: -1; left: -200px; opacity: 0">
-      <template #content>
-        <a-doption @click="handleEdit">
-          <template #icon><IconFont name="iconedit-square" /></template>
-          <template #default>{{ t('share.edit') }}</template>
-        </a-doption>
-        <a-doption @click="handleOpenLink">
-          <template #icon><IconFont name="iconchakan" /></template>
-          <template #default>{{ t('share.view') }}</template>
-        </a-doption>
+      </div>
+      <div class="cell tiquma">{{ item.share_pwd }}</div>
+      <div v-if="item.status == 'forbidden'" class="cell sharestate forbidden">{{ t('share.forbidden') }}</div>
+      <div v-else-if="item.expired" class="cell sharestate expired">{{ t('share.expired') }}</div>
+      <div v-else-if="!item.first_file" class="cell sharestate deleted">{{ t('share.deleted') }}</div>
+      <div v-else class="cell sharestate active">{{ item.share_msg }}</div>
+      <div class="cell count">{{ humanCount(item.preview_count) }}</div>
+      <div class="cell count">{{ humanCount(item.download_count) }}</div>
+      <div class="cell count">{{ humanCount(item.save_count) }}</div>
 
-        <a-doption @click="handleCopySelectedLink">
-          <template #icon><IconFont name="iconcopy" /></template>
-          <template #default>{{ t('share.copyLink') }}</template>
-        </a-doption>
-        <a-doption @click="handleBrowserLink">
-          <template #icon><IconFont name="iconchrome" /></template>
-          <template #default>{{ t('share.browser') }}</template>
-        </a-doption>
+      <div class="cell sharetime">{{ item.created_at.replace(' ', '\n') }}</div>
+    </template>
 
-        <a-doption class="danger" @click="handleDeleteSelectedLink('selected')">
-          <template #icon><IconFont name="icondelete" /></template>
-          <template #default>{{ t('share.cancelShare') }}</template>
-        </a-doption>
-      </template>
-    </a-dropdown>
-  </div>
+    <template #menu>
+      <a-doption @click="handleEdit">
+        <template #icon><IconFont name="iconedit-square" /></template>
+        <template #default>{{ t('share.edit') }}</template>
+      </a-doption>
+      <a-doption @click="handleOpenLink">
+        <template #icon><IconFont name="iconchakan" /></template>
+        <template #default>{{ t('share.view') }}</template>
+      </a-doption>
+
+      <a-doption @click="handleCopySelectedLink">
+        <template #icon><IconFont name="iconcopy" /></template>
+        <template #default>{{ t('share.copyLink') }}</template>
+      </a-doption>
+      <a-doption @click="handleBrowserLink">
+        <template #icon><IconFont name="iconchrome" /></template>
+        <template #default>{{ t('share.browser') }}</template>
+      </a-doption>
+
+      <a-doption class="danger" @click="handleDeleteSelectedLink('selected')">
+        <template #icon><IconFont name="icondelete" /></template>
+        <template #default>{{ t('share.cancelShare') }}</template>
+      </a-doption>
+    </template>
+  </ShareListPage>
 </template>
 
 <style>

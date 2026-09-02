@@ -57,7 +57,7 @@ import { TestButton } from '../utils/mosehelper'
 import { isValidDropUploadTarget } from '../utils/uploadTarget'
 import { setDropHandler } from '../tauri/dragDrop'
 import usePanTreeStore from './pantreestore'
-import { getDriveId as GetDriveID, getDriveType as GetDriveType } from '../drive/context'
+import { GetDriveID, GetDriveType } from '../aliapi/utils'
 import { ArrayXorWith } from '../utils/utils'
 
 

@@ -1,16 +1,11 @@
-export type ShareLinkProvider = 'aliyun'
-
 export interface DetectedShareLink {
-  provider: ShareLinkProvider
   providerName: string
   url: string
   password: string
   canImport: boolean
 }
 
-const providerPatterns: { provider: ShareLinkProvider; providerName: string; canImport: boolean; pattern: RegExp }[] = [
-  { provider: 'aliyun', providerName: '阿里云盘', canImport: true, pattern: /(?:https?:\/\/)?(?:www\.)?(?:(?:aliyundrive|alipan)\.com)\/s\/[0-9a-zA-Z_-]+[^\s]*/i }
-]
+const shareLinkPattern = /(?:https?:\/\/)?(?:www\.)?(?:(?:aliyundrive|alipan)\.com)\/s\/[0-9a-zA-Z_-]+[^\s]*/i
 
 const trimUrlSuffix = (url: string): string => url.replace(/[)\]}>）】》。，,;!]+$/g, '')
 
@@ -24,13 +19,9 @@ const extractPassword = (text: string, url: string): string => {
 export function detectShareLink(text: string): DetectedShareLink | undefined {
   const source = String(text || '').trim()
   if (!source) return undefined
-  for (const entry of providerPatterns) {
-    const match = source.match(entry.pattern)
-    if (!match?.[0]) continue
-    const rawUrl = trimUrlSuffix(match[0])
-    const url = /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`
-    return { provider: entry.provider, providerName: entry.providerName, url, password: extractPassword(source, url), canImport: entry.canImport }
-  }
-  return undefined
+  const match = source.match(shareLinkPattern)
+  if (!match?.[0]) return undefined
+  const rawUrl = trimUrlSuffix(match[0])
+  const url = /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`
+  return { providerName: '阿里云盘', url, password: extractPassword(source, url), canImport: true }
 }
-

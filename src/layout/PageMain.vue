@@ -63,7 +63,7 @@ async function checkClipboardShareLink() {
   if (shareClipboardPromptOpen) return
   const share = detectShareLink(clipboardText)
   if (!share) return
-  const signature = `${share.provider}:${share.url}:${share.password}`
+  const signature = `${share.url}:${share.password}`
   if (signature === lastShareClipboardSignature) return
   lastShareClipboardSignature = signature
   shareClipboardPromptOpen = true

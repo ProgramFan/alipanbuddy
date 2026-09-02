@@ -12,7 +12,7 @@ import TreeStore, { TreeNodeData } from '../store/treestore'
 import { dropMoveSelectedFile } from './topbtns/topbtn'
 import message from '../utils/message'
 import { modalUpload } from '../utils/modal'
-import { getDriveType as GetDriveType } from '../drive/context'
+import { GetDriveType } from '../aliapi/utils'
 import { t } from '../i18n'
 import { quickFileId, type QuickFileEntry } from './quickFiles'
 

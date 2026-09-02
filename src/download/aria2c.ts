@@ -1,13 +1,11 @@
 import { IAliFileResp } from '../aliapi/dirfilelist'
 
-import Aria2Client from './aria2Client'
-import axios from 'axios'
 import DownDAL, { IAriaDownProgress, IStateDownFile } from './DownDAL'
 import message from '../utils/message'
 import UserDAL from '../user/userdal'
 import { useFootStore, useSettingStore } from '../store'
 import DebugLog from '../utils/debuglog'
-import Config from '../config'
+import Config, { localPwd } from '../config'
 import AliTrash from '../aliapi/trash'
 
 import path from '../utils/path'
@@ -15,11 +13,20 @@ import fs from '../tauri/fs'
 import { getRawUrl } from '../utils/proxyhelper'
 import { Sleep } from '../utils/format'
 import { getImageProxyBase } from '../utils/imageproxy'
-import { callAriaClient, getAriaAddUriGid, isAriaDuplicateGidError } from './aria2Rpc'
-import { buildAriaAddOptions } from './integration/aria2AddOptions'
+import { Aria2Client, AriaCall, AriaCalls, ariaErrorMessage, buildAriaAddOptions, getAriaAddUriGid, isAriaDuplicateGidError, tryAriaCall } from './aria2Rpc'
+import { normalizeAriaTask, normalizeTaskFiles } from './integration/taskTypes'
+import type { DownloadTask, DownloadTaskFile } from './integration/taskTypes'
 import { restartAria } from '../tauri/app'
 
-export const localPwd = 'S4znWTaZYQi3cpRNb'
+/** 下载列表刷新用的任务字段 */
+const PROGRESS_FIELDS = ['gid', 'status', 'totalLength', 'completedLength', 'downloadSpeed', 'errorCode', 'errorMessage', 'dir', 'files']
+/** 任务详情抽屉用的任务字段 */
+const TASK_FIELDS = [
+  'gid', 'status', 'totalLength', 'completedLength', 'uploadLength',
+  'downloadSpeed', 'uploadSpeed', 'numSeeders', 'seeder', 'connections',
+  'numPieces', 'pieceLength', 'errorCode', 'errorMessage', 'dir',
+  'files', 'bittorrent', 'followedBy', 'verifiedLength', 'verifyIntegrityPending'
+]
 
 let Aria2cChangeing: boolean = false
 let Aria2EngineLocal: Aria2Client | undefined = undefined
@@ -70,7 +77,7 @@ function CloseRemote() {
     IsAria2cOnlineRemote = false
     if (Aria2EngineRemote) {
       try {
-        Aria2EngineRemote.call('aria2.forceShutdown').catch(() => {})
+        Aria2EngineRemote.call(AriaCalls.forceShutdown()).catch(() => {})
       } catch {}
       try {
         Aria2EngineRemote.close().catch(() => {})
@@ -85,36 +92,24 @@ export function IsAria2cRemote() {
 }
 
 export async function AriaTest(https: boolean, host: string, port: number, secret: string) {
-  const url = (https ? 'https://' : 'http://') + host + ':' + port.toString() + '/jsonrpc'
-  return axios
-    .post(
-      url,
-      { method: 'aria2.getGlobalStat', jsonrpc: '2.0', id: 'id' + Date.now(), params: ['token:' + secret] },
-      {
-        responseType: 'json',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        timeout: 4000
-      }
-    )
-    .then(() => {
-      return true
-    })
-    .catch(function(error) {
-      if (error.response && error.response.data && error.response.data.error) {
-        if (error.response.data.error.message == 'Unauthorized') {
-          message.error('连接失败 密码错误 ' + url + ' secret=' + secret)
-          return false
-        }
-      }
-      if (error.message && error.message.indexOf('timeout of') >= 0) {
-        message.error('连接失败 网络连接超时 ' + url)
-        return false
-      }
-      message.error('连接失败 ' + (error.message ? error.message : '') + ' ' + url + ' secret=' + secret)
+  const client = new Aria2Client({ host, port, secure: https, secret, timeout: 4000 })
+  const url = client.url('http')
+  try {
+    await client.call(AriaCalls.getGlobalStat())
+    return true
+  } catch (error) {
+    const detail = ariaErrorMessage(error)
+    if (detail == 'Unauthorized') {
+      message.error('连接失败 密码错误 ' + url + ' secret=' + secret)
       return false
-    })
+    }
+    if (detail.indexOf('timeout of') >= 0) {
+      message.error('连接失败 网络连接超时 ' + url)
+      return false
+    }
+    message.error('连接失败 ' + detail + ' ' + url + ' secret=' + secret)
+    return false
+  }
 }
 
 
@@ -245,7 +240,7 @@ export async function AriaGlobalSpeed() {
   try {
     const settingStore = useSettingStore()
     const limit = settingStore.downGlobalSpeed.toString() + (settingStore.downGlobalSpeedM == 'MB' ? 'M' : 'K')
-    await GetAria()?.call('aria2.changeGlobalOption', { 'max-overall-download-limit': limit }).catch((e: any) => {
+    await GetAria()?.call(AriaCalls.changeGlobalOption({ 'max-overall-download-limit': limit })).catch((e: any) => {
       if (e && e.message == 'Unauthorized') message.error('Aria2密码错误(密码不要有 ^ 或特殊字符)')
       IsAria2cOnlineLocal = false
     })
@@ -281,7 +276,7 @@ export async function AriaApplyAdvancedOptions(): Promise<boolean> {
     if (settingStore.ariaUserAgent) {
       options['user-agent'] = settingStore.ariaUserAgent
     }
-    await client.call('aria2.changeGlobalOption', options)
+    await client.call(AriaCalls.changeGlobalOption(options))
     return true
   } catch {
     return false
@@ -301,14 +296,12 @@ export async function AriaConnect() {
 
 
 export async function AriaGetDowningList() {
-  const fields = ['gid', 'status', 'totalLength', 'completedLength', 'downloadSpeed', 'errorCode', 'errorMessage', 'dir', 'files']
-  const multicall = [
-    ['aria2.tellActive', fields],
-    ['aria2.tellWaiting', 0, 1000, fields],
-    ['aria2.tellStopped', 0, 1000, fields]
-  ]
   try {
-    const result: any = await GetAria()?.multicall(multicall)
+    const result: any = await GetAria()?.multicall([
+      AriaCalls.tellActive(PROGRESS_FIELDS),
+      AriaCalls.tellWaiting(0, 1000, PROGRESS_FIELDS),
+      AriaCalls.tellStopped(0, 1000, PROGRESS_FIELDS)
+    ])
     if (result) {
       let list: IAriaDownProgress[] = []
       let arr = result[0][0]
@@ -327,31 +320,54 @@ export async function AriaGetDowningList() {
 }
 
 
-export async function AriaDeleteList(list: string[]) {
-  const multicall = []
-  for (let i = 0, maxi = list.length; i < maxi; i++) {
-    multicall.push(['aria2.forceRemove', list[i]])
-    multicall.push(['aria2.removeDownloadResult', list[i]])
+/** 连接后执行一批任务操作，任何失败都只更新连接状态 */
+async function AriaTaskBatch(gidList: string[], build: (gid: string) => AriaCall[]) {
+  const calls: AriaCall[] = []
+  for (const gid of gidList) {
+    if (gid) calls.push(...build(gid))
   }
+  if (!calls.length) return
+  await AriaConnect()
   try {
-    await GetAria()?.multicall(multicall)
+    await GetAria()?.multicall(calls)
     SetAriaOnline(true)
   } catch {
     SetAriaOnline(false)
   }
 }
 
+/** 删除任务并清理下载结果 */
+export async function AriaDeleteList(list: string[]) {
+  await AriaTaskBatch(list, (gid) => [AriaCalls.forceRemove(gid), AriaCalls.removeDownloadResult(gid)])
+}
 
+/** 暂停任务 */
 export async function AriaStopList(list: string[]) {
-  const multicall = []
-  for (let i = 0, maxi = list.length; i < maxi; i++) {
-    multicall.push(['aria2.forcePause', list[i]])
-  }
+  await AriaTaskBatch(list, (gid) => [AriaCalls.forcePause(gid)])
+}
+
+/** 继续已暂停的任务 */
+export async function AriaStartList(list: string[]) {
+  await AriaTaskBatch(list, (gid) => [AriaCalls.unpause(gid)])
+}
+
+/** 任务详情：状态 */
+export async function AriaGetTaskStatus(gid: string): Promise<DownloadTask | null> {
   try {
-    await GetAria()?.multicall(multicall)
-    SetAriaOnline(true)
+    await AriaConnect()
+    return normalizeAriaTask(await GetAria()?.call(AriaCalls.tellStatus(gid, TASK_FIELDS)))
   } catch {
-    SetAriaOnline(false)
+    return null
+  }
+}
+
+/** 任务详情：文件列表 */
+export async function AriaGetTaskFiles(gid: string): Promise<DownloadTaskFile[]> {
+  try {
+    await AriaConnect()
+    return normalizeTaskFiles(await GetAria()?.call(AriaCalls.getFiles(gid)))
+  } catch {
+    return []
   }
 }
 
@@ -360,7 +376,7 @@ export function AriaShoutDown() {
   try {
     const aria = GetAria()
     if (aria) {
-      aria.call('aria2.forceShutdown').catch(() => {})
+      aria.call(AriaCalls.forceShutdown()).catch(() => {})
     }
   } catch {}
   // 断开 WebSocket
@@ -373,10 +389,6 @@ export function AriaShoutDown() {
     Aria2EngineLocal = undefined
   }
   IsAria2cOnlineLocal = false
-}
-
-export async function AriaRawCall(method: string, ...args: any[]): Promise<any> {
-  return GetAria()?.call(method, ...args)
 }
 
 export async function AriaAddUrl(file: IStateDownFile): Promise<string> {
@@ -534,7 +546,7 @@ export async function AriaAddUrl(file: IStateDownFile): Promise<string> {
         if (key && value) headers.push(`${key}: ${value}`)
       }
       if (userAgent) headers.push(`User-Agent: ${userAgent}`)
-      const addOptions: any = buildAriaAddOptions({
+      const addOptions: Record<string, any> = buildAriaAddOptions({
         gid: info.GID,
         dir: dirPath,
         split,
@@ -545,12 +557,11 @@ export async function AriaAddUrl(file: IStateDownFile): Promise<string> {
       })
       const client = GetAria()
       if (!client) return 'Aria2未连接，请检查本地或远程Aria连接状态'
-      const multicall = [
-        ['aria2.forceRemove', info.GID],
-        ['aria2.removeDownloadResult', info.GID],
-        ['aria2.addUri', [downloadUrl], addOptions]
-      ]
-      const result: any = await GetAria()?.multicall(multicall)
+      const result: any = await client.multicall([
+        AriaCalls.forceRemove(info.GID),
+        AriaCalls.removeDownloadResult(info.GID),
+        AriaCalls.addUri([downloadUrl], addOptions)
+      ])
       console.log('[aria2] addUri result', info.drive_id, info.file_id, JSON.stringify(result))
       const addResult = result && result.length >= 3 ? result[2] : undefined
       const addGid = getAriaAddUriGid(addResult)
@@ -559,47 +570,31 @@ export async function AriaAddUrl(file: IStateDownFile): Promise<string> {
         return 'success'
       }
       // GID 不存在时忽略清理错误，尝试单独 addUri
-      let singleError: any = undefined
-      let singleResult: any = await callAriaClient(client, 'aria2.addUri', [downloadUrl], addOptions, (error: unknown) => {
+      let singleError: unknown = undefined
+      const captureError = (error: unknown) => {
         singleError = error
-      })
-      const singleGid = getAriaAddUriGid(singleResult)
+      }
+      const singleGid = getAriaAddUriGid(await tryAriaCall(() => client.call(AriaCalls.addUri([downloadUrl], addOptions)), captureError))
       if (singleGid) {
         info.GID = singleGid
         return 'success'
       }
-      if (isAriaDuplicateGidError(singleResult) || isAriaDuplicateGidError(singleError)) {
+      const wasDuplicateGid = isAriaDuplicateGidError(singleError)
+      if (wasDuplicateGid) {
         // GID 重复说明旧任务残留，先强制清理再重建
-        await callAriaClient(client, 'aria2.forceRemove', info.GID)
-        await callAriaClient(client, 'aria2.removeDownloadResult', info.GID)
-        delete addOptions.gid
-        singleError = undefined
-        singleResult = await callAriaClient(client, 'aria2.addUri', [downloadUrl], addOptions, (error: unknown) => {
-          singleError = error
-        })
-        const retryGid = getAriaAddUriGid(singleResult)
-        if (retryGid) {
-          info.GID = retryGid
-          return 'success'
-        }
-        if (isAriaDuplicateGidError(singleResult) || isAriaDuplicateGidError(singleError)) {
-          return 'success'
-        }
-        return '创建aria任务失败，稍后自动重试' + ((singleResult && singleResult.message) || (singleError && singleError.message) || '')
+        await tryAriaCall(() => client.call(AriaCalls.forceRemove(info.GID)))
+        await tryAriaCall(() => client.call(AriaCalls.removeDownloadResult(info.GID)))
       }
-      if (!singleResult || singleResult.code) {
-        delete addOptions.gid
-        singleError = undefined
-        singleResult = await callAriaClient(client, 'aria2.addUri', [downloadUrl], addOptions, (error: unknown) => {
-          singleError = error
-        })
-        const fallbackGid = getAriaAddUriGid(singleResult)
-        if (fallbackGid) {
-          info.GID = fallbackGid
-          return 'success'
-        }
-        return '创建aria任务失败，稍后自动重试' + ((singleResult && singleResult.message) || (singleError && singleError.message) || (addResult && addResult.message) || '')
+      // 不带 GID 重试一次，让 aria2 自己分配
+      delete addOptions.gid
+      singleError = undefined
+      const retryGid = getAriaAddUriGid(await tryAriaCall(() => client.call(AriaCalls.addUri([downloadUrl], addOptions)), captureError))
+      if (retryGid) {
+        info.GID = retryGid
+        return 'success'
       }
+      if (wasDuplicateGid && isAriaDuplicateGidError(singleError)) return 'success'
+      return '创建aria任务失败，稍后自动重试' + (ariaErrorMessage(singleError) || ariaErrorMessage(addResult) || '')
     }
   } catch (e: any) {
     SetAriaOnline(false)

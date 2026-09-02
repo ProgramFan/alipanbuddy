@@ -8,7 +8,7 @@ import Db from '../utils/db'
 import fs from '../tauri/fs'
 import path from '../utils/path'
 import { decodeName, encodeName } from '../module/flow-enc/utils'
-import { localPwd } from '../download/aria2c'
+import { localPwd } from '../config'
 import { ALIYUN_APP_ID } from '../secrets.generated'
 import { t } from '../i18n'
 

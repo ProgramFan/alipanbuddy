@@ -1,6 +1,6 @@
 <script setup lang='ts'>
 import { ref, watch, computed } from 'vue'
-import { getTaskStatus, getTaskFiles } from './integration/aria2TaskApi'
+import { AriaGetTaskFiles, AriaGetTaskStatus } from './aria2c'
 import type { DownloadTask, DownloadTaskFile } from './integration/taskTypes'
 import { t } from '../i18n'
 
@@ -23,8 +23,8 @@ watch(
     loading.value = true
     try {
       const [t, f] = await Promise.all([
-        getTaskStatus(props.gid),
-        getTaskFiles(props.gid)
+        AriaGetTaskStatus(props.gid),
+        AriaGetTaskFiles(props.gid)
       ])
       task.value = t
       files.value = f

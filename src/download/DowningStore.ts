@@ -3,7 +3,7 @@ import DownDAL, { IStateDownFile } from './DownDAL'
 import { humanSize } from '../utils/format'
 import message from '../utils/message'
 import DBDown from './dbdown'
-import { batchPauseTasks, batchRemoveTasks, batchResumeTasks } from './integration/aria2TaskApi'
+import { AriaDeleteList, AriaStartList, AriaStopList } from './aria2c'
 import { t } from '../i18n'
 import { createSelectableListActions, createSelectableListGetters, createSelectableListState, SelectableListConfig, SelectableListState } from '../store/selectableList'
 
@@ -81,7 +81,7 @@ const useDowningStore = defineStore('downing', {
           this.mUpdateDownState(selectedDown, 'queue')
         }
       }
-      if (gids.length) await batchResumeTasks(gids)
+      if (gids.length) await AriaStartList(gids)
     },
 
     /**
@@ -96,7 +96,7 @@ const useDowningStore = defineStore('downing', {
         if (down.IsStop && DowningList[j].Info.GID) gids.push(DowningList[j].Info.GID)
         this.mUpdateDownState(DowningList[j], 'queue')
       }
-      if (gids.length) await batchResumeTasks(gids)
+      if (gids.length) await AriaStartList(gids)
     },
 
     /**
@@ -288,7 +288,7 @@ const useDowningStore = defineStore('downing', {
           this.mUpdateDownState(item, 'stop')
         }
       }
-      if (gids.length) await batchPauseTasks(gids)
+      if (gids.length) await AriaStopList(gids)
       this.mRefreshListDataShow(true)
     },
 
@@ -301,7 +301,7 @@ const useDowningStore = defineStore('downing', {
           this.mUpdateDownState(item, 'queue')
         }
       }
-      if (gids.length) await batchResumeTasks(gids)
+      if (gids.length) await AriaStartList(gids)
       this.mRefreshListDataShow(true)
     },
 
@@ -312,7 +312,7 @@ const useDowningStore = defineStore('downing', {
         const item = this.ListDataRaw.find((d) => d.DownID === downID)
         if (item && item.Info.GID) gids.push(item.Info.GID)
       }
-      if (gids.length) await batchRemoveTasks(gids)
+      if (gids.length) await AriaDeleteList(gids)
       await this.mDeleteDowning(downIDs)
     }
   }

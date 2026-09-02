@@ -1,3 +1,6 @@
+/** 本地固定口令：本地 aria2c 的 RPC secret，同时用作账号/密码等本地数据的加解密盐 */
+export const localPwd = 'S4znWTaZYQi3cpRNb'
+
 export default class Config {
   // 网络请求配置
   static referer = 'https://www.aliyundrive.com/drive'

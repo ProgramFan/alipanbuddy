@@ -5,17 +5,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Quick commands
 
 ```bash
-pnpm install          # pnpm only — never npm/yarn
-pnpm dev              # tauri dev: Vite dev server (port 1420) + Rust app with hot reload
-pnpm run build        # version bump → vue-tsc → vite build → tauri build (bundles for the host OS)
-pnpm run build:debug  # tauri build --debug (devtools, no minify)
-pnpm run test         # Vitest (Node env): renderer helpers (aria2 rpc, proxy url, flow-enc names, i18n, ...)
-pnpm run test:rust    # cargo test -p boxcore (ciphers, name codec, proxy, uploader, hashing)
-pnpm run typecheck    # vue-tsc --noEmit (renderer)
-pnpm run typecheck:rust  # cargo check (Tauri app + boxcore)
-pnpm run build:mac | build:mac:universal | build:linux | build:windows | build:windows:arm64
-pnpm run sidecars     # copy static/engine/<platform>/<arch>/aria2c → src-tauri/binaries/aria2c-<triple> (runs automatically before dev/build)
-pnpm run secrets:generate  # .env.local → src/secrets.generated.ts (runs automatically before dev/build/test; never clobbers filled values)
+pnpm install              # pnpm only — never npm/yarn
+pnpm dev                  # tauri dev: Vite dev server (port 1420) + Rust app with hot reload
+pnpm run build:linux      # tauri build --no-bundle + scripts/build-linux-packages.sh → dist-linux/*.deb, *.rpm
+pnpm run build:windows    # tauri build --bundles nsis (also build:windows:arm64)
+pnpm run build:debug      # tauri build --debug --no-bundle (devtools, no minify)
+pnpm run test             # Vitest (Node env): renderer helpers (aria2 rpc, proxy url, flow-enc names, i18n, ...)
+pnpm run test:rust        # cargo test -p alipancore (ciphers, name codec, proxy, uploader, hashing)
+pnpm run typecheck        # vue-tsc --noEmit (renderer)
+pnpm run typecheck:rust   # cargo check (Tauri app + alipancore)
+pnpm run knip             # unused files, exports and dependencies (CI fails on findings)
+pnpm run metrics          # dependency count, source lines, tracked binaries — quote in release notes
+pnpm run sidecars         # copy static/engine/<platform>/<arch>/aria2c → src-tauri/binaries/aria2c-<triple> (runs before dev/build)
+pnpm run secrets:generate # .env.local → src/secrets.generated.ts (runs before dev/build/test; never clobbers filled values)
 ```
 
 Linux build prerequisites: `webkit2gtk4.1-devel gtk3-devel libsoup3-devel librsvg2-devel libappindicator-gtk3-devel` (Fedora)
@@ -23,70 +25,124 @@ Linux build prerequisites: `webkit2gtk4.1-devel gtk3-devel libsoup3-devel librsv
 
 ## Scope
 
-AlipanBuddy (神行云盘助手, formerly BoxPlayer) is an **Aliyun Drive–only** desktop client. Supported functionality: multi-account login, file/album
-management, sharing, upload/download (aria2c), file encryption/decryption and the other add-on tools under `src/rss`.
-Other cloud providers, media library/servers, players, readers, AI agents and the clouddrive-cli were removed on
-purpose — do not reintroduce provider abstractions or feature gates for them.
+AlipanBuddy (神行云盘助手, forked from BoxPlayer) is an **Aliyun Drive–only** desktop client. Supported functionality:
+multi-account login, file/album management, sharing, upload/download (aria2c), file encryption/decryption and the add-on
+tools under `src/rss`. Other cloud providers, media library/servers, players, readers, AI agents and the clouddrive-cli were
+removed on purpose — do not reintroduce provider abstractions or feature gates for them. Planned follow-up: office/pdf
+preview through Aliyun's WebOffice endpoint (no video player).
+
+Platforms: Windows (x64, arm64 via the x64 aria2c) and Linux (x64, arm64). macOS builds are dropped for now; the code
+must stay platform-agnostic so they can return (feature detection, no `platform ===` gates unless a native capability
+genuinely differs — and then a comment says which one).
 
 ## Architecture (Tauri 2 + Vue 3 + Vite)
 
 ```
 src-tauri/                Rust application (Tauri 2)
-  src/lib.rs              builder: plugins, command registry, setup (windows, tray, aria2c), exit hooks
-  src/windows.rs          main / hidden upload+download worker / preview windows, login + share-site browser windows
-  src/commands/           #[tauri::command]s: fs_*, file_sha1/upload_part/flowenc_*, proxy_*, window/system commands
-  src/aria.rs             bundled aria2c sidecar lifecycle (RPC port 16800+, secret S4znWTaZYQi3cpRNb)
-  src/paths.rs            user-data dir (Electron `userData` semantics, `userdir.config` override, one-time migration)
-  crates/boxcore/         GTK-free core with unit tests: flowenc (aes-ctr/rc4-md5), namecodec, proxy (axum), upload,
-                          hashing, fsx, aria args, speed limiter
-  tauri.conf.json         bundle config (externalBin aria2c, resources/aria2.conf, nsis/dmg/deb/rpm/appimage)
-  capabilities/default.json  window permissions (http:default scope etc.)
+  src/lib.rs              builder: plugins, command registry, setup (window, tray, aria2c), exit hooks
+  src/windows.rs          main / preview windows, login + share-site browser windows
+  src/commands/           #[tauri::command]s: fs_*, file_sha1/upload_part/flowenc_*, http_request, proxy_*, window/system
+  src/aria.rs             bundled aria2c sidecar lifecycle (RPC port 16800+, secret S4znWTaZYQi3cpRNb); resources/aria2.conf is embedded
+  src/paths.rs            user-data dir (`userdir.config` override)
+  crates/alipancore/      GTK-free core with unit tests: flowenc (aes-ctr/rc4-md5), namecodec, proxy (axum), upload,
+                          hashing, fsx, aria args, speed limiter, net (one reqwest builder), bodybridge (loopback body server)
+  tauri.conf.json         bundle config (externalBin aria2c, nsis)
+  capabilities/default.json  window permissions: core:default + start-dragging + toggle-maximize
   binaries/               generated by scripts/prepare-sidecars.mjs (gitignored)
 
 src/                      Vue 3 renderer (entry: src/main.ts → App.vue → layout/PageMain.vue)
-  tauri/                  bridge to Rust: bridge.ts installs the legacy `window.WebXxx` API + worker messaging,
-                          http.ts (axios adapter over @tauri-apps/plugin-http with the Aliyun header rules),
-                          fs.ts, hash.ts, upload.ts, flowenc.ts, proxyResolver.ts, dragDrop.ts, invoke.ts
-  aliapi/                 Aliyun Drive API (files, dirs, share, upload, album, trash, user)
+  tauri/                  bridge to Rust: app.ts (typed window/system/clipboard commands), bridge.ts (init, listeners,
+                          drag regions), http.ts (axios adapter over the Rust http_request command with the Aliyun
+                          header rules), fs.ts, hash.ts, upload.ts, flowenc.ts, proxyResolver.ts, dragDrop.ts, invoke.ts, state.ts
+  aliapi/                 Aliyun Drive API (files, dirs, share, upload, album, trash, user) — API wrappers only
   pan/                    File manager UI (tree, list, menus, modals, topbtns)
   share/                  Share links, imports, history, following (share sites open in the Tauri `site` window)
-  down/                   Download/upload task UI + aria2 integration (DownDAL)
-  transfer/               Upload queue DAL
-  workerpage/             Upload/download worker windows (hidden Tauri windows, events instead of MessagePorts)
-  rss/                    Add-on tools (encryption, scans, cleanup, album copy)
+  upload/                 Upload queue, executor (hashing/parts in Rust), persistence and UI
+  download/               aria2 client + manager, download queue, persistence and UI
+  transfer/               The transfer page shell hosting the upload/download panes
+  rss/                    Add-on tools (encryption, scans, cleanup, album copy); drivetools/ share one scan scaffold
   module/flow-enc/        Encrypted file-name codec (ciphers themselves run in Rust)
   user/                   Login (Tauri `login` window with navigation interception), token refresh, account UI
   setting/                Settings pages + settingstore (setting.config preloaded by the backend)
-  layout/                 PageMain shell, PageImage viewer, PageWorker, shared widgets
-  store/                  Pinia stores
-  drive/                  Aliyun drive context helpers (getDriveId/getDriveType, token lookup)
-  utils/                  Shared utilities (db, path shim, aria2Client, mime, modal registry, openfile)
-  i18n/                   zh-CN / en-US strings
+  layout/                 PageMain shell, PageImage viewer, shared widgets
+  store/                  Pinia stores; selectableList.ts is the factory behind every selectable list store
+  utils/                  Shared, feature-agnostic helpers (db, path shim, mime, modal registry, openfile)
+  i18n/                   zh-CN / en-US strings (hand-rolled t(); every key must be referenced)
 
-scripts/                  generate-secrets.mjs, prepare-sidecars.mjs, version-utils.mjs
-static/engine/            aria2c binaries per platform/arch + aria2.conf (copied into src-tauri at build time)
+scripts/                  generate-secrets.mjs, prepare-sidecars.mjs, build-linux-packages.sh, metrics.mjs, linux/ (desktop file)
+static/engine/            aria2c binaries per platform/arch (copied into src-tauri at build time)
+docs/releases/            release notes, picked up by the release workflow
 ```
 
 ## Key patterns
 
-- **pnpm only** — lockfile is `pnpm-lock.yaml`; `package-lock.json`/`yarn.lock` are gitignored
+- **pnpm only** — lockfile is `pnpm-lock.yaml`
 - **Node ≥ 22.12**, stable Rust (≥ 1.77)
 - **No Node APIs in `src/`** — the renderer runs in a plain webview. Use `src/tauri/fs.ts`, `src/utils/path.ts`,
   `invoke()` and the other bridge modules; all HTTP goes through `src/axios.ts` (Rust reqwest, so CORS/forbidden
   headers are not an issue). Add new native capabilities as `#[tauri::command]`s in `src-tauri/src/commands/`.
 - **Renderer ↔ Rust contract**: command names/args in `src-tauri/src/lib.rs` `generate_handler!`; events
-  (`WinMsg`, `worker-ready`, `setTheme`, `sha1-progress`, `upload-progress`, `proxy-need-url`, `login-navigation`, ...)
-- **Windows**: `main`, hidden `upload`/`download` workers, `preview-*` (PageImage), `login`, `site`; routed by
-  `index.html#page=...&type=...` (see `parsePageRoute` in `src/tauri/bridge.ts`)
+  (`setTheme`, `sha1-progress`, `upload-progress`, `proxy-need-url`, `login-navigation`, `site-navigation`, ...)
+- **Windows**: `main`, `preview-*` (PageImage), `login`, `site`; routed by `index.html#page=...` (see `parsePageRoute`
+  in `src/tauri/bridge.ts`). Uploads and downloads run in the main window; there are no hidden worker windows.
 - **Formatting**: single quotes, no semicolons, 260 printWidth, no trailing commas, LF, `sortAttributes: true` in Vue
-- **TypeScript**: strict mode, ESNext target, node moduleResolution
-- **Secrets**: only `ALIYUN_APP_ID`/`ALIYUN_APP_SECRET` (+ Apple notarization vars) via `.env.local`; never commit
-  `src/secrets.generated.ts`. Without them the OpenAPI (second login step) needs custom credentials entered in
-  设置 → 账户设置 → OpenAPI 授权.
+- **TypeScript**: strict mode, `noUnusedLocals`/`noUnusedParameters`, ESNext target, node moduleResolution
+- **Secrets**: only `ALIYUN_APP_ID`/`ALIYUN_APP_SECRET` via `.env.local`; never commit `src/secrets.generated.ts`.
+  Without them the OpenAPI (second login step) needs custom credentials entered in 设置 → 账户设置 → OpenAPI 授权.
 - **Vitest**: Node environment only, explicit test directory list in `vitest.config.ts` (not glob patterns). Add new test dirs to config.
 - **No auto-updater**: the app is private (every user brings their own Aliyun developer credentials), so there is
   no update check, updater plugin or release feed — do not reintroduce them.
-- **CI**: `.github/workflows/release.yml` runs on `v<major>.<minor>.<patch>` tags (plus manual dispatch) → draft GitHub Release.
-  Windows jobs use tauri-action (nsis); Linux jobs build with `--no-bundle` and package via `scripts/build-linux-packages.sh`
-  (one FHS staging tree → tar.gz + deb + rpm; binaries in `/usr/lib/alipanbuddy` with a `/usr/bin` symlink so the bundled
-  aria2c never collides with the system aria2). No macOS or AppImage builds.
+- **CI**: `.github/workflows/ci.yml` (typecheck, tests, knip, cargo) on pushes and PRs; `release.yml` runs on
+  `v<major>.<minor>.<patch>` tags → published GitHub Release. Windows jobs use tauri-action (nsis); Linux jobs build with
+  `--no-bundle` and package via `scripts/build-linux-packages.sh` (one FHS staging tree → deb + rpm; binaries in
+  `/usr/lib/alipanbuddy` with a `/usr/bin` symlink so the bundled aria2c never collides with the system aria2).
+  Versions are bumped by hand in `package.json` (tauri.conf.json reads it) and `src-tauri/Cargo.toml`.
+
+## Keeping the repo small
+
+These rules exist because the codebase once carried a second UI kit, 1,900 dead i18n keys, a hidden webview that did
+nothing and 18 MB of binaries for platforms that were never built. Each layer was reasonable when added; nothing forced
+its removal.
+
+### One way per concern (and why)
+
+| Concern | The one way | Why there is no second way |
+|---|---|---|
+| UI components | Arco Design (`a-*`) only | ant-design-vue was kept for one tree for years and cost 91 MB |
+| HTTP | `src/axios.ts` → `src/tauri/http.ts` → Rust `http_request` | Aliyun needs custom headers, truncated-body retries and stall timeouts only the Rust path handles |
+| Renderer ↔ Rust | typed functions in `src/tauri/*.ts` calling `invoke()` | the old `window.Web*` globals were `any`-typed and hid which commands were dead |
+| aria2 | `src/download/aria2c.ts` (one transport, typed wrappers) | four layers with raw RPC strings made dead wrappers invisible |
+| List selection state | `src/store/selectableList.ts` | ten stores had the same 20 methods copy-pasted |
+| Windows | `main`, `preview-*`, `login`, `site` | hidden worker windows were an Electron workaround; hashing and upload run in Rust now |
+| Platform checks | feature detection; no `platform ===` gates unless the native capability differs (comment which) | macOS is dropped for now but must be able to return |
+| Strings | `t('key')` with keys present in both locales; a test fails on unreferenced keys | 73% of keys were for deleted features |
+| Dependencies | one call site is not enough to justify a package | uuid, howler, lodash and semver each served one line |
+
+### Removal checklist
+
+Removing a feature means removing its whole footprint in the same commit: i18n keys · settings keys and their UI
+toggles · CSS selectors · npm/cargo dependencies · Tauri commands, events and capability grants · assets and sidecars ·
+docs and README sections · tests. Then run `pnpm run knip`, `pnpm run test` and `pnpm run metrics`, and quote the
+numbers in the release notes.
+
+### Transitional code has an expiry
+
+Compatibility shims and migrations carry a `// TODO(remove after vX.Y): reason` comment and are listed here; when the
+version passes, delete them. Currently: none.
+
+### Tests test behaviour
+
+No test may read a source file as text and assert on its wording (the repo once had 14 of those; they pinned
+implementation details and broke every refactor). The only allowed invariants over source are the i18n reference test
+and `knip`.
+
+### Cadence
+
+After every release: `pnpm run knip`, `pnpm run metrics`, `cargo check` warnings, and a five-minute look at
+`package.json` and `Cargo.toml` for dependencies with one call site. Small passes beat big ones.
+
+### Organise by feature
+
+`src/upload/`, `src/download/`, `src/share/`, `src/pan/`, `src/rss/` own their UI, stores, queue logic and persistence.
+Deleting a feature should be one directory removal plus the checklist above. Cross-feature helpers live in `src/utils/`
+and `src/tauri/`; nothing feature-specific goes there, and `src/utils/` never imports from a feature directory.
