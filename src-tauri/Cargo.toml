@@ -1,6 +1,6 @@
 [package]
 name = "alipanbuddy"
-version = "1.3.0"
+version = "1.4.0"
 description = "AlipanBuddy (神行云盘助手) - Aliyun Drive desktop client"
 authors = ["programfan"]
 repository = "https://github.com/programfan/alipanbuddy"

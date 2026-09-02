@@ -30,7 +30,7 @@ dependencies = [
 
 [[package]]
 name = "alipanbuddy"
-version = "1.3.0"
+version = "1.4.0"
 dependencies = [
  "alipancore",
  "base64 0.22.1",
@@ -57,7 +57,7 @@ dependencies = [
 
 [[package]]
 name = "alipancore"
-version = "1.3.0"
+version = "1.4.0"
 dependencies = [
  "aes",
  "axum",
