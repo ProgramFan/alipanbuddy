@@ -381,17 +381,10 @@ function _loadSetting(val: any) {
 }
 
 let settingstr = ''
-/** JSON text pushed in by the main window (`SettingRefresh`); takes precedence over the backend-preloaded `setting.config`. */
-let appliedSettingJson: string | null = null
-
-/** Stores the JSON that the next `LoadSetting()` (e.g. `useSettingStore().$reset()`) will parse. */
-export function ApplySettingJson(json: string) {
-  if (typeof json === 'string' && json) appliedSettingJson = json
-}
 
 export function LoadSetting() {
   try {
-    const json = appliedSettingJson !== null ? appliedSettingJson : getPreloadedSettingJson()
+    const json = getPreloadedSettingJson()
     if (json) {
       settingstr = json
       const val = JSON.parse(settingstr)
@@ -478,7 +471,6 @@ const useSettingStore = defineStore('setting', {
       SaveSetting()
       useAppStore().toggleTheme(setting.uiTheme)
       if (Object.hasOwn(partial, 'uiTheme')) saveTheme(setting.uiTheme)
-      window.WinMsgToUpload({ cmd: 'SettingRefresh', setting: settingstr })
     },
     updateFileColor(key: string, title: string) {
       if (!key) return

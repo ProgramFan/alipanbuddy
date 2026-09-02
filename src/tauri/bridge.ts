@@ -1,11 +1,9 @@
 /**
  * Tauri replacement for the former Electron preload script.
- * Wires window↔window messaging (main ↔ upload worker) over Tauri events, installs the DOM level
- * integrations (context menu, devtools, drag region) and exposes platform information.
- * The typed command wrappers live in `./app`.
+ * Installs the DOM level integrations (context menu, devtools, drag region) and exposes platform
+ * information. The typed command wrappers live in `./app`.
  */
-import { emitTo, listen } from '@tauri-apps/api/event'
-import { decodeWinMsg, encodeWinMsg } from './winmsg'
+import { listen } from '@tauri-apps/api/event'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { invoke, isTauri } from './invoke'
 import { setPlatform } from './state'
@@ -25,10 +23,8 @@ export interface PageContext {
   data?: any
   theme?: string
   dark: boolean
-  windowType: 'main' | 'upload' | 'preview'
+  windowType: 'main' | 'preview'
 }
-
-export type WorkerKind = 'upload'
 
 let platformInfo: PlatformInfo = {
   platform: 'linux',
@@ -49,46 +45,11 @@ export function getPlatformInfo(): PlatformInfo {
   return platformInfo
 }
 
-/** Parses `index.html#page=PageWorker&type=upload` style routing information. */
-export function parsePageRoute(): { page: string; type: string; label: string } {
+/** Parses `index.html#page=PageImage&label=preview-1` style routing information. */
+export function parsePageRoute(): { page: string; label: string } {
   const hash = (typeof location !== 'undefined' ? location.hash : '').replace(/^#\??/, '')
   const params = new URLSearchParams(hash)
-  return { page: params.get('page') || 'PageMain', type: params.get('type') || '', label: params.get('label') || '' }
-}
-
-// ---------- worker window messaging ----------
-const workerReady: Record<WorkerKind, boolean> = { upload: false }
-const workerPending: Record<WorkerKind, any[]> = { upload: [] }
-
-function sendToWorker(kind: WorkerKind, event: any) {
-  if (workerReady[kind]) {
-    emitTo(kind, 'WinMsg', encodeWinMsg(event)).catch(() => {})
-    return
-  }
-  workerPending[kind].push(event)
-  invoke('ensure_transfer_worker', { kind }).catch(() => {})
-}
-
-function flushWorker(kind: WorkerKind) {
-  workerReady[kind] = true
-  const queue = workerPending[kind]
-  while (queue.length) emitTo(kind, 'WinMsg', encodeWinMsg(queue.shift())).catch(() => {})
-}
-
-/** Called by the upload worker window once `window.WinMsg` is installed. */
-export async function markWorkerReady(kind: WorkerKind) {
-  await invoke('worker_ready', { kind }).catch(() => {})
-}
-
-/**
- * Worker window messaging. Still installed on `window` because the worker page and the DALs talk to
- * each other by convention; every other legacy global is now a typed function in `./app`.
- */
-function installWindowMessaging() {
-  window.WinMsgToMain = (event: any) => {
-    emitTo('main', 'WinMsg', encodeWinMsg(event)).catch(() => {})
-  }
-  window.WinMsgToUpload = (event: any) => sendToWorker('upload', event)
+  return { page: params.get('page') || 'PageMain', label: params.get('label') || '' }
 }
 
 export function getPageContext(): Promise<PageContext> {
@@ -169,22 +130,6 @@ function installDomIntegrations() {
   })
 }
 
-async function installListeners() {
-  await listen('WinMsg', (event) => {
-    Promise.resolve().then(() => {
-      try {
-        if (window.WinMsg) window.WinMsg(decodeWinMsg(event.payload))
-      } catch {}
-    })
-  })
-  await listen<{ kind: WorkerKind }>('worker-ready', (event) => {
-    if (event.payload?.kind === 'upload') flushWorker('upload')
-  })
-  await listen<{ kind: WorkerKind }>('worker-reset', (event) => {
-    if (event.payload?.kind === 'upload') workerReady.upload = false
-  })
-}
-
 /** Must complete before the Vue app is created. */
 export async function initBridge(): Promise<PlatformInfo> {
   if (initialized) return platformInfo
@@ -197,12 +142,8 @@ export async function initBridge(): Promise<PlatformInfo> {
     }
   }
   setPlatform(platformInfo.platform)
-  installWindowMessaging()
-  if (isTauri()) {
-    installDomIntegrations()
-    await installListeners()
-  }
+  if (isTauri()) installDomIntegrations()
   return platformInfo
 }
 
-export { listen, emitTo }
+export { listen }

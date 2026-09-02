@@ -5,7 +5,7 @@ import { usePanTreeStore, useSettingStore } from '../../store'
 import { decodeName, encodeName } from '../../module/flow-enc/utils'
 import Db from '../../utils/db'
 import message from '../../utils/message'
-import { localPwd } from '../../utils/aria2c'
+import { localPwd } from '../../download/aria2c'
 
 const props = defineProps({
   visible: {

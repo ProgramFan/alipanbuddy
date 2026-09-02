@@ -1,15 +1,16 @@
 import AliFileCmd from '../aliapi/filecmd'
 import { IUploadInfo } from '../aliapi/models'
 import AliUpload from '../aliapi/upload'
-import AliUploadDisk from '../aliapi/uploaddisk'
-import AliUploadHashPool from '../aliapi/uploadhashpool'
+import AliUploadDisk from './uploaddisk'
+import AliUploadHashPool from './uploadhashpool'
 import { useSettingStore } from '../store'
 import UserDAL from '../user/userdal'
-import { IStateUploadInfo, IStateUploadTaskFile, IUploadingUI } from '../utils/dbupload'
+import { IStateUploadInfo, IStateUploadTaskFile, IUploadingUI } from './dbupload'
 import DebugLog from '../utils/debuglog'
 import { CheckWindowsBreakPath, FileSystemErrorMessage } from '../utils/filehelper'
 import { humanSize, Sleep } from '../utils/format'
-import { RuningList } from './uiupload'
+import { RuningList } from './uploadloop'
+import UploadingData from './uploadingdata'
 import path from '../utils/path'
 import fs, { type DirEntryInfo, type StatInfo } from '../tauri/fs'
 
@@ -177,13 +178,7 @@ async function creatDirAndReadChildren(fileui: IUploadingUI): Promise<void> {
   childList = read.fileList
   if (read.dirList.length > 0) childList.push(...read.dirList)
 
-  window.WinMsgToMain({
-    cmd: 'MainUploadAppendFiles',
-    TaskID: fileui.TaskID,
-    UploadID: fileui.UploadID,
-    AppendList: childList,
-    CreatedDirID: uploaded_file_id
-  })
+  await UploadingData.UploadingAppendFilesSave(fileui.TaskID, fileui.UploadID, uploaded_file_id, childList)
 
   RuningList.delete(fileui.UploadID)
 }

@@ -1,4 +1,4 @@
-import { AriaRawCall, AriaConnect } from '../../utils/aria2c'
+import { AriaRawCall, AriaConnect } from '../aria2c'
 import { normalizeAriaTask, normalizeTaskFiles } from './taskTypes'
 import type { DownloadTask, DownloadTaskFile } from './taskTypes'
 

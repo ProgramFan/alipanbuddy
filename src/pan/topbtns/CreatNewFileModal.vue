@@ -1,5 +1,5 @@
 <script lang="ts">
-import AliUploadMem from '../../aliapi/uploadmem'
+import AliUploadMem from '../../upload/uploadmem'
 import { usePanTreeStore } from '../../store'
 import message from '../../utils/message'
 import { modalCloseAll } from '../../utils/modal'

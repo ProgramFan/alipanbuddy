@@ -1,7 +1,7 @@
 <script setup lang='ts'>
 import useSettingStore from './settingstore'
 import MySwitch from '../layout/MySwitch.vue'
-import { AriaGlobalSpeed } from '../utils/aria2c'
+import { AriaGlobalSpeed } from '../download/aria2c'
 import { t } from '../i18n'
 import { showOpenDialog } from '../tauri/app'
 

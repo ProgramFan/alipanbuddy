@@ -2,7 +2,7 @@ import { useSettingStore } from '../store'
 import { decodeName } from '../module/flow-enc/utils'
 import { IAliFileItem, IAliGetFileModel } from '../aliapi/alimodels'
 import AliFile from '../aliapi/file'
-import { localPwd } from './aria2c'
+import { localPwd } from '../download/aria2c'
 import { invoke } from '../tauri/invoke'
 
 export interface IRawUrl {

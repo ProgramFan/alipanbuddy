@@ -13,14 +13,14 @@ import {
   AriaStopList,
   FormatAriaError,
   IsAria2cRemote
-} from '../utils/aria2c'
+} from './aria2c'
 import { humanSize, humanSizeSpeed } from '../utils/format'
-import DBDown from '../utils/dbdown'
+import DBDown from './dbdown'
 import fs from '../tauri/fs'
 import { DecodeEncName } from '../aliapi/utils'
 import { getEncType } from '../utils/proxyhelper'
 import { SHA256 } from 'crypto-js'
-import { shouldRemoveAriaStoppedResult } from '../utils/aria2Rpc'
+import { shouldRemoveAriaStoppedResult } from './aria2Rpc'
 import { resolveAriaProgressErrorState } from './integration/downloadProgressState'
 import { resolveDriveFileToken } from '../drive/account'
 import { notifyDownloadCompleted, setProgressBar } from '../tauri/app'

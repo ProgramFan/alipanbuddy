@@ -1,8 +1,8 @@
-import { IUploadingModel } from '../down/UploadingStore'
+import { IUploadingModel } from './UploadingStore'
 import PanDAL from '../pan/pandal'
 import { usePanTreeStore, useSettingStore } from '../store'
-import UploadDAL from './uploaddal'
-import DBUpload, { IStateUploadInfo, IStateUploadTask, IStateUploadTaskFile, IUploadingUI } from '../utils/dbupload'
+import { UploadedDAL } from './UploadedStore'
+import DBUpload, { IStateUploadInfo, IStateUploadTask, IStateUploadTaskFile, IUploadingUI } from './dbupload'
 import { humanSize, humanSizeSpeed, humanTime, humanTimeFM } from '../utils/format'
 import { MapValueToArray } from '../utils/utils'
 import { throttle } from '../utils/debounce'
@@ -647,7 +647,7 @@ export default class UploadingData {
           await PanDAL.aReLoadOneDirToShow(drive_file_list[0].drive_id, 'refresh', false, album_id)
         }
         await DBUpload.saveUploadedBatch(saveUploadedList)
-        await UploadDAL.aReloadUploaded()
+        await UploadedDAL.aReloadUploaded()
       }
       if (useSettingStore().downAutoShutDown == 1) useSettingStore().downAutoShutDown = 2
     }
@@ -869,7 +869,7 @@ export default class UploadingData {
         await DBUpload.deleteUploadTask(TaskID)
         UploadingTaskStop.delete(TaskID)
         await DBUpload.saveUploadedBatch([task])
-        await UploadDAL.aReloadUploaded()
+        await UploadedDAL.aReloadUploaded()
         let panTreeStore = usePanTreeStore()
         let album_id = panTreeStore.selectDir.album_id || ''
         // 重新上传完毕，若为相册上传则添加到相册

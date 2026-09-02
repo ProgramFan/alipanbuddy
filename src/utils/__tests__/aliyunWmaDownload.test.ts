@@ -12,7 +12,7 @@ const ApiFileDownloadUrl = vi.fn()
 
 vi.mock('../../store', () => ({ useSettingStore: () => settingState }))
 vi.mock('../../module/flow-enc/utils', () => ({ decodeName: () => 'decoded-pass' }))
-vi.mock('../aria2c', () => ({ localPwd: 'S4znWTaZYQi3cpRNb' }))
+vi.mock('../../download/aria2c', () => ({ localPwd: 'S4znWTaZYQi3cpRNb' }))
 vi.mock('../../tauri/invoke', () => ({ invoke: vi.fn(), isTauri: () => false }))
 vi.mock('../../aliapi/file', () => ({ default: { ApiFileDownloadUrl: (...args: any[]) => ApiFileDownloadUrl(...args) } }))
 

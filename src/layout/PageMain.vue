@@ -33,7 +33,7 @@ import { detectShareLink } from '../utils/shareLinkDetection'
 const Setting = defineAsyncComponent(() => import('../setting/index.vue'))
 const Rss = defineAsyncComponent(() => import('../rss/index.vue'))
 const Share = defineAsyncComponent(() => import('../share/index.vue'))
-const Down = defineAsyncComponent(() => import('../down/index.vue'))
+const Down = defineAsyncComponent(() => import('../transfer/index.vue'))
 
 const panVisible = ref(true)
 const sidebarVisibility = ref<Record<'down' | 'share' | 'rss' | 'setting', boolean>>({

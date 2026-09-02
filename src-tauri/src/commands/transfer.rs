@@ -1,5 +1,6 @@
-//! File hashing, part upload and whole-file encryption commands used by the upload worker and
-//! the add-on tools.
+//! File hashing, part upload and whole-file encryption commands used by the upload loop and the
+//! add-on tools. `sha1-progress` / `upload-progress` are emitted from the calling window (the main
+//! window: the upload loop no longer runs in a hidden worker).
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};

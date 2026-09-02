@@ -1,23 +1,25 @@
 import ServerHttp from '../aliapi/server'
 import { useAppStore, useFootStore, usePanTreeStore, useSettingStore } from '../store'
 import AppCache from '../utils/appcache'
-import DownDAL from '../down/DownDAL'
-import UploadDAL from '../transfer/uploaddal'
+import DownDAL from '../download/DownDAL'
+import { UploadedDAL } from '../upload/UploadedStore'
 import ShareDAL from '../share/share/ShareDAL'
 
 import UserDAL from '../user/userdal'
 import DebugLog from '../utils/debuglog'
 import PanDAL from '../pan/pandal'
-import UploadingDAL from '../transfer/uploadingdal'
+import UploadingDAL from '../upload/uploadingdal'
 import { Sleep } from '../utils/format'
 import { invoke } from '../tauri/invoke'
 import { getProxyServerPort, setProxyServerPort } from '../tauri/state'
 import cache from '../utils/cache'
 import { startBackgroundStartupTasks } from '../utils/startupTask'
 
+let started = false
+
 export function PageMain() {
-  if (window.WinMsg) return
-  window.WinMsg = WinMsg
+  if (started) return
+  started = true
   //useSettingStore().WebSetProxy()
   Promise.resolve()
     .then(async () => {
@@ -51,7 +53,7 @@ export function PageMain() {
             await DownDAL.aReloadDowning()
             await DownDAL.aReloadDowned()
             await UploadingDAL.aReloadUploading()
-            await UploadDAL.aReloadUploaded()
+            await UploadedDAL.aReloadUploaded()
           }
         },
         {
@@ -64,27 +66,14 @@ export function PageMain() {
       ], (label, err: any) => {
         DebugLog.mSaveDanger(label, err)
       })
+      // The upload loop used to start its own timer when the hidden worker window booted; the
+      // settings and user stores are loaded by this point, which is what it was really waiting for.
+      UploadingDAL.StartUploadReportLoop()
       setTimeout(timeEvent, 1000)
     })
     .catch((err: any) => {
       DebugLog.mSaveDanger('LoadSettingFromDB', err)
     })
-}
-
-export const WinMsg = async (arg: any) => {
-  if (arg.cmd == 'MainUploadEvent') {
-    if (arg.ReportList.length > 0 && arg.ReportList.length != arg.RunningKeys.length) {
-      console.log('RunningKeys', arg)
-    }
-    if (arg.StopKeys.length > 0) console.log('StopKeys', arg)
-    UploadingDAL.aUploadingEvent(arg.ReportList, arg.ErrorList, arg.SuccessList, arg.RunningKeys, arg.StopKeys, arg.LoadingKeys, arg.SpeedTotal)
-  } else if (arg.cmd == 'MainUploadAppendFiles') {
-    UploadingDAL.aUploadingAppendFiles(arg.TaskID, arg.UploadID, arg.CreatedDirID, arg.AppendList)
-  } else if (arg.cmd == 'MainSaveAllDir') {
-    PanDAL.aReLoadDriveSave(arg.OneDriver, arg.ErrorMessage, arg.drive_id)
-  } else if (arg.cmd == 'MainShowAllDirProgress') {
-    PanDAL.aReLoadDriveProgress(arg.drive_id, arg.index, arg.total)
-  }
 }
 
 let runTime = Math.floor(Date.now() / 1000)
@@ -166,7 +155,7 @@ function timeEvent() {
   chkClearDownLogTime++
   if (nowTime - runTime > 60 && chkClearDownLogTime >= 540) {
     chkClearDownLogTime = 0
-    UploadDAL.aClearUploaded().catch((err: any) => {
+    UploadedDAL.aClearUploaded().catch((err: any) => {
       DebugLog.mSaveDanger('aClearUploaded ', err)
     })
     DownDAL.aClearDowned().catch((err: any) => {

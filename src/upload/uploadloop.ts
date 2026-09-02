@@ -1,12 +1,28 @@
-import AliUploadDisk from '../aliapi/uploaddisk'
-import DBUpload, { IStateUploadInfo, IStateUploadTaskFile, IUploadingUI } from '../utils/dbupload'
+/**
+ * The upload work loop. It used to run inside a hidden `upload` renderer window and report back to
+ * the main window over Tauri events; hashing and part upload have since moved into Rust, so the loop
+ * simply runs in the main window and `UploadReport()` returns its report to the caller
+ * (`UploadingDAL.StartUploadReportLoop`).
+ */
+import AliUploadDisk from './uploaddisk'
+import DBUpload, { IStateUploadInfo, IStateUploadTaskFile, IUploadingUI } from './dbupload'
 import { humanSizeSpeed } from '../utils/format'
 import { ArrayKeyList } from '../utils/utils'
 import { StartUpload } from './uploader'
 import { useSettingStore } from '../store'
-import AliUploadHashPool from '../aliapi/uploadhashpool'
+import AliUploadHashPool from './uploadhashpool'
 import { setUploadSpeedLimit } from '../tauri/upload'
 
+/** One pass of the 1s report loop: what changed since the previous pass. */
+export interface IUploadReport {
+  ReportList: IStateUploadInfo[]
+  ErrorList: IStateUploadInfo[]
+  SuccessList: IStateUploadTaskFile[]
+  RunningKeys: number[]
+  StopKeys: number[]
+  LoadingKeys: number[]
+  SpeedTotal: string
+}
 
 export const RuningList: Map<number, IUploadingUI> = new Map()
 
@@ -23,7 +39,7 @@ function ApplyUploadSpeedLimit(bytesPerSecond: number): void {
 }
 
 
-export async function UploadCmd(Command: string, IsAll: boolean, UploadIDList: number[], TaskIDList: number[]): Promise<void> {
+export function UploadCmd(Command: string, IsAll: boolean, UploadIDList: number[], TaskIDList: number[]): void {
   if (UploadIDList.length > 0) {
     const map = new Set(UploadIDList)
     if (Command == 'stop' || Command == 'delete') {
@@ -87,7 +103,7 @@ export function UploadAdd(UploadList: IUploadingUI[]) {
 let saveTime = 0
 
 
-export async function UploadReport(): Promise<void> {
+export async function UploadReport(): Promise<IUploadReport> {
   const settingStore = useSettingStore()
   let speedLimte = 0
   if (settingStore.uploadGlobalSpeed) {
@@ -167,9 +183,8 @@ export async function UploadReport(): Promise<void> {
   }
 
   const uploadSpeedTotal = AliUploadDisk.GetFileUploadSpeedTotal()
-  
-  window.WinMsgToMain({
-    cmd: 'MainUploadEvent',
+
+  return {
     ReportList: reportList,
     ErrorList: errorList,
     SuccessList: successList,
@@ -177,5 +192,5 @@ export async function UploadReport(): Promise<void> {
     StopKeys: ArrayKeyList<number>('UploadID', stopList),
     LoadingKeys: ArrayKeyList<number>('UploadID', loadingList),
     SpeedTotal: runingList.length > 0 ? humanSizeSpeed(uploadSpeedTotal) : ''
-  })
+  }
 }

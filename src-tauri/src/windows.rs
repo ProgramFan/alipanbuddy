@@ -1,5 +1,5 @@
-//! Window factory: main window, the hidden upload worker window, preview (PageImage) windows
-//! and the login / share-site browser windows.
+//! Window factory: main window, preview (PageImage) windows and the login / share-site browser
+//! windows.
 
 use std::path::PathBuf;
 
@@ -15,7 +15,6 @@ pub const APP_UA: &str = "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.3
 pub const BROWSER_UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0";
 
 pub const MAIN: &str = "main";
-pub const UPLOAD: &str = "upload";
 pub const LOGIN: &str = "login";
 pub const SITE: &str = "site";
 
@@ -27,15 +26,9 @@ fn background(theme: &str) -> Color {
     }
 }
 
-/// Where a new window starts out. `Default` leaves it to the window manager (hidden workers).
-enum Placement {
-    Default,
-    Center
-}
-
-fn app_window(app: &AppHandle, label: &str, hash: &str, width: f64, height: f64, placement: Placement, theme: &str, visible: bool) -> tauri::Result<WebviewWindow> {
+fn app_window(app: &AppHandle, label: &str, hash: &str, width: f64, height: f64, theme: &str, visible: bool) -> tauri::Result<WebviewWindow> {
     let url = WebviewUrl::App(PathBuf::from(format!("index.html#{hash}")));
-    let mut builder = WebviewWindowBuilder::new(app, label, url)
+    WebviewWindowBuilder::new(app, label, url)
         .title("神行云盘助手")
         .inner_size(width, height)
         .min_inner_size(width.min(680.0), height.min(500.0))
@@ -43,11 +36,9 @@ fn app_window(app: &AppHandle, label: &str, hash: &str, width: f64, height: f64,
         .visible(visible)
         .shadow(width > 680.0)
         .background_color(background(theme))
-        .user_agent(APP_UA);
-    if let Placement::Center = placement {
-        builder = builder.center();
-    }
-    builder.build()
+        .user_agent(APP_UA)
+        .center()
+        .build()
 }
 
 pub fn main_window(app: &AppHandle) -> Option<WebviewWindow> {
@@ -98,7 +89,7 @@ pub fn create_main_window(app: &AppHandle, show: bool) -> tauri::Result<WebviewW
     let saved = paths::read_window_state(&user_data);
     let (width, height) = saved.map(|s| (s.width, s.height)).unwrap_or_else(|| default_size(app));
     let theme = paths::read_theme(&user_data);
-    let win = app_window(app, MAIN, "page=PageMain", width, height, Placement::Center, &theme, false)?;
+    let win = app_window(app, MAIN, "page=PageMain", width, height, &theme, false)?;
     // The window is still hidden here, so moving it onto its remembered spot costs no visible jump.
     if let Some(position) = saved.and_then(|s| s.position).filter(|p| is_on_screen(app, *p)) {
         let _ = win.set_position(PhysicalPosition::new(position.0, position.1));
@@ -198,34 +189,13 @@ pub fn open_page_window(app: &AppHandle, page: String, data: serde_json::Value, 
     let width = main_w.max(1080.0);
     let dark = main_window(app).and_then(|w| w.theme().ok()).map(|t| matches!(t, tauri::Theme::Dark)).unwrap_or(false);
     state.page_contexts.lock().insert(label.clone(), PageContext { page: page.clone(), data, theme: theme.clone(), dark, window_type: "preview".into() });
-    let win = app_window(app, &label, &format!("page={page}&label={label}"), width, main_h, Placement::Center, &theme, true)?;
+    let win = app_window(app, &label, &format!("page={page}&label={label}"), width, main_h, &theme, true)?;
     let _ = win.set_title("预览窗口");
     let handle = app.clone();
     let label_for_event = label.clone();
     win.on_window_event(move |event| {
         if let WindowEvent::Destroyed = event {
             handle.state::<AppState>().page_contexts.lock().remove(&label_for_event);
-        }
-    });
-    Ok(())
-}
-
-/// Hidden renderer window that runs the upload work loop (formerly a BrowserWindow linked to the
-/// main window with MessagePorts; now Tauri events). Downloads run in the main window.
-pub fn ensure_transfer_worker(app: &AppHandle, kind: &str) -> tauri::Result<()> {
-    if kind != UPLOAD {
-        return Ok(());
-    }
-    if app.get_webview_window(UPLOAD).is_some() {
-        return Ok(());
-    }
-    let _ = app.emit_to(MAIN, "worker-reset", json!({ "kind": UPLOAD }));
-    let win = app_window(app, UPLOAD, "page=PageWorker&type=upload", 10.0, 10.0, Placement::Default, "dark", false)?;
-    let _ = win.set_title("神行云盘助手上传进程");
-    let handle = app.clone();
-    win.on_window_event(move |event| {
-        if let WindowEvent::Destroyed = event {
-            let _ = handle.emit_to(MAIN, "worker-reset", json!({ "kind": UPLOAD }));
         }
     });
     Ok(())

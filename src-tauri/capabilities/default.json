@@ -4,7 +4,6 @@
   "description": "Capabilities for every AlipanBuddy window",
   "windows": [
     "main",
-    "upload",
     "preview-*",
     "login",
     "site"

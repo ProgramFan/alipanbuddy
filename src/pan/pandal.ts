@@ -1,6 +1,7 @@
 import { IAliGetDirModel } from '../aliapi/alimodels'
 import AliFile from '../aliapi/file'
 import AliDirFileList from '../aliapi/dirfilelist'
+import AliDirList from '../aliapi/dirlist'
 import { ITokenInfo, useFootStore, usePanFileStore } from '../store'
 import TreeStore, { IDriverModel, TreeNodeData } from '../store/treestore'
 import DB from '../utils/db'
@@ -44,8 +45,43 @@ const startNextAllDirRefresh = () => {
     allDirRefreshTimer = undefined
     allDirRefreshDrive = task.drive_id
     beginAllDirLoading(task.drive_id)
-    window.WinMsgToUpload({ cmd: 'AllDirList', ...task })
+    LoadAllDirList(task.user_id, task.drive_id, task.drive_root)
   }, ALL_DIR_REFRESH_START_DELAY)
+}
+
+/** Second in-flight listing of the same drive within 5 minutes is dropped. */
+const AllDirLock = new Map<string, number>()
+
+/**
+ * Walks the whole folder tree of one drive and hands the result to `aReLoadDriveSave`. Ran in the
+ * hidden `upload` window until v1.3 to keep the UI thread free; the listing is network bound, so it
+ * now runs here.
+ */
+function LoadAllDirList(user_id: string, drive_id: string, drive_root: string): void {
+  const lock = AllDirLock.get(drive_id) || 0
+  const time = Date.now() / 1000
+  if (lock && time - lock < 300) {
+    PanDAL.aReLoadDriveSave(undefined, 'time', drive_id)
+    return
+  }
+  AllDirLock.set(drive_id, time)
+  AliDirList.ApiFastAllDirListByPID(user_id, drive_id, drive_root, (index, total) => PanDAL.aReLoadDriveProgress(drive_id, index, total))
+    .then(async (data) => {
+      if (!data.next_marker) {
+        const one = await TreeStore.ConvertToOneDriver(user_id, drive_id, data.items, true, false)
+        await PanDAL.aReLoadDriveSave(one, '', drive_id)
+      } else {
+        DebugLog.mSaveWarning('列出文件夹失败file_id=all next_marker=' + data.next_marker)
+        await PanDAL.aReLoadDriveSave(undefined, data.next_marker, drive_id)
+      }
+    })
+    .catch((err: any) => {
+      DebugLog.mSaveWarning('列出文件夹失败file_id=all', err)
+      return PanDAL.aReLoadDriveSave(undefined, err.message || '未知错误', drive_id)
+    })
+    .finally(() => {
+      AllDirLock.delete(drive_id)
+    })
 }
 
 const queueAllDirRefresh = (user_id: string, drive_id: string, drive_root: string) => {
@@ -119,11 +155,11 @@ export default class PanDAL {
     queueAllDirRefresh(user_id, resource_drive_id, 'resource_root')
   }
 
-  static async aReLoadDriveSave(OneDriver: IDriverModel, error: string, drive_id: string): Promise<void> {
+  static async aReLoadDriveSave(OneDriver: IDriverModel | undefined, error: string, drive_id: string): Promise<void> {
     try {
       if (error == 'time') {
         return
-      } else if (!error) {
+      } else if (!error && OneDriver) {
         await TreeStore.SaveOneDriver(OneDriver)
         PanDAL.RefreshPanTreeAllNode(OneDriver.drive_id)
       } else {

@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { normalizeAriaTask, normalizeTaskFiles } from './taskTypes'
 
-vi.mock('../../utils/aria2c', () => ({
+vi.mock('../aria2c', () => ({
   AriaConnect: vi.fn(),
   AriaRawCall: vi.fn()
 }))
 
-import { AriaConnect, AriaRawCall } from '../../utils/aria2c'
+import { AriaConnect, AriaRawCall } from '../aria2c'
 import { batchPauseTasks, batchRemoveTasks, batchResumeTasks, normalizeTaskListResult } from './aria2TaskApi'
 
 beforeEach(() => {

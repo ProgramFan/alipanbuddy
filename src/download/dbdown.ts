@@ -1,5 +1,5 @@
 import Dexie from 'dexie'
-import { IStateDownFile } from '../down/DownDAL'
+import { IStateDownFile } from './DownDAL'
 import useUserStore from '../user/userstore'
 
 class XBYDB3Down extends Dexie {

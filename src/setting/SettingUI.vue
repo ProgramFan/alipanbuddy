@@ -2,12 +2,11 @@
 import { computed, onMounted, ref } from 'vue'
 import useSettingStore from './settingstore'
 import MySwitch from '../layout/MySwitch.vue'
-import { getAppVersion as getInstalledAppVersion, getPlatform, openExternal } from '../tauri/app'
+import { getAppVersion as getInstalledAppVersion, openExternal } from '../tauri/app'
 import { Code2 } from 'lucide-vue-next'
 import { getPkgVersion } from '../utils/utils'
 import { t } from '../i18n'
 
-const platform = getPlatform()
 const settingStore = useSettingStore()
 const topTabOptions = [
   { key: 'pan', labelKey: 'nav.pan' }, { key: 'share', labelKey: 'nav.share' }, { key: 'rss', labelKey: 'nav.plugins' }
@@ -92,26 +91,24 @@ function openSupport() {
         <a-radio tabindex='-1' value='rss'>{{ t('nav.plugins') }}</a-radio>
       </a-radio-group>
     </div>
-    <template v-if="platform === 'win32'">
-      <div class='settingspace'></div>
-      <div class='settinghead'>{{ t('settings.startup') }}</div>
-      <div class='settingrow'>
-        <MySwitch :value='settingStore.uiLaunchStart' @update:value='cb({ uiLaunchStart: $event })'>
-          {{ t('settings.startAtLogin') }}
-        </MySwitch>
-      </div>
-      <div class='settingrow' v-if="settingStore.uiLaunchStart">
-        <MySwitch :value='settingStore.uiLaunchStartShow'
-                  @update:value='cb({ uiLaunchStartShow: $event })'>
-          {{ t('settings.showOnStart') }}
-        </MySwitch>
-      </div>
-      <div class='settingrow'>
-        <MySwitch :value='settingStore.uiLaunchMaximized' @update:value='cb({ uiLaunchMaximized: $event })'>
-          {{ t('book.autoMaximizeMainWindow') }}
-        </MySwitch>
-      </div>
-    </template>
+    <div class='settingspace'></div>
+    <div class='settinghead'>{{ t('settings.startup') }}</div>
+    <div class='settingrow'>
+      <MySwitch :value='settingStore.uiLaunchStart' @update:value='cb({ uiLaunchStart: $event })'>
+        {{ t('settings.startAtLogin') }}
+      </MySwitch>
+    </div>
+    <div class='settingrow' v-if="settingStore.uiLaunchStart">
+      <MySwitch :value='settingStore.uiLaunchStartShow'
+                @update:value='cb({ uiLaunchStartShow: $event })'>
+        {{ t('settings.showOnStart') }}
+      </MySwitch>
+    </div>
+    <div class='settingrow'>
+      <MySwitch :value='settingStore.uiLaunchMaximized' @update:value='cb({ uiLaunchMaximized: $event })'>
+        {{ t('book.autoMaximizeMainWindow') }}
+      </MySwitch>
+    </div>
     <div class='settingspace'></div>
     <div class='settinghead'>{{ t('settings.autoSign') }}</div>
     <div class='settingrow'>

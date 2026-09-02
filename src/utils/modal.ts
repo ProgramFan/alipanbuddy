@@ -1,7 +1,7 @@
 import { IAliGetFileModel, IAliShareItem } from '../aliapi/alimodels'
 import { useModalStore, usePanFileStore, useSettingStore } from '../store'
 import usePanTreeStore from '../pan/pantreestore'
-import UploadingDAL from '../transfer/uploadingdal'
+import UploadingDAL from '../upload/uploadingdal'
 
 export function modalCloseAll() {
   useModalStore().showModal('', {})

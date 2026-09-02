@@ -1,7 +1,7 @@
 import UserDAL from '../user/userdal'
 import DebugLog from '../utils/debuglog'
 import axios from 'axios'
-import AliUpload from './upload'
+import AliUpload from '../aliapi/upload'
 import AliUploadHashPool from './uploadhashpool'
 import { getEncPassword } from '../utils/proxyhelper'
 import { useSettingStore } from '../store'

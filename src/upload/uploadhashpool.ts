@@ -1,4 +1,4 @@
-import { IUploadingUI } from '../utils/dbupload'
+import { IUploadingUI } from './dbupload'
 import DBCache from '../utils/dbcache'
 import DebugLog from '../utils/debuglog'
 import { FileSystemErrorMessage } from '../utils/filehelper'

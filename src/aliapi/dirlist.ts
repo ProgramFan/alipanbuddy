@@ -24,7 +24,8 @@ export interface IAliDirBatchResp {
 }
 
 export default class AliDirList {
-  static async ApiFastAllDirListByPID(user_id: string, drive_id: string, drive_root: string): Promise<IDirDataResp> {
+  /** `onProgress(loaded, total)` is called after every batch so the caller can show a percentage. */
+  static async ApiFastAllDirListByPID(user_id: string, drive_id: string, drive_root: string, onProgress?: (loaded: number, total: number) => void): Promise<IDirDataResp> {
     const result: IDirDataResp = {
       items: [],
       next_marker: '',
@@ -118,12 +119,7 @@ export default class AliDirList {
             }
             dirList.length = 0
             dirList = list
-            if (window.WinMsgToMain) window.WinMsgToMain({
-              cmd: 'MainShowAllDirProgress',
-              drive_id,
-              index: allMap.size,
-              total: dirCount
-            })
+            if (onProgress) onProgress(allMap.size, dirCount)
           } else {
             errorMessage = (resp.code || 'unknown').toString()
             DebugLog.mSaveWarning('SSApiBatchDirFileList err=' + errorMessage, resp.body)

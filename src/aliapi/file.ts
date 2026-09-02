@@ -68,8 +68,7 @@ export default class AliFile {
       size: 0
     }
     let url = ''
-    // 处理OpenApi无法访问相册。The hidden download worker never fills the in-memory token map, so
-    // fall back to the DB copy before deciding which API may serve this drive.
+    // 处理OpenApi无法访问相册。Fall back to the DB copy of the token before deciding which API may serve this drive.
     const token = UserDAL.GetUserToken(user_id) || (await UserDAL.GetUserTokenFromDB(user_id))
     let isPic = (!!token && !!token.pic_drive_id && token.pic_drive_id === drive_id) || GetDriveType(user_id, drive_id).name === 'pic'
     if (!isPic) {

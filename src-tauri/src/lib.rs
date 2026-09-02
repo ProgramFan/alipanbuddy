@@ -60,8 +60,6 @@ pub fn run() {
             commands::window::window_cmd,
             commands::window::open_page_window,
             commands::window::get_page_context,
-            commands::window::ensure_transfer_worker,
-            commands::window::worker_ready,
             commands::window::open_login_window,
             commands::window::close_login_window,
             commands::window::open_site_window,

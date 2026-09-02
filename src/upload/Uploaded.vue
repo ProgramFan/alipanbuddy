@@ -19,10 +19,10 @@ import {
   TestKeyboardSelect
 } from '../utils/keyboardhelper'
 import { ref } from 'vue'
-import UploadDAL from '../transfer/uploaddal'
+import { UploadedDAL } from './UploadedStore'
 
 import useUploadedStore from './UploadedStore'
-import { IStateUploadTask } from '../utils/dbupload'
+import { IStateUploadTask } from './dbupload'
 import message from '../utils/message'
 import AliFile from '../aliapi/file'
 import PanDAL from '../pan/pandal'
@@ -137,7 +137,7 @@ mouseStore.$subscribe((_m: any, state: MouseState) => {
 })
 
 
-const handleRefresh = () => UploadDAL.aReloadUploaded()
+const handleRefresh = () => UploadedDAL.aReloadUploaded()
 const handleSelectAll = () => uploadedStore.mSelectAll()
 
 const handleSelect = (TaskID: number, event: any, isCtrl: boolean = false) => {
@@ -229,7 +229,7 @@ const onSelectFile = async (item: IStateUploadTask | undefined, cmd: string) => 
     }
   }
   if (cmd == 'delete') {
-    UploadDAL.UploadedDelete(false)
+    UploadedDAL.UploadedDelete(false)
   }
   if (cmd == 'pan') {
 
@@ -275,12 +275,12 @@ const onSelectFile = async (item: IStateUploadTask | undefined, cmd: string) => 
     </div>
 
     <div v-if="uploadedStore.IsListSelected" class="toppanbtn">
-      <a-button type="text" size="small" tabindex="-1" @click="() => UploadDAL.UploadedDelete(false)"><IconFont name="icondelete" />{{ t('transfer.clearSelected') }}
+      <a-button type="text" size="small" tabindex="-1" @click="() => UploadedDAL.UploadedDelete(false)"><IconFont name="icondelete" />{{ t('transfer.clearSelected') }}
       </a-button>
     </div>
 
     <div class="toppanbtn">
-      <a-button type="text" size="small" tabindex="-1" @click="() => UploadDAL.UploadedDelete(true)"><IconFont name="iconrest" />{{ t('transfer.clearAllUploaded') }}
+      <a-button type="text" size="small" tabindex="-1" @click="() => UploadedDAL.UploadedDelete(true)"><IconFont name="iconrest" />{{ t('transfer.clearAllUploaded') }}
       </a-button>
     </div>
 

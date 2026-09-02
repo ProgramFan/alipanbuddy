@@ -195,10 +195,6 @@ export default class UserDAL {
   }
 
 
-  static async ClearUserTokenMap() {
-    UserTokenMap.clear()
-  }
-
   static GetUserList() {
     const list: ITokenInfo[] = []
     // eslint-disable-next-line no-unused-vars
@@ -222,12 +218,8 @@ export default class UserDAL {
   static SaveUserToken(token: ITokenInfo) {
     if (token.user_id) {
       UserTokenMap.set(token.user_id, token)
-      DB.saveUser(token)
-        .then(() => {
-          window.WinMsgToUpload({ cmd: 'ClearUserToken' })
-        })
-        .catch(() => {
-        })
+      DB.saveUser(token).catch(() => {
+      })
     }
   }
 

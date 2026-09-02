@@ -7,10 +7,6 @@ declare global {
 
   // eslint-disable-next-line no-unused-vars
   interface Window {
-    /** main ↔ upload worker messaging, installed by src/tauri/bridge.ts */
-    WinMsg: any
-    WinMsgToUpload: any
-    WinMsgToMain: any
     postdataFunc: any
   }
 }

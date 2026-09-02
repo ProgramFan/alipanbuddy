@@ -18,7 +18,7 @@ vi.mock('../../utils/message', () => ({
   }
 }))
 
-vi.mock('../../utils/dbdown', () => ({
+vi.mock('../dbdown', () => ({
   default: {
     saveDownings: vi.fn(),
     deleteDownings: vi.fn(),

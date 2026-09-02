@@ -1,16 +1,39 @@
-import useUploadingStore from '../down/UploadingStore'
+import useUploadingStore from './UploadingStore'
 import { useFootStore, useSettingStore } from '../store'
-import { IStateUploadInfo, IStateUploadTask, IStateUploadTaskFile } from '../utils/dbupload'
+import { IStateUploadTask, IStateUploadTaskFile } from './dbupload'
 import { clickWait } from '../utils/debounce'
 import DebugLog from '../utils/debuglog'
 import { CheckWindowsBreakPath, FileSystemErrorMessage } from '../utils/filehelper'
 import { humanSize, humanSizeSpeed } from '../utils/format'
 import message from '../utils/message'
 import UploadingData from './uploadingdata'
+import { IUploadReport, UploadAdd, UploadCmd, UploadReport } from './uploadloop'
 import path from '../utils/path'
 import fs, { type StatInfo } from '../tauri/fs'
 
+/** Delay before the first report, matching the old worker window's start-up grace period. */
+const REPORT_FIRST_DELAY = 6000
+const REPORT_INTERVAL = 1000
+let reportTimer: any
+
 export default class UploadingDAL {
+
+  /**
+   * Drives the upload work loop. The loop used to live in a hidden `upload` window that started its
+   * own timer once it booted; it now runs here, started by the main page once the stores are ready.
+   */
+  static StartUploadReportLoop() {
+    if (reportTimer) return
+    const tick = () => {
+      UploadReport()
+        .then((report) => UploadingDAL.aUploadingEvent(report))
+        .catch((err: any) => DebugLog.mSaveDanger('UploadReport', err))
+        .finally(() => {
+          reportTimer = setTimeout(tick, REPORT_INTERVAL)
+        })
+    }
+    reportTimer = setTimeout(tick, REPORT_FIRST_DELAY)
+  }
 
   static QueryIsUploading() {
     return UploadingData.QueryIsUploading()
@@ -63,21 +86,9 @@ export default class UploadingDAL {
 
       if (!isToStart) {
         if (all) {
-          window.WinMsgToUpload({
-            cmd: 'UploadCmd',
-            Command: 'stop',
-            IsAll: false,
-            UploadIDList: [],
-            TaskIDList: [uploadingStore.showTaskID]
-          })
+          UploadCmd('stop', false, [], [uploadingStore.showTaskID])
         } else {
-          window.WinMsgToUpload({
-            cmd: 'UploadCmd',
-            Command: 'stop',
-            IsAll: false,
-            UploadIDList: UploadIDList,
-            TaskIDList: []
-          })
+          UploadCmd('stop', false, UploadIDList, [])
         }
       }
     } else {
@@ -86,15 +97,9 @@ export default class UploadingDAL {
 
       if (!isToStart) {
         if (all) {
-          window.WinMsgToUpload({ cmd: 'UploadCmd', Command: 'stop', IsAll: true, UploadIDList: [], TaskIDList: [] })
+          UploadCmd('stop', true, [], [])
         } else {
-          window.WinMsgToUpload({
-            cmd: 'UploadCmd',
-            Command: 'stop',
-            IsAll: false,
-            UploadIDList: [],
-            TaskIDList: TaskIDList
-          })
+          UploadCmd('stop', false, [], TaskIDList)
         }
       }
     }
@@ -110,25 +115,13 @@ export default class UploadingDAL {
       const UploadIDList: number[] = [TaskOrUploadID]
       await UploadingData.UploadingStartTaskFile(uploadingStore.showTaskID, UploadIDList, isToStart)
 
-      if (!isToStart) window.WinMsgToUpload({
-        cmd: 'UploadCmd',
-        Command: 'stop',
-        IsAll: false,
-        UploadIDList: UploadIDList,
-        TaskIDList: []
-      })
+      if (!isToStart) UploadCmd('stop', false, UploadIDList, [])
     } else {
       const isToStart = UploadingData.GetTaskIsStop(TaskOrUploadID)
       const TaskIDList: number[] = [TaskOrUploadID]
       await UploadingData.UploadingStartTask(TaskIDList, isToStart)
 
-      if (!isToStart) window.WinMsgToUpload({
-        cmd: 'UploadCmd',
-        Command: 'stop',
-        IsAll: false,
-        UploadIDList: [],
-        TaskIDList: TaskIDList
-      })
+      if (!isToStart) UploadCmd('stop', false, [], TaskIDList)
     }
     UploadingDAL.mUploadingRefresh()
   }
@@ -141,35 +134,17 @@ export default class UploadingDAL {
       let UploadIDList: number[] = all ? [] : Array.from(useUploadingStore().ListSelected)
       UploadIDList = await UploadingData.UploadingDeleteTaskFile(uploadingStore.showTaskID, UploadIDList)
       if (all) {
-        window.WinMsgToUpload({
-          cmd: 'UploadCmd',
-          Command: 'delete',
-          IsAll: false,
-          UploadIDList: [],
-          TaskIDList: [uploadingStore.showTaskID]
-        })
+        UploadCmd('delete', false, [], [uploadingStore.showTaskID])
       } else {
-        window.WinMsgToUpload({
-          cmd: 'UploadCmd',
-          Command: 'delete',
-          IsAll: false,
-          UploadIDList: UploadIDList,
-          TaskIDList: []
-        })
+        UploadCmd('delete', false, UploadIDList, [])
       }
     } else {
       let TaskIDList: number[] = all ? [] : Array.from(useUploadingStore().ListSelected)
       TaskIDList = await UploadingData.UploadingDeleteTask(TaskIDList)
       if (all) {
-        window.WinMsgToUpload({ cmd: 'UploadCmd', Command: 'delete', IsAll: true, UploadIDList: [], TaskIDList: [] })
+        UploadCmd('delete', true, [], [])
       } else {
-        window.WinMsgToUpload({
-          cmd: 'UploadCmd',
-          Command: 'delete',
-          IsAll: false,
-          UploadIDList: [],
-          TaskIDList: TaskIDList
-        })
+        UploadCmd('delete', false, [], TaskIDList)
       }
     }
     UploadingDAL.mUploadingRefresh()
@@ -199,34 +174,22 @@ export default class UploadingDAL {
   }
 
 
-  static async aUploadingEvent(ReportList: IStateUploadInfo[], ErrorList: IStateUploadInfo[], SuccessList: IStateUploadTaskFile[], RunningKeys: number[], StopKeys: number[], LoadingKeys: number[], SpeedTotal: string) {
-    await UploadingData.UploadingEventSave(ReportList, ErrorList, SuccessList)
-    const check = UploadingData.UploadingEventRunningCheck(RunningKeys, StopKeys)
+  static async aUploadingEvent(report: IUploadReport) {
+    let SpeedTotal = report.SpeedTotal
+    await UploadingData.UploadingEventSave(report.ReportList, report.ErrorList, report.SuccessList)
+    const check = UploadingData.UploadingEventRunningCheck(report.RunningKeys, report.StopKeys)
     if (check.delList.length > 0) {
-      console.log('UploadingEventRunningCheck', check.delList)
-      window.WinMsgToUpload({
-        cmd: 'UploadCmd',
-        Command: 'delete',
-        IsAll: false,
-        UploadIDList: check.delList,
-        TaskIDList: []
-      })
+      UploadCmd('delete', false, check.delList, [])
     }
-    const sendList = UploadingData.UploadingEventSendList(check.newList, LoadingKeys)
+    const sendList = UploadingData.UploadingEventSendList(check.newList, report.LoadingKeys)
     if (sendList.length > 0) {
-      console.log('UploadingEventSendList', sendList)
-      window.WinMsgToUpload({ cmd: 'UploadAdd', UploadList: sendList })
+      UploadAdd(sendList)
       if (!SpeedTotal) {
         SpeedTotal = humanSizeSpeed(0)
       }
     }
     useFootStore().mSaveUploadTotalSpeedInfo(SpeedTotal)
     UploadingDAL.mUploadingRefresh()
-  }
-
-
-  static async aUploadingAppendFiles(TaskID: number, UploadID: number, CreatedDirID: string, AppendList: IStateUploadTaskFile[]) {
-    await UploadingData.UploadingAppendFilesSave(TaskID, UploadID, CreatedDirID, AppendList)
   }
 
 

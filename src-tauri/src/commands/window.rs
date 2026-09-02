@@ -38,7 +38,7 @@ pub fn main_window_cmd(app: AppHandle, cmd: String) -> Result<String, String> {
     }
 }
 
-/// `WebToWindow({ cmd })` for the calling (preview / worker) window.
+/// `WebToWindow({ cmd })` for the calling (preview) window.
 #[tauri::command]
 pub fn window_cmd(window: Window, cmd: String) -> String {
     match cmd.as_str() {
@@ -79,24 +79,7 @@ pub fn get_page_context(app: AppHandle, window: Window) -> PageContext {
         return ctx;
     }
     let dark = window.theme().map(|t| matches!(t, tauri::Theme::Dark)).unwrap_or(false);
-    let (page, window_type) = match label.as_str() {
-        "upload" => ("PageWorker", "upload"),
-        _ => ("PageMain", "main"),
-    };
-    PageContext { page: page.into(), data: serde_json::Value::Null, theme: String::new(), dark, window_type: window_type.into() }
-}
-
-/// `kind` is always `"upload"` (the download worker window is gone); it is still sent by the
-/// renderer and echoed back in the `worker-ready` / `worker-reset` events.
-#[tauri::command]
-pub async fn ensure_transfer_worker(app: AppHandle, kind: String) -> Result<(), String> {
-    windows::ensure_transfer_worker(&app, &kind).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-pub fn worker_ready(app: AppHandle, kind: String) {
-    use tauri::Emitter;
-    let _ = app.emit_to(windows::MAIN, "worker-ready", serde_json::json!({ "kind": kind }));
+    PageContext { page: "PageMain".into(), data: serde_json::Value::Null, theme: String::new(), dark, window_type: "main".into() }
 }
 
 #[tauri::command]

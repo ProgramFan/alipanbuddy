@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { useAppStore } from '../store'
-import DownDowning from './DownDowning.vue'
-import DownDowned from './DownDowned.vue'
-import DownUploading from './DownUploading.vue'
-import DownUploaded from './DownUploaded.vue'
+import Downing from '../download/Downing.vue'
+import Downed from '../download/Downed.vue'
+import Uploading from '../upload/Uploading.vue'
+import Uploaded from '../upload/Uploaded.vue'
 import { t } from '../i18n'
 
 const appStore = useAppStore()
@@ -35,10 +35,10 @@ withDefaults(defineProps<{ sidebarVisible?: boolean }>(), { sidebarVisible: true
     </a-layout-sider>
     <a-layout-content class="xbyright">
       <a-tabs type="text" :direction="'horizontal'" class="hidetabs" :justify="true" :active-key="appStore.GetAppTabMenu">
-        <a-tab-pane key="DowningRight" title="1"><DownDowning /></a-tab-pane>
-        <a-tab-pane key="DownedRight" title="2"><DownDowned /></a-tab-pane>
-        <a-tab-pane key="UploadingRight" title="3"><DownUploading /></a-tab-pane>
-        <a-tab-pane key="UploadedRight" title="4"><DownUploaded /></a-tab-pane>
+        <a-tab-pane key="DowningRight" title="1"><Downing /></a-tab-pane>
+        <a-tab-pane key="DownedRight" title="2"><Downed /></a-tab-pane>
+        <a-tab-pane key="UploadingRight" title="3"><Uploading /></a-tab-pane>
+        <a-tab-pane key="UploadedRight" title="4"><Uploaded /></a-tab-pane>
       </a-tabs>
     </a-layout-content>
   </a-layout>

@@ -49,7 +49,7 @@ export function mainWindowCmd(cmd: MainWindowCmd): Promise<void> {
   return invoke<void>('main_window_cmd', { cmd }).catch(() => {})
 }
 
-/** Acts on the calling window (preview/worker windows). Resolves to the command the backend ran, or `missing`. */
+/** Acts on the calling window (the preview windows). Resolves to the command the backend ran, or `missing`. */
 export function windowCmd(cmd: WindowCmd): Promise<string> {
   return invoke<string>('window_cmd', { cmd }).catch(() => 'missing')
 }

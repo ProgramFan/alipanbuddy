@@ -11,7 +11,6 @@ import SettingAria from './SettingAria.vue'
 import SettingLog from './SettingLog.vue'
 import SettingProxy from './SettingProxy.vue'
 import SettingSecurity from './SettingSecurity.vue'
-import SettingDownloadAdvanced from './SettingDownloadAdvanced.vue'
 import { t } from '../i18n'
 
 const appStore = useAppStore()
@@ -77,11 +76,10 @@ const sectionMeta: Record<string, { title: string }> = {
   SettingSecurity: { title: 'settings.security' },
   SettingPan: { title: 'settings.pan' },
   SettingDown: { title: 'settings.download' },
-  SettingDownloadAdvanced: { title: 'settings.downloadAdvanced' },
+  SettingAria: { title: 'settings.ariaEngine' },
   SettingUpload: { title: 'settings.upload' },
   SettingDebug: { title: 'settings.advanced' },
   SettingProxy: { title: 'settings.proxy' },
-  SettingAria: { title: 'settings.remoteAria' },
   SettingLog: { title: 'settings.logs' }
 }
 
@@ -108,11 +106,10 @@ onMounted(() => {
     'SettingSecurity',
     'SettingPan',
     'SettingDown',
-    'SettingDownloadAdvanced',
+    'SettingAria',
     'SettingUpload',
     'SettingDebug',
     'SettingProxy',
-    'SettingAria',
     'SettingLog'
   ]
 
@@ -155,7 +152,6 @@ onUnmounted(() => {
           <template #icon><IconFont name="iconchrome" /></template>
           {{ t('settings.security') }}
         </a-menu-item>
-        <div class="settings-menu-group">{{ t('settings.group.playback') }}</div>
         <div class="settings-menu-group">{{ t('settings.group.driveTransfer') }}</div>
         <a-menu-item key="SettingPan">
           <template #icon><IconFont name="iconfile-folder" /></template>
@@ -165,9 +161,9 @@ onUnmounted(() => {
           <template #icon><IconFont name="icondownload" /></template>
           {{ t('settings.download') }}
         </a-menu-item>
-        <a-menu-item key="SettingDownloadAdvanced">
-          <template #icon><IconFont name="iconcloud-download" /></template>
-          {{ t('settings.downloadAdvanced') }}
+        <a-menu-item key="SettingAria">
+          <template #icon><IconFont name="iconchuanshu" /></template>
+          {{ t('settings.ariaEngine') }}
         </a-menu-item>
         <a-menu-item key="SettingUpload">
           <template #icon><IconFont name="iconupload" /></template>
@@ -181,10 +177,6 @@ onUnmounted(() => {
         <a-menu-item key="SettingProxy">
           <template #icon><IconFont name="iconyuanduanfuzhi" /></template>
           {{ t('settings.proxy') }}
-        </a-menu-item>
-        <a-menu-item key="SettingAria">
-          <template #icon><IconFont name="iconchuanshu" /></template>
-          {{ t('settings.remoteAria') }}
         </a-menu-item>
         <a-menu-item key="SettingLog">
           <template #icon><IconFont name="icondebug" /></template>
@@ -217,11 +209,10 @@ onUnmounted(() => {
         <section id="SettingSecurity" class="settings-section"><div class="settings-section-header"><h2>{{ t(sectionMeta.SettingSecurity.title as Parameters<typeof t>[0]) }}</h2></div><SettingSecurity /></section>
         <section id="SettingPan" class="settings-section"><div class="settings-section-header"><h2>{{ t(sectionMeta.SettingPan.title as Parameters<typeof t>[0]) }}</h2></div><SettingPan /></section>
         <section id="SettingDown" class="settings-section"><div class="settings-section-header"><h2>{{ t(sectionMeta.SettingDown.title as Parameters<typeof t>[0]) }}</h2></div><SettingDown /></section>
-        <section id="SettingDownloadAdvanced" class="settings-section"><div class="settings-section-header"><h2>{{ t(sectionMeta.SettingDownloadAdvanced.title as Parameters<typeof t>[0]) }}</h2></div><SettingDownloadAdvanced /></section>
+        <section id="SettingAria" class="settings-section"><div class="settings-section-header"><h2>{{ t(sectionMeta.SettingAria.title as Parameters<typeof t>[0]) }}</h2></div><SettingAria /></section>
         <section id="SettingUpload" class="settings-section"><div class="settings-section-header"><h2>{{ t(sectionMeta.SettingUpload.title as Parameters<typeof t>[0]) }}</h2></div><SettingUpload /></section>
         <section id="SettingDebug" class="settings-section"><div class="settings-section-header"><h2>{{ t(sectionMeta.SettingDebug.title as Parameters<typeof t>[0]) }}</h2></div><SettingDebug /></section>
         <section id="SettingProxy" class="settings-section"><div class="settings-section-header"><h2>{{ t(sectionMeta.SettingProxy.title as Parameters<typeof t>[0]) }}</h2></div><SettingProxy /></section>
-        <section id="SettingAria" class="settings-section"><div class="settings-section-header"><h2>{{ t(sectionMeta.SettingAria.title as Parameters<typeof t>[0]) }}</h2></div><SettingAria /></section>
         <section id="SettingLog" class="settings-section">
           <div class="settings-section-header"><h2>{{ t(sectionMeta.SettingLog.title as Parameters<typeof t>[0]) }}</h2></div>
           <div v-if="hideSetting" style="min-height: 602px"></div>

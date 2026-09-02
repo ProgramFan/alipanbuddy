@@ -19,7 +19,7 @@ import {
 import { computed, ref, watch } from 'vue'
 import useUploadingStore from './UploadingStore'
 
-import UploadingDAL from '../transfer/uploadingdal'
+import UploadingDAL from './uploadingdal'
 import { TestButton } from '../utils/mosehelper'
 import { ArrayXorWith } from '../utils/utils'
 import { t } from '../i18n'

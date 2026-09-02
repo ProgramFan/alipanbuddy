@@ -8,7 +8,7 @@ import Db from '../utils/db'
 import fs from '../tauri/fs'
 import path from '../utils/path'
 import { decodeName, encodeName } from '../module/flow-enc/utils'
-import { localPwd } from '../utils/aria2c'
+import { localPwd } from '../download/aria2c'
 import { ALIYUN_APP_ID } from '../secrets.generated'
 import { t } from '../i18n'
 
@@ -86,9 +86,8 @@ const handlerAccountImport = async () => {
         }
       }
       // 导入到数据库
-      Db.saveUserBatch(userList).then(() => {
-        window.WinMsgToUpload({ cmd: 'ClearUserToken' })
-      }).catch()
+      Db.saveUserBatch(userList).catch(() => {
+      })
       await UserDAL.UserLogin(userList[0])
       message.success(t('settings.account.importSuccess'))
     } else {

@@ -4,7 +4,7 @@ import usePanFileStore from '../panfilestore'
 import message from '../../utils/message'
 import { modalCloseAll } from '../../utils/modal'
 import { nextTick, PropType, ref } from 'vue'
-import UploadingDAL from '../../transfer/uploadingdal'
+import UploadingDAL from '../../upload/uploadingdal'
 import AliFile from '../../aliapi/file'
 
 const props = defineProps({

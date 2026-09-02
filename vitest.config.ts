@@ -7,10 +7,10 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: [
-      'src/down/integration/**/*.test.ts',
+      'src/download/**/*.test.ts',
+      'src/upload/**/*.test.ts',
       'src/utils/__tests__/**/*.test.ts',
-      'src/aliapi/__tests__/**/*.test.ts',
-      'src/tauri/__tests__/**/*.test.ts'
+      'src/aliapi/__tests__/**/*.test.ts'
     ]
   }
 })
