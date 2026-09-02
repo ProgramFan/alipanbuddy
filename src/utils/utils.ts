@@ -40,6 +40,21 @@ export function ArrayKeyList<T>(keyname: string, arr: any[]): T[] {
   return selectkeys
 }
 
+/** Symmetric difference of two arrays using a custom comparator (lodash `xorWith`). */
+export function ArrayXorWith<T>(first: T[], second: T[], comparator: (a: T, b: T) => boolean): T[] {
+  const missingFrom = (list: T[]) => (item: T) => !list.some((other) => comparator(item, other))
+  return [...first.filter(missingFrom(second)), ...second.filter(missingFrom(first))]
+}
+
+/** True for null / undefined, empty strings and arrays, empty Map / Set, objects without own keys (lodash `isEmpty`). */
+export function IsEmpty(value: unknown): boolean {
+  if (value === null || value === undefined) return true
+  if (typeof value === 'string' || Array.isArray(value)) return value.length === 0
+  if (value instanceof Map || value instanceof Set) return value.size === 0
+  if (typeof value === 'object') return Object.keys(value as Record<string, unknown>).length === 0
+  return true
+}
+
 
 export function HanToPin(input: string): string {
   if (!input) return ''

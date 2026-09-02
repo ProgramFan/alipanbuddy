@@ -19,10 +19,9 @@ import {
 import { computed, ref, watch } from 'vue'
 import useUploadingStore from './UploadingStore'
 
-import { Tooltip as AntdTooltip } from 'ant-design-vue'
 import UploadingDAL from '../transfer/uploadingdal'
 import { TestButton } from '../utils/mosehelper'
-import { xorWith } from 'lodash'
+import { ArrayXorWith } from '../utils/utils'
 import { t } from '../i18n'
 import { preventSleep } from '../tauri/app'
 
@@ -79,7 +78,7 @@ const onSelectReverse = () => {
   onHideRightMenuScroll()
   const listData = uploadingStore.ListDataShow
   const listSelected = uploadingStore.GetSelected()
-  const reverseSelect = xorWith(listData, listSelected, (a, b) => a.UploadID === b.UploadID)
+  const reverseSelect = ArrayXorWith(listData, listSelected, (a, b) => a.UploadID === b.UploadID)
   uploadingStore.ListSelected.clear()
   uploadingStore.ListFocusKey = -1
   if (reverseSelect.length > 0) {
@@ -250,19 +249,19 @@ const handleRightClick = (e: { event: MouseEvent; node: any }) => {
   <div style="height: 9px"></div>
   <div class="toppanarea">
     <div style="margin: 0 3px">
-      <AntdTooltip :title="t('share.selectAll')" placement="left">
+      <a-tooltip mini :content="t('share.selectAll')" position="left">
         <a-button shape="circle" type="text" tabindex="-1" class="select all" title="Ctrl+A" @click="handleSelectAll">
           <IconFont :name="uploadingStore.IsListSelectedAll ? 'iconrsuccess' : 'iconpic2'" />
         </a-button>
-      </AntdTooltip>
+      </a-tooltip>
       <div class='selectInfo'>{{ uploadingStore.ListDataSelectCountInfo }}</div>
       <div style='margin: 0 2px'>
-        <AntdTooltip placement='rightTop' v-if="uploadingStore.ListDataShow.length > 0">
+        <a-tooltip mini position='rt' v-if="uploadingStore.ListDataShow.length > 0">
           <a-button shape='square' type='text' tabindex='-1' class='qujian'
                     :status="rangIsSelecting ? 'danger' : 'normal'" title='Ctrl+Q' @click='onSelectRangStart'>
             {{ rangIsSelecting ? t('share.cancelSelect') : t('share.rangeSelect') }}
           </a-button>
-          <template #title>
+          <template #content>
             <div>
               {{ t('share.rangeStep1') }}
               <br />
@@ -271,7 +270,7 @@ const handleRightClick = (e: { event: MouseEvent; node: any }) => {
               {{ t('share.rangeStep3') }}
             </div>
           </template>
-        </AntdTooltip>
+        </a-tooltip>
         <a-button shape='square'
                   v-if='!rangIsSelecting && uploadingStore.ListSelected.size > 0 && uploadingStore.ListSelected.size < uploadingStore.ListDataShow.length'
                   type='text'

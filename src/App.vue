@@ -8,7 +8,6 @@ import { useAppStore } from './store'
 import PageMain from './layout/PageMain.vue'
 import './assets/global.css'
 import './assets/fileitem.css'
-import './assets/antd.css'
 
 const PageImage = defineAsyncComponent(() => import('./layout/PageImage.vue'))
 const PageWorker = defineAsyncComponent(() => import('./layout/PageWorker.vue'))

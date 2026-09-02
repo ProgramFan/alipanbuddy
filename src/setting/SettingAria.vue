@@ -6,8 +6,6 @@ import { fetchTrackerSource, normalizeTrackerText } from '../down/integration/tr
 import message from '../utils/message'
 import { t } from '../i18n'
 
-import { Checkbox as AntdCheckbox } from 'ant-design-vue'
-
 const settingStore = useSettingStore()
 const cb = (val: any) => {
   settingStore.updateStore(val)
@@ -158,7 +156,7 @@ const handleSyncTrackers = async () => {
     <div class="settingspace"></div>
     <div class="settinghead">{{ t('settings.aria.ssl') }}</div>
     <div class="settingrow">
-      <AntdCheckbox tabindex="-1" :checked="settingStore.ariaHttps" @change="(e:any)=>cb({ ariaHttps: e.target.checked })">{{ t('settings.aria.useSsl') }}</AntdCheckbox>
+      <a-checkbox tabindex="-1" :model-value="settingStore.ariaHttps" @change="(v:boolean) => cb({ ariaHttps: v })">{{ t('settings.aria.useSsl') }}</a-checkbox>
 
       <a-popover position="right">
         <IconFont name="iconbulb" />

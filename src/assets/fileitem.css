@@ -209,12 +209,6 @@ body[arco-theme='dark'] .fileitem.focus {
     padding-bottom: 6px;
 }
 
-.preimgp .ant-tooltip-inner {
-    padding: 2px !important;
-    background: transparent !important;
-    box-shadow: none !important;
-}
-
 .preimg {
     display: table-cell;
     max-width: 240px;

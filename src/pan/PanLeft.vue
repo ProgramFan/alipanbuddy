@@ -1,7 +1,6 @@
 <script setup lang='ts'>
 import { computed, ref, watchEffect } from 'vue'
 
-import { Tree as AntdTree } from 'ant-design-vue'
 import usePanTreeStore, { PanTreeState } from './pantreestore'
 import MySwitchTab from '../layout/MySwitchTab.vue'
 import { KeyboardState, useAppStore, useKeyboardStore, usePanFileStore, useSettingStore, useWinStore } from '../store'
@@ -73,16 +72,16 @@ watchEffect(() => {
 })
 watchEffect(() => {
   const scrollToDir = pantreeStore.scrollToDir
-  if (scrollToDir) treeref.value.scrollTo({ key: scrollToDir, align: 'top', offset: 220 })
+  if (scrollToDir) treeref.value?.scrollIntoView({ key: scrollToDir, align: 'top' })
   pantreeStore.mSaveTreeScrollTo('')
 })
 
-const handleTreeRightClick = (e: { event: MouseEvent; node: any }) => {
-  const { parent = undefined, key } = e.node
+const handleTreeRightClick = (event: MouseEvent, node: any) => {
+  const key = String(node.key || '')
   if (key.startsWith('search')) return
   if (key.length < 40) return
-  pantreeStore.mTreeSelected(e)
-  onShowRightMenu('leftpanmenu', e.event.clientX, e.event.clientY)
+  pantreeStore.mTreeSelected({ event, node })
+  onShowRightMenu('leftpanmenu', event.clientX, event.clientY)
 }
 
 const onRowItemDragEnter = (ev: any) => {
@@ -231,75 +230,64 @@ const onTreeScroll = () => {
                      @update:value="(val:string)=>appStore.toggleTabMenu('pan', val)" />
       </div>
     </div>
-    <div class='treeleft'>
+    <div class='treeleft' @scroll.capture='onTreeScroll'>
       <a-tabs type='text' :direction="'horizontal'" class='hidetabs' :justify='true'
               :active-key='appStore.GetAppTabMenu'>
         <a-tab-pane key='wangpan' title='1'>
-          <AntdTree
+          <a-tree
             ref='treeref'
-            :tabindex='-1'
-            :focusable='false'
             class='dirtree'
             block-node
             selectable
+            :animation='false'
             :auto-expand-parent='false'
-            show-icon
-            :height='treeHeight'
+            :virtual-list-props="{ height: treeHeight }"
             :style="{ height: treeHeight + 'px' }"
-            :item-height='30'
-            :show-line='false'
-            :open-animation='{}'
             :expanded-keys='pantreeStore.treeExpandedKeys'
             :selected-keys='pantreeStore.treeSelectedKeys'
-            :tree-data='filterTreeData'
+            :data='filterTreeData'
             @select='(_:any[],e:any)=>pantreeStore.mTreeSelected(e, false)'
-            @expand='(_:any[],e:any)=>pantreeStore.mTreeExpand(e.node.key)'
-            @right-click='handleTreeRightClick'
-            @scroll='onTreeScroll'>
-            <template #switcherIcon>
-              <IconFont class="ant-tree-switcher-lucide" name="iconArrow-Right2" :size="15" />
+            @expand='(_:any[],e:any)=>pantreeStore.mTreeExpand(e.node.key, e.expanded)'>
+            <template #switcher-icon>
+              <IconFont name="iconArrow-Down2" :size="15" />
             </template>
             <template #icon>
               <IconFont name="iconfile-folder" />
             </template>
-            <template #title='{ dataRef }'>
-              <span v-if="String(dataRef.key).length == 40 || String(dataRef.key).includes('root')"
+            <template #title='node'>
+              <span v-if="String(node.key).length == 40 || String(node.key).includes('root')"
                     class='dirtitle treedragnode'
-                    @drop='onRowItemDrop($event, dataRef)'
+                    @contextmenu.prevent='handleTreeRightClick($event, node)'
+                    @drop='onRowItemDrop($event, node)'
                     @dragover='onRowItemDragOver'
                     @dragenter='onRowItemDragEnter'
                     @dragleave='onRowItemDragLeave'>
-                {{ dataRef.title }}
+                {{ node.title }}
               </span>
               <span v-else
                     class='dirtitle'>
-                {{ dataRef.title }}
+                {{ node.title }}
               </span>
             </template>
-          </AntdTree>
+          </a-tree>
         </a-tab-pane>
         <a-tab-pane key='kuaijie' title='2'>
-          <AntdTree
-            :tabindex='-1'
-            :focusable='false'
+          <a-tree
             class='colortree'
             block-node
             selectable
+            :animation='false'
             :auto-expand-parent='false'
-            show-icon
-            :item-height='30'
-            :show-line='false'
-            :open-animation='{}'
             :selected-keys='pantreeStore.treeSelectedKeys'
-            :tree-data='colorTreeData'
+            :data='colorTreeData'
             @select='handleColorTreeSelect'>
-            <template #icon='{ dataRef }'>
-              <IconFont name="iconwbiaoqian" :class='dataRef.namesearch' />
+            <template #icon='{ node }'>
+              <IconFont name="iconwbiaoqian" :class='node.namesearch' />
             </template>
-            <template #title='{ dataRef }'>
-              <span :class="'dirtitle ' + dataRef.namesearch">{{ t('pan.mark') }} · {{ dataRef.title }}</span>
+            <template #title='node'>
+              <span :class="'dirtitle ' + node.namesearch">{{ t('pan.mark') }} · {{ node.title }}</span>
             </template>
-          </AntdTree>
+          </a-tree>
           <div class='quickdrop'
                @drop='onQuickDrop($event)'
                @dragover='onQuickDragOver'
@@ -308,39 +296,34 @@ const onTreeScroll = () => {
             {{ t('pan.quickDropHint1') }}<br />
             {{ t('pan.quickDropHint2') }}
           </div>
-          <AntdTree
-            :tabindex='-1'
-            :focusable='false'
+          <a-tree
             class='quicktree'
             block-node
             selectable
+            :animation='false'
             :auto-expand-parent='false'
-            show-icon
-            :height='quickHeight'
+            :virtual-list-props="{ height: quickHeight }"
             :style="{ height: quickHeight + 'px' }"
-            :item-height='30'
-            :show-line='false'
-            :open-animation='{}'
             :selected-keys='quickSelectedKeys'
-            :tree-data='pantreeStore.quickData'
+            :data='pantreeStore.quickData'
             @select='handleQuickTreeSelect'>
             <template #icon>
               <IconFont name="iconfile-folder" />
             </template>
-            <template #title='{ dataRef }'>
+            <template #title='node'>
               <div class="quickitem">
-                 <span class='quicktitle' :title='dataRef.title + " · " + (dataRef.user_name || dataRef.user_id) + " · " + dataRef.drive_name'>
-                {{ dataRef.title }}
-                <small class="quicksource">{{ dataRef.user_name || dataRef.user_id }} · {{ dataRef.drive_name }}</small>
+                 <span class='quicktitle' :title='node.title + " · " + (node.user_name || node.user_id) + " · " + node.drive_name'>
+                {{ node.title }}
+                <small class="quicksource">{{ node.user_name || node.user_id }} · {{ node.drive_name }}</small>
               </span>
                 <span class='quickbtn'>
-                <a-button type='text' size='mini' @click.stop='handleQuickDelete(dataRef.key)'>
+                <a-button type='text' size='mini' @click.stop='handleQuickDelete(node.key)'>
                   {{ t('common.delete') }}
                 </a-button>
               </span>
               </div>
             </template>
-          </AntdTree>
+          </a-tree>
         </a-tab-pane>
       </a-tabs>
     </div>
@@ -403,7 +386,7 @@ const onTreeScroll = () => {
   color: #a760ef;
 }
 
-.ant-tree .iconfile-folder {
+.arco-tree .iconfile-folder {
   color: #ffb74d;
   font-size: 20px;
 }
@@ -418,28 +401,44 @@ const onTreeScroll = () => {
   display: inline-block;
 }
 
-.dirtree .ant-tree-list-holder-inner .ant-tree-node-content-wrapper {
+.dirtree .arco-tree-node {
   flex-wrap: nowrap !important;
   flex-shrink: 0 !important;
-  display: flex;
 }
 
-.dirtree .ant-tree-list-holder {
+.dirtree .arco-virtual-list {
   overflow-x: hidden;
 }
 
-.dirtree .ant-tree-title {
+.dirtree .arco-tree-node-title-text {
   flex-grow: 1;
 }
 
-.ant-tree-node-selected .ant-tree-title,
-.ant-tree-node-selected .ant-tree-title > span {
+/* These trees are drop targets for file rows but are not Arco-draggable themselves, so Arco never
+   clears its own drag-over highlight — keep it invisible and let the row handlers do the feedback. */
+.dirtree .arco-tree-node-title-highlight,
+.colortree .arco-tree-node-title-highlight,
+.quicktree .arco-tree-node-title-highlight {
+  background-color: transparent;
+}
+
+.dirtree .arco-tree-node-title-gap-top::before,
+.dirtree .arco-tree-node-title-gap-bottom::before,
+.colortree .arco-tree-node-title-gap-top::before,
+.colortree .arco-tree-node-title-gap-bottom::before,
+.quicktree .arco-tree-node-title-gap-top::before,
+.quicktree .arco-tree-node-title-gap-bottom::before {
+  background-color: transparent;
+}
+
+.arco-tree-node-selected .arco-tree-node-title,
+.arco-tree-node-selected .arco-tree-node-title > span {
   color: rgb(var(--primary-6)) !important;
   font-weight: 500;
 }
 
-body[arco-theme='dark'] .ant-tree-node-selected .ant-tree-title,
-body[arco-theme='dark'] .ant-tree-node-selected .ant-tree-title > span {
+body[arco-theme='dark'] .arco-tree-node-selected .arco-tree-node-title,
+body[arco-theme='dark'] .arco-tree-node-selected .arco-tree-node-title > span {
   color: rgb(255, 255, 255) !important;
 }
 
@@ -488,21 +487,21 @@ body[arco-theme='dark'] .ant-tree-node-selected .ant-tree-title > span {
   flex-grow: 0;
 }
 
-/* Tag and quick-file rows are leaves: hiding the 24px expander placeholder lets
+/* Tag and quick-file rows are leaves: hiding the expander placeholder lets
    the row use the whole sidebar width, so tags centre in it and the quick-file
    delete button reaches the right edge. */
-.colortree .ant-tree-switcher-noop,
-.quicktree .ant-tree-switcher-noop {
+.colortree .arco-tree-node-is-leaf .arco-tree-node-switcher,
+.quicktree .arco-tree-node-is-leaf .arco-tree-node-switcher {
   display: none;
 }
 
-.colortree .ant-tree-node-content-wrapper {
+.colortree .arco-tree-node-title {
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.colortree .ant-tree-node-content-wrapper .ant-tree-title {
+.colortree .arco-tree-node-title .arco-tree-node-title-text {
   flex: 0 1 auto;
 }
 
@@ -520,18 +519,18 @@ body[arco-theme='dark'] .ant-tree-node-selected .ant-tree-title > span {
   line-height: 1.3;
 }
 
-.quicktree .ant-tree-icon__customize .iconfont {
+.quicktree .arco-tree-node-custom-icon .iconfont {
   font-size: 18px;
   margin-right: 2px;
 }
 
-.quicktree .ant-tree-node-content-wrapper {
+.quicktree .arco-tree-node-title {
   flex: auto;
   display: flex !important;
   flex-direction: row;
 }
 
-.quicktree .ant-tree-title {
+.quicktree .arco-tree-node-title-text {
   flex: auto;
   display: flex !important;
   flex-direction: row;

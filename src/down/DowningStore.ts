@@ -1,76 +1,39 @@
-import fuzzysort from 'fuzzysort'
 import { defineStore } from 'pinia'
 import DownDAL, { IStateDownFile } from './DownDAL'
-import { GetFocusNext, GetSelectedList, KeyboardSelectOne, MouseSelectOne, SelectAll } from '../utils/selecthelper'
 import { humanSize } from '../utils/format'
 import message from '../utils/message'
 import DBDown from '../utils/dbdown'
 import { batchPauseTasks, batchRemoveTasks, batchResumeTasks } from './integration/aria2TaskApi'
 import { t } from '../i18n'
+import { createSelectableListActions, createSelectableListGetters, createSelectableListState, SelectableListConfig, SelectableListState } from '../store/selectableList'
 
 type Item = IStateDownFile
+
+export type DowningState = SelectableListState<Item>
+
 type State = DowningState
-const KEY = 'DownID'
 
-export interface DowningState {
-
-  ListLoading: boolean
-
-  ListDataRaw: Item[]
-
-  ListDataShow: Item[]
-
-  ListSelected: Set<string>
-
-  ListOrderKey: string
-
-  ListFocusKey: string
-
-  ListSelectKey: string
-
-  ListSearchKey: string
+const listConfig: SelectableListConfig<Item> = {
+  keyField: 'DownID',
+  emptyKey: '',
+  defaultOrderKey: 'DownID',
+  searchKeys: ['Info.name'],
+  preserveFocusOnLoad: false
 }
 
 const useDowningStore = defineStore('downing', {
-  state: (): State => ({
-    ListLoading: false,
-    ListDataRaw: [],
-    ListDataShow: [],
-    ListSelected: new Set<string>(),
-    ListOrderKey: 'DownID',
-    ListFocusKey: '',
-    ListSelectKey: '',
-    ListSearchKey: ''
-  }),
+  state: (): State => createSelectableListState(listConfig),
 
   getters: {
-    ListDataCount(state: State): number {
-      return state.ListDataShow.length
-    },
+    ...createSelectableListGetters<State>(),
 
     ListDataDowningCount(state: State): number {
-      return state.ListDataRaw.filter((down: any) => down.Down.IsDowning).length
-    },
-
-    IsListSelected(state: State): boolean {
-      return state.ListSelected.size > 0
-    },
-
-    ListSelectedCount(state: State): number {
-      return state.ListSelected.size
-    },
-
-    ListDataSelectCountInfo(state: State): string {
-      return t('transfer.selectedCount', { selected: state.ListSelected.size, total: state.ListDataShow.length })
-    },
-
-    IsListSelectedAll(state: State): boolean {
-      return state.ListSelected.size > 0 && state.ListSelected.size == state.ListDataShow.length
+      return state.ListDataRaw.filter((down) => down.Down.IsDowning).length
     },
 
     ListStats(state: State) {
-      let stats = { count: 0, runningCount: 0, totalSize: 0, totalSizeStr: '' }
-      let list = state.ListDataShow
+      const stats = { count: 0, runningCount: 0, totalSize: 0, totalSizeStr: '' }
+      const list = state.ListDataShow
       let item: Item
       for (let i = 0, maxi = list.length; i < maxi; i++) {
         item = list[i]
@@ -84,148 +47,7 @@ const useDowningStore = defineStore('downing', {
   },
 
   actions: {
-
-    aLoadListData(list: Item[]) {
-      this.ListDataRaw = this.mGetOrder(this.ListOrderKey, list)
-      let oldSelected = this.ListSelected
-      let newSelected = new Set<string>()
-      let key = ''
-      for (let i = 0, maxi = list.length; i < maxi; i++) {
-        key = list[i][KEY]
-        if (oldSelected.has(key)) newSelected.add(key)
-      }
-      this.$patch({ ListSelected: newSelected, ListFocusKey: '', ListSelectKey: '', ListSearchKey: '' })
-      this.mRefreshListDataShow(true)
-    },
-
-    mSearchListData(value: string) {
-      this.$patch({ ListSelected: new Set<string>(), ListFocusKey: '', ListSelectKey: '', ListSearchKey: value })
-      this.mRefreshListDataShow(true)
-    },
-
-    mOrderListData(value: string) {
-      this.$patch({ ListOrderKey: value, ListSelected: new Set<string>(), ListFocusKey: '', ListSelectKey: '' })
-      this.ListDataRaw = this.mGetOrder(value, this.ListDataRaw)
-      this.mRefreshListDataShow(true)
-    },
-
-    mGetOrder(order: string, list: Item[]) {
-      return list
-    },
-
-    /**
-     * 刷新显示的列表数据
-     * @param refreshRaw 是否从原始数据中刷新显示
-     */
-    mRefreshListDataShow(refreshRaw: boolean) {
-      if (!refreshRaw) {
-        let ListDataShow = this.ListDataShow.concat()
-        Object.freeze(ListDataShow)
-        this.ListDataShow = ListDataShow
-        return
-      }
-      if (this.ListSearchKey) {
-
-        let searchlist: Item[] = []
-        let results = fuzzysort.go(this.ListSearchKey, this.ListDataRaw, {
-          threshold: -200000,
-          keys: ['Info.name'],
-          scoreFn: (a) => Math.max(a[0] ? a[0].score : -200000, a[1] ? a[1].score : -200000)
-        })
-        for (let i = 0, maxi = results.length; i < maxi; i++) {
-          if (results[i].score > -200000) searchlist.push(results[i].obj as Item)
-        }
-        Object.freeze(searchlist)
-        this.ListDataShow = searchlist
-      } else {
-        let ListDataShow = this.ListDataRaw.concat()
-        Object.freeze(ListDataShow)
-        this.ListDataShow = ListDataShow
-      }
-
-      let freezelist = this.ListDataShow
-      let oldSelected = this.ListSelected
-      let newSelected = new Set<string>()
-      let key = ''
-      for (let i = 0, maxi = freezelist.length; i < maxi; i++) {
-        key = freezelist[i][KEY]
-        if (oldSelected.has(key)) newSelected.add(key)
-      }
-      this.ListSelected = newSelected
-    },
-
-    mSelectAll() {
-      this.$patch({
-        ListSelected: SelectAll(this.ListDataShow, KEY, this.ListSelected),
-        ListFocusKey: '',
-        ListSelectKey: ''
-      })
-      this.mRefreshListDataShow(false)
-    },
-
-    mMouseSelect(key: string, Ctrl: boolean, Shift: boolean) {
-      if (this.ListDataShow.length == 0) return
-      const data = MouseSelectOne(this.ListDataShow, KEY, this.ListSelected, this.ListFocusKey, this.ListSelectKey, key, Ctrl, Shift, '')
-      this.$patch({ ListSelected: data.selectedNew, ListFocusKey: data.focusLast, ListSelectKey: data.selectedLast })
-      this.mRefreshListDataShow(false)
-    },
-
-    mKeyboardSelect(key: string, Ctrl: boolean, Shift: boolean) {
-      if (this.ListDataShow.length == 0) return
-      const data = KeyboardSelectOne(this.ListDataShow, KEY, this.ListSelected, this.ListFocusKey, this.ListSelectKey, key, Ctrl, Shift, '')
-      this.$patch({ ListSelected: data.selectedNew, ListFocusKey: data.focusLast, ListSelectKey: data.selectedLast })
-      this.mRefreshListDataShow(false)
-    },
-
-    mRangSelect(lastkey: string, file_idList: string[]) {
-      if (this.ListDataShow.length == 0) return
-      const selectedNew = new Set<string>(this.ListSelected)
-      for (let i = 0, maxi = file_idList.length; i < maxi; i++) {
-        selectedNew.add(file_idList[i])
-      }
-      this.$patch({ ListSelected: selectedNew, ListFocusKey: lastkey, ListSelectKey: lastkey })
-      this.mRefreshListDataShow(false)
-    },
-
-    GetSelected() {
-      return GetSelectedList(this.ListDataShow, KEY, this.ListSelected)
-    },
-
-    GetSelectedFirst() {
-      let list = GetSelectedList(this.ListDataShow, KEY, this.ListSelected)
-      if (list.length > 0) return list[0]
-      return undefined
-    },
-
-    mSetFocus(key: string) {
-      this.ListFocusKey = key
-      this.mRefreshListDataShow(false)
-    },
-
-    mGetFocus() {
-      if (this.ListFocusKey == '' && this.ListDataShow.length > 0) return this.ListDataShow[0][KEY]
-      return this.ListFocusKey
-    },
-
-    mGetFocusNext(position: string) {
-      return GetFocusNext(this.ListDataShow, KEY, this.ListFocusKey, position, '')
-    },
-
-    mDeleteFiles(shareidlist: string[]) {
-      let filemap = new Set(shareidlist)
-      let ListDataRaw = this.ListDataRaw
-      let NewDataList: Item[] = []
-      for (let i = 0, maxi = ListDataRaw.length; i < maxi; i++) {
-        let item = ListDataRaw[i]
-        if (!filemap.has(item[KEY])) {
-          NewDataList.push(item)
-        }
-      }
-      if (this.ListDataRaw.length != NewDataList.length) {
-        this.ListDataRaw = NewDataList
-        this.mRefreshListDataShow(true)
-      }
-    },
+    ...createSelectableListActions(listConfig),
 
     mAddDownload({ downlist }: { downlist: Item[] }) {
       const savelist = []
@@ -454,7 +276,7 @@ const useDowningStore = defineStore('downing', {
           updateState.FailedMessage = msg || state
           break
       }
-      DownItem.Down = {  ...DownItem.Down, ...updateState }
+      DownItem.Down = { ...Down, ...updateState }
     },
 
     async batchPauseSelected(): Promise<void> {

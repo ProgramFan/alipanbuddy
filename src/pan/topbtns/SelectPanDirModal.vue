@@ -4,13 +4,12 @@ import { computed, h, PropType, reactive, ref } from 'vue'
 import IconFont from '../../components/IconFont.vue'
 import { usePanTreeStore, useSettingStore, useWinStore } from '../../store'
 import { CheckFileName, ClearFileName } from '../../utils/filehelper'
-import { Tree as AntdTree } from 'ant-design-vue'
 import TreeStore, { TreeNodeData } from '../../store/treestore'
 import message from '../../utils/message'
 import AliFileCmd from '../../aliapi/filecmd'
 import PanDAL from '../pandal'
 import { Sleep } from '../../utils/format'
-import { treeSelectToExpand } from '../../utils/antdtree'
+import { findTreeRootKey } from '../../utils/arcotree'
 import AliTrash from '../../aliapi/trash'
 import { fileiconfn } from '../pantreestore'
 import { GetDriveID, GetDriveType } from '../../aliapi/utils'
@@ -123,7 +122,7 @@ const handleOpen = async () => {
     }
     treeSelectedKeys.value = [selectid]
     setTimeout(() => {
-      treeref.value?.treeRef?.scrollTo({ key: selectid, offset: 100, align: 'top' })
+      treeref.value?.scrollIntoView({ key: selectid, align: 'top' })
     }, 400)
   } else {
     if (isScopedDrive) {
@@ -230,19 +229,12 @@ const treeData = ref<TreeNodeData[]>([{
 const treeExpandedKeys = ref<string[]>([])
 const treeSelectedKeys = ref<string[]>([])
 
-const handleTreeSelect = (keys: any[], info: {
-  event: string;
-  selected: Boolean;
-  nativeEvent: MouseEvent;
-  node: any
-}) => {
+const handleTreeSelect = (_keys: any[], info: { selected?: boolean; node?: any }) => {
   if (!info?.node) return
   let { key, title, isLeaf, isDir, description, parent_file_id } = info.node
-  const getParentNode = (node: any): any => {
-    return node.parent ? getParentNode(node.parent) : node
-  }
-  const parentNode = getParentNode(info.node)
-  const drive_id = GetDriveID(user_id.value, parentNode.key || key)
+  // Arco tree nodes carry no parent link, so resolve the drive root from the rendered data.
+  const rootKey = findTreeRootKey(treeData.value, key) || key
+  const drive_id = GetDriveID(user_id.value, rootKey)
   localStorage.setItem('selectpandir-' + drive_id, key)
   selectFile.value = {
     drive_id: drive_id,
@@ -251,11 +243,10 @@ const handleTreeSelect = (keys: any[], info: {
     parent_file_id: parent_file_id,
     path: info.node.path || '',
     description: description,
-    // selectdir 在加载阶段只保留目录；不要依赖 Ant Tree 包装节点丢失的目录字段。
+    // selectdir 在加载阶段只保留目录；懒加载出来的节点可能没有 isDir 字段。
     isDir: props.selecttype === 'selectdir' || (typeof isDir === 'boolean' ? isDir : !isLeaf)
   }
   treeSelectedKeys.value = [key]
-  treeSelectToExpand(keys, info)
 }
 
 const apiLoad = (key: any) => {
@@ -313,45 +304,41 @@ const autoExpand = (list: TreeNodeData[]) => {
   }
 }
 
-const onLoadData = (treeNode: any) => {
+const onLoadMore = (node: any) => {
   return new Promise<void>((resolve) => {
-    if (!treeNode.dataRef) {
+    if (!node) {
       resolve()
       return
     }
-    let key = treeNode.dataRef.key
-    apiLoad(key).then((addList: TreeNodeData[]) => {
-      treeNode.dataRef!.children = addList
+    apiLoad(node.key).then((addList: TreeNodeData[]) => {
+      node.children = addList
       if (treeData.value) treeData.value = treeData.value.concat()
       resolve()
     })
   })
 }
 
-const handleTreeExpand = (keys: any[], info: {
-  node: any;
-  expanded: boolean;
-  nativeEvent: MouseEvent
-}) => {
+const handleTreeExpand = (_keys: any[], info: { node: any; expanded: boolean }) => {
   const arr = treeExpandedKeys.value
   let { key } = info.node
-    if (arr.includes(key)) {
-      treeExpandedKeys.value = arr.filter((t) => t != key)
-    } else {
-      treeExpandedKeys.value = arr.concat([key])
-      if (isScopedDrivePicker()) {
-        // 资源盘目标目录由 Ant Tree 懒加载；替换整棵缓存树会让当前事件节点失效。
-        return
-      } else if (props.selecttype !== 'select') { // 仅显示文件夹
-        let backupPan: TreeNodeData[] = []
-        let resourcePan: TreeNodeData[] = []
-        if (!useSettingStore().securityHideBackupDrive) {
-          backupPan = PanDAL.GetPanTreeAllNode(user_id.value, pantreeStore.backup_drive_id, treeExpandedKeys.value)
-        }
-        if (!useSettingStore().securityHideResourceDrive) {
-          resourcePan = PanDAL.GetPanTreeAllNode(user_id.value, pantreeStore.resource_drive_id, treeExpandedKeys.value)
-        }
-        treeData.value = [...backupPan, ...resourcePan]
+  if (arr.includes(key) === info.expanded) return
+  if (!info.expanded) {
+    treeExpandedKeys.value = arr.filter((t) => t != key)
+  } else {
+    treeExpandedKeys.value = arr.concat([key])
+    if (isScopedDrivePicker()) {
+      // 资源盘目标目录由树懒加载；替换整棵缓存树会让当前事件节点失效。
+      return
+    } else if (props.selecttype !== 'select') { // 仅显示文件夹
+      let backupPan: TreeNodeData[] = []
+      let resourcePan: TreeNodeData[] = []
+      if (!useSettingStore().securityHideBackupDrive) {
+        backupPan = PanDAL.GetPanTreeAllNode(user_id.value, pantreeStore.backup_drive_id, treeExpandedKeys.value)
+      }
+      if (!useSettingStore().securityHideResourceDrive) {
+        resourcePan = PanDAL.GetPanTreeAllNode(user_id.value, pantreeStore.resource_drive_id, treeExpandedKeys.value)
+      }
+      treeData.value = [...backupPan, ...resourcePan]
     }
   }
 }
@@ -482,35 +469,32 @@ const handleOK = () => {
       <span class='modaltitle'>{{ title }} {{ selecttype !== 'select' && selecttype !== 'selectdir' ? '选择一个位置' : '' }}</span>
     </template>
     <div class='pandirmodalbody'>
-      <AntdTree
+      <a-tree
         ref='treeref'
-        :tabindex='-1'
-        :focusable='false'
         class='pandirtree'
         block-node
         selectable
+        action-on-node-click='expand'
+        :animation='false'
         :auto-expand-parent='false'
-        show-icon
-        :height='treeHeight'
+        :virtual-list-props="{ height: treeHeight }"
         :style="{ height: treeHeight + 'px' }"
-        :item-height='30'
-        :show-line='{ showLeafIcon: false }'
         :expanded-keys='treeExpandedKeys'
         :selected-keys='treeSelectedKeys'
-        :tree-data='treeData'
-        :load-data='onLoadData'
+        :data='treeData'
+        :load-more='onLoadMore'
         @select='handleTreeSelect'
         @expand='handleTreeExpand'>
-        <template #switcherIcon>
-          <i class='ant-tree-switcher-icon iconfont Arrow' />
+        <template #switcher-icon>
+          <IconFont name="iconArrow-Down2" :size="15" />
         </template>
         <template #icon>
           <IconFont name="iconfile-folder" />
         </template>
-        <template #title='{ dataRef }'>
-          <span class='sharetitleleft'>{{ dataRef.title }}</span>
+        <template #title='node'>
+          <span class='sharetitleleft'>{{ node.title }}</span>
         </template>
-      </AntdTree>
+      </a-tree>
     </div>
     <div id='selectdir'>已选择：{{ selectFile.name }}</div>
     <div class='modalfoot'>
@@ -590,18 +574,18 @@ const handleOK = () => {
   padding: 4px;
 }
 
-.pandirtree .ant-tree-icon__customize .iconfont {
+.pandirtree .arco-tree-node-custom-icon .iconfont {
   font-size: 18px;
   margin-right: 2px;
 }
 
-.pandirtree .ant-tree-node-content-wrapper {
+.pandirtree .arco-tree-node-title {
   flex: auto;
   display: flex !important;
   flex-direction: row;
 }
 
-.pandirtree .ant-tree-title {
+.pandirtree .arco-tree-node-title-text {
   flex: auto;
   display: flex !important;
   flex-direction: row;

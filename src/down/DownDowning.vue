@@ -20,9 +20,8 @@ import {
   TestKeyboardScroll,
   TestKeyboardSelect
 } from '../utils/keyboardhelper'
-import { Tooltip as AntdTooltip } from 'ant-design-vue'
 import { TestButton } from '../utils/mosehelper'
-import { xorWith } from 'lodash'
+import { ArrayXorWith } from '../utils/utils'
 import TaskDetailDrawer from './TaskDetailDrawer.vue'
 import { t } from '../i18n'
 import { preventSleep } from '../tauri/app'
@@ -77,7 +76,7 @@ const onSelectReverse = () => {
   onHideRightMenuScroll()
   const listData = downingStore.ListDataShow
   const listSelected = downingStore.GetSelected()
-  const reverseSelect = xorWith(listData, listSelected, (a, b) => a.DownID === b.DownID)
+  const reverseSelect = ArrayXorWith(listData, listSelected, (a, b) => a.DownID === b.DownID)
   downingStore.ListSelected.clear()
   downingStore.ListFocusKey = ''
   if (reverseSelect.length > 0) {
@@ -292,20 +291,20 @@ const handleTaskDetail = () => {
   <div style='height: 9px'></div>
   <div class='toppanarea'>
     <div style='margin: 0 3px'>
-      <AntdTooltip :title="t('transfer.selectAllTooltip')" placement='left'>
+      <a-tooltip mini :content="t('transfer.selectAllTooltip')" position='left'>
         <a-button shape='circle' type='text' tabindex='-1' class='select all' @click='handleSelectAll' title='Ctrl+A'>
           <IconFont :name="downingStore.IsListSelectedAll ? 'iconrsuccess' : 'iconpic2'" />
         </a-button>
-      </AntdTooltip>
+      </a-tooltip>
     </div>
     <div class='selectInfo'>{{ downingStore.ListDataSelectCountInfo }}</div>
     <div style='margin: 0 2px'>
-      <AntdTooltip placement='rightTop' v-if="downingStore.ListDataShow.length > 0">
+      <a-tooltip mini position='rt' v-if="downingStore.ListDataShow.length > 0">
         <a-button shape='square' type='text' tabindex='-1' class='qujian'
                   :status="rangIsSelecting ? 'danger' : 'normal'" title='Ctrl+Q' @click='onSelectRangStart'>
           {{ rangIsSelecting ? t('transfer.cancelSelection') : t('transfer.rangeSelect') }}
         </a-button>
-        <template #title>
+        <template #content>
           <div>
             {{ t('transfer.rangeStep1') }}
             <br />
@@ -314,7 +313,7 @@ const handleTaskDetail = () => {
             {{ t('transfer.rangeStep3') }}
           </div>
         </template>
-      </AntdTooltip>
+      </a-tooltip>
       <a-button shape='square'
                 v-if='!rangIsSelecting && downingStore.ListSelected.size > 0 && downingStore.ListSelected.size < downingStore.ListDataShow.length'
                 type='text'

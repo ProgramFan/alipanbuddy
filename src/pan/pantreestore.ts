@@ -8,6 +8,7 @@ import { getDriveId as GetDriveID } from '../drive/context'
 import type { QuickFileEntry } from './quickFiles'
 import { t } from '../i18n'
 import { mergeTreeRootsPreservingOrder } from './treeRootMerge'
+import { findTreeRootKey } from '../utils/arcotree'
 
 export interface PanTreeState {
   user_id: string
@@ -143,11 +144,9 @@ const usePanTreeStore = defineStore('pantree', {
       let { key, drive_id = undefined } = e.node
       let is_refresh_drive_id = !['favorite', 'trash', 'recover'].includes(key) || !/color.*/g.test(key)
       if (!kuaijie) {
-        const getParentNode = (node: any): any => {
-          return node.parent ? getParentNode(node.parent) : node
-        }
-        const parentNode = getParentNode(e.node)
-        drive_id = GetDriveID(this.user_id, parentNode.key || key)
+        // Arco tree nodes have no parent back-reference, so resolve the drive root by walking the data.
+        const rootKey = findTreeRootKey(this.treeData, key) || key
+        drive_id = GetDriveID(this.user_id, rootKey)
       }
       console.log('mTreeSelected', e, drive_id)
       if (is_refresh_drive_id && drive_id) {
@@ -158,9 +157,12 @@ const usePanTreeStore = defineStore('pantree', {
       else this.selectDir.album_id = ''
       PanDAL.aReLoadOneDirToShow('', key, true)
     },
-    mTreeExpand(key: string) {
+    mTreeExpand(key: string, expanded?: boolean) {
       const arr = this.treeExpandedKeys
-      if (arr.includes(key)) {
+      const isExpanded = arr.includes(key)
+      const next = expanded === undefined ? !isExpanded : expanded
+      if (next === isExpanded) return
+      if (!next) {
         const dirPath = TreeStore.GetDirPath(this.drive_id, this.selectDir.file_id)
         const needSelectNew = dirPath.filter((t) => t.parent_file_id == key).length > 0
         this.treeExpandedKeys = arr.filter((t) => t != key)

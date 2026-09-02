@@ -22,7 +22,6 @@ import { ArrayKeyList } from '../../utils/utils'
 import AliFollowing from '../../aliapi/following'
 import AliShare from '../../aliapi/share'
 
-import { Tooltip as AntdTooltip } from 'ant-design-vue'
 import { modalShowShareLink } from '../../utils/modal'
 import { Modal } from '@arco-design/web-vue'
 
@@ -188,11 +187,11 @@ const handleSearchEnter = (event: any) => {
   <div style="height: 9px"></div>
   <div class="toppanarea">
     <div style="margin: 0 3px">
-      <AntdTooltip title="点击全选" placement="left">
+      <a-tooltip mini content="点击全选" position="left">
         <a-button shape="circle" type="text" tabindex="-1" class="select all" title="Ctrl+A" @click="handleSelectAll">
           <IconFont :name="myfollowingStore.IsListSelectedAll ? 'iconrsuccess' : 'iconpic2'" />
         </a-button>
-      </AntdTooltip>
+      </a-tooltip>
     </div>
     <div class="selectInfo">{{ myfollowingStore.ListDataSelectCountInfo }}</div>
 

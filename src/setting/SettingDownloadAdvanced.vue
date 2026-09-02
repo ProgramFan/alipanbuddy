@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import useSettingStore from './settingstore'
-import { Checkbox as AntdCheckbox } from 'ant-design-vue'
 import { AriaApplyAdvancedOptions } from '../utils/aria2c'
 import { fetchTrackerSource, normalizeTrackerText } from '../down/integration/tracker'
 import { ref } from 'vue'
@@ -43,19 +42,19 @@ const applyAriaOptions = () => AriaApplyAdvancedOptions().catch(() => {})
       <span class="settingitem">{{ t('settings.aria.minutes') }}</span>
     </div>
     <div class="settingrow">
-      <AntdCheckbox tabindex="-1" :checked="settingStore.ariaBtSaveMetadata" @change="(e:any) => cb({ ariaBtSaveMetadata: e.target.checked })">
+      <a-checkbox tabindex="-1" :model-value="settingStore.ariaBtSaveMetadata" @change="(v:boolean) => cb({ ariaBtSaveMetadata: v })">
         {{ t('settings.downloadAdvanced.saveBtMetadata') }}
-      </AntdCheckbox>
+      </a-checkbox>
     </div>
     <div class="settingrow">
-      <AntdCheckbox tabindex="-1" :checked="settingStore.ariaBtForceEncryption" @change="(e:any) => { cb({ ariaBtForceEncryption: e.target.checked }); applyAriaOptions() }">
+      <a-checkbox tabindex="-1" :model-value="settingStore.ariaBtForceEncryption" @change="(v:boolean) => { cb({ ariaBtForceEncryption: v }); applyAriaOptions() }">
         {{ t('settings.downloadAdvanced.forceBtEncryption') }}
-      </AntdCheckbox>
+      </a-checkbox>
     </div>
     <div class="settingrow">
-      <AntdCheckbox tabindex="-1" :checked="settingStore.ariaBtAutoDownloadContent" @change="(e:any) => cb({ ariaBtAutoDownloadContent: e.target.checked })">
+      <a-checkbox tabindex="-1" :model-value="settingStore.ariaBtAutoDownloadContent" @change="(v:boolean) => cb({ ariaBtAutoDownloadContent: v })">
         {{ t('settings.downloadAdvanced.autoDownloadBtContent') }}
-      </AntdCheckbox>
+      </a-checkbox>
     </div>
 
     <div class="settingspace"></div>
@@ -67,9 +66,9 @@ const applyAriaOptions = () => AriaApplyAdvancedOptions().catch(() => {})
     <div class="settingspace"></div>
     <div class="settinghead">{{ t('settings.downloadAdvanced.networkPorts') }}</div>
     <div class="settingrow">
-      <AntdCheckbox tabindex="-1" :checked="settingStore.ariaEnableUpnp" @change="(e:any) => { cb({ ariaEnableUpnp: e.target.checked }); applyAriaOptions() }">
+      <a-checkbox tabindex="-1" :model-value="settingStore.ariaEnableUpnp" @change="(v:boolean) => { cb({ ariaEnableUpnp: v }); applyAriaOptions() }">
         {{ t('settings.downloadAdvanced.upnp') }}
-      </AntdCheckbox>
+      </a-checkbox>
     </div>
     <div class="settingrow">
       <span class="settinglabel">{{ t('settings.downloadAdvanced.btListenPort') }}</span>
@@ -109,9 +108,9 @@ const applyAriaOptions = () => AriaApplyAdvancedOptions().catch(() => {})
       <a-textarea tabindex="-1" :model-value="settingStore.ariaUserAgent" :auto-size="{ minRows: 1, maxRows: 3 }" :style="{ width: '460px' }" :placeholder="t('settings.downloadAdvanced.globalUserAgentPlaceholder')" @update:model-value="(v: string) => cb({ ariaUserAgent: v })" />
     </div>
     <div class="settingrow">
-      <AntdCheckbox tabindex="-1" :checked="settingStore.ariaContinueDownload" @change="(e:any) => cb({ ariaContinueDownload: e.target.checked })">
+      <a-checkbox tabindex="-1" :model-value="settingStore.ariaContinueDownload" @change="(v:boolean) => cb({ ariaContinueDownload: v })">
         {{ t('settings.downloadAdvanced.continueDownload') }}
-      </AntdCheckbox>
+      </a-checkbox>
       <a-popover position="right">
         <IconFont name="iconbulb" />
         <template #content>
@@ -128,9 +127,9 @@ const applyAriaOptions = () => AriaApplyAdvancedOptions().catch(() => {})
     <div class="settingspace"></div>
     <div class="settinghead">{{ t('settings.downloadAdvanced.taskRecovery') }}</div>
     <div class="settingrow">
-      <AntdCheckbox tabindex="-1" :checked="settingStore.ariaTaskNotification" @change="(e:any) => cb({ ariaTaskNotification: e.target.checked })">
+      <a-checkbox tabindex="-1" :model-value="settingStore.ariaTaskNotification" @change="(v:boolean) => cb({ ariaTaskNotification: v })">
         {{ t('settings.downloadAdvanced.taskNotification') }}
-      </AntdCheckbox>
+      </a-checkbox>
     </div>
 
 <!--    <div class="settingspace"></div>-->

@@ -13,7 +13,6 @@ import {
 import { copyToClipboard, openExternal } from '../../tauri/app'
 import message from '../../utils/message'
 
-import { Tooltip as AntdTooltip } from 'ant-design-vue'
 import { modalShowShareLink } from '../../utils/modal'
 import { GetShareUrlFormate } from '../../utils/shareurl'
 import useShareBottleFishStore from './ShareBottleFishStore'
@@ -145,11 +144,11 @@ const handleRightClick = (e: { event: MouseEvent; node: any }) => {
   <div style="height: 9px"></div>
   <div class="toppanarea">
     <div style="margin: 0 3px">
-      <AntdTooltip title="点击全选" placement="left">
+      <a-tooltip mini content="点击全选" position="left">
         <a-button shape="circle" type="text" tabindex="-1" class="select all" title="Ctrl+A" @click="handleSelectAll">
           <IconFont :name="shareBottleFishStore.IsListSelectedAll ? 'iconrsuccess' : 'iconpic2'" />
         </a-button>
-      </AntdTooltip>
+      </a-tooltip>
     </div>
     <div class="selectInfo">{{ shareBottleFishStore.ListDataSelectCountInfo }}</div>
 

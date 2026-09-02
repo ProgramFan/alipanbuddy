@@ -21,7 +21,6 @@ import {
 import { ref } from 'vue'
 import UploadDAL from '../transfer/uploaddal'
 
-import { Tooltip as AntdTooltip } from 'ant-design-vue'
 import useUploadedStore from './UploadedStore'
 import { IStateUploadTask } from '../utils/dbupload'
 import message from '../utils/message'
@@ -31,7 +30,7 @@ import { humanSize } from '../utils/format'
 import { TestButton } from '../utils/mosehelper'
 import fs from '../tauri/fs'
 import { openPath, showItemInFolder } from '../tauri/app'
-import { xorWith } from 'lodash'
+import { ArrayXorWith } from '../utils/utils'
 import { t } from '../i18n'
 
 const viewlist = ref()
@@ -72,7 +71,7 @@ const onSelectReverse = () => {
   onHideRightMenuScroll()
   const listData = uploadedStore.ListDataShow
   const listSelected = uploadedStore.GetSelected()
-  const reverseSelect = xorWith(listData, listSelected, (a, b) => a.TaskID === b.TaskID)
+  const reverseSelect = ArrayXorWith(listData, listSelected, (a, b) => a.TaskID === b.TaskID)
   uploadedStore.ListSelected.clear()
   uploadedStore.ListFocusKey = -1
   if (reverseSelect.length > 0) {
@@ -305,20 +304,20 @@ const onSelectFile = async (item: IStateUploadTask | undefined, cmd: string) => 
   <div style="height: 9px"></div>
   <div class="toppanarea">
     <div style="margin: 0 3px">
-      <AntdTooltip :title="t('transfer.selectAllTooltip')" placement="left">
+      <a-tooltip mini :content="t('transfer.selectAllTooltip')" position="left">
         <a-button shape="circle" type="text" tabindex="-1" class="select all" title="Ctrl+A" @click="handleSelectAll">
           <IconFont :name="uploadedStore.IsListSelectedAll ? 'iconrsuccess' : 'iconpic2'" />
         </a-button>
-      </AntdTooltip>
+      </a-tooltip>
     </div>
     <div class="selectInfo">{{ uploadedStore.ListDataSelectCountInfo }}</div>
     <div style='margin: 0 2px'>
-      <AntdTooltip placement='rightTop' v-if="uploadedStore.ListDataShow.length > 0">
+      <a-tooltip mini position='rt' v-if="uploadedStore.ListDataShow.length > 0">
         <a-button shape='square' type='text' tabindex='-1' class='qujian'
                   :status="rangIsSelecting ? 'danger' : 'normal'" title='Ctrl+Q' @click='onSelectRangStart'>
           {{ rangIsSelecting ? t('transfer.cancelSelection') : t('transfer.rangeSelect') }}
         </a-button>
-        <template #title>
+        <template #content>
           <div>
             {{ t('transfer.rangeStep1') }}
             <br />
@@ -327,7 +326,7 @@ const onSelectFile = async (item: IStateUploadTask | undefined, cmd: string) => 
             {{ t('transfer.rangeStep3') }}
           </div>
         </template>
-      </AntdTooltip>
+      </a-tooltip>
       <a-button shape='square'
                 v-if='!rangIsSelecting && uploadedStore.ListSelected.size > 0 && uploadedStore.ListSelected.size < uploadedStore.ListDataShow.length'
                 type='text'

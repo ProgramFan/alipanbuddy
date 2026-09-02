@@ -4,10 +4,9 @@ import IconFont from '../../components/IconFont.vue'
 import message from '../../utils/message'
 import { useFootStore, useSettingStore, useWinStore } from '../../store'
 
-import { Tree as AntdTree } from 'ant-design-vue'
 import { modalCloseAll, modalSelectPanDir } from '../../utils/modal'
 import PanDAL from '../../pan/pandal'
-import { treeSelectToExpand } from '../../utils/antdtree'
+import { treeSelectToCheck } from '../../utils/arcotree'
 import AliFile from '../../aliapi/file'
 import ServerHttp from '../../aliapi/server'
 import AliArchive, { ILinkTxt, ILinkTxtFile } from '../../aliapi/archive'
@@ -73,9 +72,6 @@ function getDirSize(sizeInfo: { size: number; dirCount: number; fileCount: numbe
 }
 
 export default defineComponent({
-  components: {
-    AntdTree
-  },
   props: {
     visible: {
       type: Boolean,
@@ -199,7 +195,9 @@ export default defineComponent({
     const treeSelectedKeys = ref<string[]>([])
     const treeCheckedKeys = ref<string[]>([])
 
-    return { okLoading, fileLoading, saveInfo, handleOpen, handleClose, treeHeight, treeref, treeSelectToExpand, treeData, treeExpandedKeys, treeSelectedKeys, treeCheckedKeys, fileInfo }
+    const handleTreeSelect = (_keys: any[], info: { node?: any }) => treeSelectToCheck(treeref.value, info?.node)
+
+    return { okLoading, fileLoading, saveInfo, handleOpen, handleClose, treeHeight, treeref, handleTreeSelect, treeData, treeExpandedKeys, treeSelectedKeys, treeCheckedKeys, fileInfo }
   },
   methods: {
     handleHide() {
@@ -207,7 +205,7 @@ export default defineComponent({
     },
 
     handleOK(savetype: string) {
-      const checkedKeys = savetype == 'all' ? [] : this.treeref.checkedKeys
+      const checkedKeys = savetype == 'all' ? [] : this.treeCheckedKeys
       const domain_id = (this.fileInfo as IAliFileItem).domain_id || ''
       const file_extension = (this.fileInfo as IAliFileItem).file_extension || ''
       modalSelectPanDir('unzip', this.parent_file_id, async (user_id: string, drive_id: string, selectFile: any) => {
@@ -242,32 +240,30 @@ export default defineComponent({
     </template>
     <div class="modalbody" style="width: 80vw; max-width: 860px; height: calc(80vh - 100px); padding-bottom: 16px">
       <a-spin :loading="fileLoading" :style="{ width: 'calc(100%)', height: '100%', overflow: 'hidden' }" :tip="saveInfo">
-        <AntdTree
+        <a-tree
           ref="treeref"
-          v-model:expandedKeys="treeExpandedKeys"
-          v-model:selectedKeys="treeSelectedKeys"
-          v-model:checkedKeys="treeCheckedKeys"
-          :tree-data="treeData"
-          :tabindex="-1"
-          :focusable="false"
+          v-model:expanded-keys="treeExpandedKeys"
+          v-model:selected-keys="treeSelectedKeys"
+          v-model:checked-keys="treeCheckedKeys"
+          :data="treeData"
           class="sharetree"
           :checkable="true"
           block-node
           selectable
+          action-on-node-click="expand"
+          :animation="false"
           :auto-expand-parent="false"
-          show-icon
-          :height="treeHeight"
+          :virtual-list-props="{ height: treeHeight }"
           :style="{ height: treeHeight + 'px' }"
-          :show-line="{ showLeafIcon: false }"
-          @select="treeSelectToExpand">
-          <template #switcherIcon>
-            <i class="ant-tree-switcher-icon iconfont Arrow" />
+          @select="handleTreeSelect">
+          <template #switcher-icon>
+            <IconFont name="iconArrow-Down2" :size="15" />
           </template>
-          <template #title="{ dataRef }">
-            <span class="sharetitleleft">{{ dataRef.title }}</span>
-            <span class="sharetitleright">{{ dataRef.sizeStr }}</span>
+          <template #title="node">
+            <span class="sharetitleleft">{{ node.title }}</span>
+            <span class="sharetitleright">{{ node.sizeStr }}</span>
           </template>
-        </AntdTree>
+        </a-tree>
       </a-spin>
     </div>
     <div class="modalfoot">
@@ -313,17 +309,17 @@ export default defineComponent({
   border: 1px solid var(--color-neutral-3);
   padding: 4px;
 }
-.sharetree .ant-tree-icon__customize .iconfont {
+.sharetree .arco-tree-node-custom-icon .iconfont {
   font-size: 18px;
   margin-right: 2px;
 }
 
-.sharetree .ant-tree-node-content-wrapper {
+.sharetree .arco-tree-node-title {
   flex: auto;
   display: flex !important;
   flex-direction: row;
 }
-.sharetree .ant-tree-title {
+.sharetree .arco-tree-node-title-text {
   flex: auto;
   display: flex !important;
   flex-direction: row;

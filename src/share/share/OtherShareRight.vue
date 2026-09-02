@@ -22,12 +22,10 @@ import {
 import { copyToClipboard, openExternal, readClipboardText } from '../../tauri/app'
 import message from '../../utils/message'
 
-import { Tooltip as AntdTooltip } from 'ant-design-vue'
 import { modalSelectPanDir, modalShowShareLink } from '../../utils/modal'
-import { ArrayKeyList } from '../../utils/utils'
+import { ArrayKeyList, ArrayXorWith } from '../../utils/utils'
 import { GetShareUrlFormate } from '../../utils/shareurl'
 import { TestButton } from '../../utils/mosehelper'
-import { xorWith } from 'lodash'
 import { Modal } from '@arco-design/web-vue'
 import AliShare from '../../aliapi/share'
 import PanDAL from '../../pan/pandal'
@@ -89,7 +87,7 @@ const onSelectReverse = () => {
   onHideRightMenuScroll()
   const listData = othershareStore.ListDataShow
   const listSelected = othershareStore.GetSelected()
-  const reverseSelect = xorWith(listData, listSelected, (a, b) => a.share_id === b.share_id)
+  const reverseSelect = ArrayXorWith(listData, listSelected, (a, b) => a.share_id === b.share_id)
   othershareStore.ListSelected.clear()
   othershareStore.ListFocusKey = ''
   if (reverseSelect.length > 0) {
@@ -419,20 +417,20 @@ const handleRightClick = (e: { event: MouseEvent; node: any }) => {
   <div style="height: 9px"></div>
   <div class="toppanarea">
     <div style="margin: 0 3px">
-      <AntdTooltip :title="t('share.selectAll')" placement="left">
+      <a-tooltip mini :content="t('share.selectAll')" position="left">
         <a-button shape="circle" type="text" tabindex="-1" class="select all" title="Ctrl+A" @click="handleSelectAll">
           <IconFont :name="othershareStore.IsListSelectedAll ? 'iconrsuccess' : 'iconpic2'" />
         </a-button>
-      </AntdTooltip>
+      </a-tooltip>
     </div>
     <div class='selectInfo'>{{ othershareStore.ListDataSelectCountInfo }}</div>
     <div style='margin: 0 2px'>
-      <AntdTooltip placement='rightTop' v-if="othershareStore.ListDataShow.length > 0">
+      <a-tooltip mini position='rt' v-if="othershareStore.ListDataShow.length > 0">
         <a-button shape='square' type='text' tabindex='-1' class='qujian'
                   :status="rangIsSelecting ? 'danger' : 'normal'" title='Ctrl+Q' @click='onSelectRangStart'>
           {{ rangIsSelecting ? t('share.cancelSelect') : t('share.rangeSelect') }}
         </a-button>
-        <template #title>
+        <template #content>
           <div>
             {{ t('share.rangeStep1') }}
             <br />
@@ -441,7 +439,7 @@ const handleRightClick = (e: { event: MouseEvent; node: any }) => {
             {{ t('share.rangeStep3') }}
           </div>
         </template>
-      </AntdTooltip>
+      </a-tooltip>
       <a-button shape='square'
                 v-if='!rangIsSelecting && othershareStore.ListSelected.size > 0 && othershareStore.ListSelected.size < othershareStore.ListDataShow.length'
                 type='text'

@@ -3,7 +3,7 @@ import { modalCloseAll } from '../../utils/modal'
 import { defineComponent, ref } from 'vue'
 import useSettingStore from "../../setting/settingstore";
 import { menuDownload } from './topbtn'
-import { isEmpty } from 'lodash'
+import { IsEmpty } from '../../utils/utils'
 import message from '../../utils/message'
 import { showOpenDialog } from '../../tauri/app'
 
@@ -35,7 +35,7 @@ export default defineComponent({
 
     const handleOK = () => {
       const savePath = settingStore.AriaIsLocal ? settingStore.downSavePath : settingStore.ariaSavePath
-      if (isEmpty(savePath)) {
+      if (IsEmpty(savePath)) {
         message.error('未设置保存路径')
         return
       }

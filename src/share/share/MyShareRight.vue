@@ -25,12 +25,10 @@ import { copyToClipboard, openExternal } from '../../tauri/app'
 import message from '../../utils/message'
 import AliShare from '../../aliapi/share'
 
-import { Tooltip as AntdTooltip } from 'ant-design-vue'
 import { modalEditShareLink, modalShowShareLink } from '../../utils/modal'
-import { ArrayKeyList } from '../../utils/utils'
+import { ArrayKeyList, ArrayXorWith } from '../../utils/utils'
 import { GetShareUrlFormate } from '../../utils/shareurl'
 import { TestButton } from '../../utils/mosehelper'
-import { xorWith } from 'lodash'
 import { Modal } from '@arco-design/web-vue'
 import { t } from '../../i18n'
 
@@ -99,7 +97,7 @@ const onSelectReverse = () => {
   onHideRightMenuScroll()
   const listData = myshareStore.ListDataShow
   const listSelected = myshareStore.GetSelected()
-  const reverseSelect = xorWith(listData, listSelected, (a, b) => a.share_id === b.share_id)
+  const reverseSelect = ArrayXorWith(listData, listSelected, (a, b) => a.share_id === b.share_id)
   myshareStore.ListSelected.clear()
   myshareStore.ListFocusKey = ''
   if (reverseSelect.length > 0) {
@@ -382,19 +380,19 @@ const handleRightClick = (e: { event: MouseEvent; node: any }) => {
   <div style="height: 9px"></div>
   <div class="toppanarea">
     <div style="margin: 0 3px">
-      <AntdTooltip :title="t('share.selectAll')" placement="left">
+      <a-tooltip mini :content="t('share.selectAll')" position="left">
         <a-button shape="circle" type="text" tabindex="-1" class="select all" title="Ctrl+A" @click="handleSelectAll">
           <IconFont :name="myshareStore.IsListSelectedAll ? 'iconrsuccess' : 'iconpic2'" />
         </a-button>
-      </AntdTooltip>
+      </a-tooltip>
       <div class='selectInfo'>{{ myshareStore.ListDataSelectCountInfo }}</div>
       <div style='margin: 0 2px'>
-        <AntdTooltip placement='rightTop' v-if="myshareStore.ListDataShow.length > 0">
+        <a-tooltip mini position='rt' v-if="myshareStore.ListDataShow.length > 0">
           <a-button shape='square' type='text' tabindex='-1' class='qujian'
                     :status="rangIsSelecting ? 'danger' : 'normal'" title='Ctrl+Q' @click='onSelectRangStart'>
             {{ rangIsSelecting ? t('share.cancelSelect') : t('share.rangeSelect') }}
           </a-button>
-          <template #title>
+          <template #content>
             <div>
               第1步: 点击 区间选择 这个按钮
               <br />
@@ -403,7 +401,7 @@ const handleRightClick = (e: { event: MouseEvent; node: any }) => {
               第3步: 移动鼠标点击另外一个文件
             </div>
           </template>
-        </AntdTooltip>
+        </a-tooltip>
         <a-button shape='square'
                   v-if='!rangIsSelecting && myshareStore.ListSelected.size > 0 && myshareStore.ListSelected.size < myshareStore.ListDataShow.length'
                   type='text'

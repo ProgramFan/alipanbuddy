@@ -25,8 +25,6 @@ import { computed, onMounted, onUnmounted, ref, watchEffect } from 'vue'
 import { t } from '../i18n'
 import PanDAL from './pandal'
 
-import { Tooltip as AntdTooltip } from 'ant-design-vue'
-
 import {
   dropMoveSelectedFile,
   handleUpload,
@@ -60,7 +58,7 @@ import { isValidDropUploadTarget } from '../utils/uploadTarget'
 import { setDropHandler } from '../tauri/dragDrop'
 import usePanTreeStore from './pantreestore'
 import { getDriveId as GetDriveID, getDriveType as GetDriveType } from '../drive/context'
-import { xorWith } from 'lodash'
+import { ArrayXorWith } from '../utils/utils'
 
 
 const viewlist = ref()
@@ -400,7 +398,7 @@ const onSelectReverse = () => {
   onHideRightMenuScroll()
   const listData = panfileStore.ListDataShow
   const listSelected = panfileStore.GetSelected()
-  const reverseSelect = xorWith(listData, listSelected, (a, b) => a.file_id === b.file_id)
+  const reverseSelect = ArrayXorWith(listData, listSelected, (a, b) => a.file_id === b.file_id)
   panfileStore.ListSelected.clear()
   panfileStore.ListFocusKey = ''
   if (reverseSelect.length > 0) {
@@ -740,21 +738,21 @@ const onPanDragEnd = (ev: any) => {
   <div style='height: 9px'></div>
   <div class='toppanarea' tabindex='-1'>
     <div style='margin: 0 3px'>
-      <AntdTooltip :title="t('pan.selectAllTooltip')" placement='left'>
+      <a-tooltip mini :content="t('pan.selectAllTooltip')" position='left'>
         <a-button shape='circle' type='text' tabindex='-1' class='select all' title='Ctrl+A' @click='handleSelectAll'>
           <IconFont :name="panfileStore.IsListSelectedAll ? 'iconrsuccess' : 'iconpic2'" />
         </a-button>
-      </AntdTooltip>
+      </a-tooltip>
     </div>
     <div class='selectInfo'>{{ panfileStore.ListDataSelectCountInfo }}</div>
     <div style='margin: 0 2px'>
-      <AntdTooltip placement='rightTop'
+      <a-tooltip mini position='rt'
                    v-if="panfileStore.SelectDirType !== 'video' && panfileStore.ListDataShow.length > 0">
         <a-button shape='square' type='text' tabindex='-1' class='qujian'
                   :status="rangIsSelecting ? 'danger' : 'normal'" title='Ctrl+Q' @click='onSelectRangStart'>
           {{ rangIsSelecting ? t('pan.rangeCancel') : t('pan.rangeSelect') }}
         </a-button>
-        <template #title>
+        <template #content>
           <div>
             {{ t('pan.rangeStep1') }}
             <br />
@@ -763,7 +761,7 @@ const onPanDragEnd = (ev: any) => {
             {{ t('pan.rangeStep3') }}
           </div>
         </template>
-      </AntdTooltip>
+      </a-tooltip>
       <a-button shape='square'
                 v-if='!rangIsSelecting && panfileStore.ListSelected.size > 0 && panfileStore.ListSelected.size < panfileStore.ListDataShow.length'
                 type='text'
@@ -809,27 +807,27 @@ const onPanDragEnd = (ev: any) => {
       </a-dropdown>
     </div>
     <div>
-      <AntdTooltip :title="t('pan.listMode')" placement='bottom'>
+      <a-tooltip mini :content="t('pan.listMode')" position='bottom'>
         <a-button shape='square' type='text' tabindex='-1'
                   :class="settingStore.uiFileListMode === 'list' ? 'select active' : 'select'"
                   @click="() => handleListGridMode('list')">
           <IconFont name="iconliebiaomoshi" />
         </a-button>
-      </AntdTooltip>
-      <AntdTooltip :title="t('pan.thumbnailMode')" placement='bottom'>
+      </a-tooltip>
+      <a-tooltip mini :content="t('pan.thumbnailMode')" position='bottom'>
         <a-button shape='square' type='text' tabindex='-1'
                   :class="settingStore.uiFileListMode === 'image' ? 'select active' : 'select'"
                   @click="() => handleListGridMode('image')">
           <IconFont name="iconxiaotumoshi" />
         </a-button>
-      </AntdTooltip>
-      <AntdTooltip :title="t('pan.largeImageMode')" placement='bottom'>
+      </a-tooltip>
+      <a-tooltip mini :content="t('pan.largeImageMode')" position='bottom'>
         <a-button shape='square' type='text' tabindex='-1'
                   :class="settingStore.uiFileListMode === 'bigimage' ? 'select active' : 'select'"
                   @click="() => handleListGridMode('bigimage')">
           <IconFont name="iconsuoluetumoshi" />
         </a-button>
-      </AntdTooltip>
+      </a-tooltip>
     </div>
     <div class='cell pr'></div>
   </div>

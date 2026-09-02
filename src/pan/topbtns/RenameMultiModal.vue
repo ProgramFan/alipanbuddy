@@ -4,8 +4,6 @@ import { computed, h, reactive, ref, watch, watchEffect } from 'vue'
 import IconFont from '../../components/IconFont.vue'
 import MySwitchTab from '../../layout/MySwitchTab.vue'
 import usePanFileStore from '../panfilestore'
-import { AntTreeNodeDropEvent, EventDataNode } from 'ant-design-vue/es/tree'
-import { Tree as AntdTree } from 'ant-design-vue'
 import { usePanTreeStore, useWinStore } from '../../store'
 import AliTrash from '../../aliapi/trash'
 import message from '../../utils/message'
@@ -15,7 +13,7 @@ import { NewRenameConfigData, RunAllNode, RunReplaceName, TreeNodeData } from '.
 import PanDAL from '../pandal'
 import { throttle } from '../../utils/debounce'
 import { IAliGetFileModel } from '../../aliapi/alimodels'
-import { treeSelectToExpand } from '../../utils/antdtree'
+import { treeSelectToCheck } from '../../utils/arcotree'
 import { copyToClipboard } from '../../tauri/app'
 import path from '../../utils/path'
 
@@ -71,17 +69,17 @@ const renameConfig = reactive(NewRenameConfigData())
 const treeData = ref<TreeNodeData[]>([])
 const treeExpandedKeys = ref<string[]>([])
 const treeSelectedKeys = ref<string[]>([])
-const treeCheckedKeys = ref<{ checked: string[]; halfChecked: string[] }>({ checked: [], halfChecked: [] })
+const treeCheckedKeys = ref<string[]>([])
 const checkInfo = ref('')
 const multiOpt = ref(false)
 const allLen = ref(0)
 
 const onRunReplaceName = throttle(() => {
-  RunReplaceName(renameConfig, treeData.value, treeCheckedKeys.value.checked)
+  RunReplaceName(renameConfig, treeData.value, treeCheckedKeys.value)
 }, 300)
 
 watchEffect(() => {
-  const checkLen = treeCheckedKeys.value.checked.length || 0
+  const checkLen = treeCheckedKeys.value.length || 0
   allLen.value = 0
   let matchlen = 0
   RunAllNode(treeData.value, (node) => {
@@ -96,14 +94,14 @@ watchEffect(() => {
 watch(renameConfig, onRunReplaceName)
 
 
-const onLoadData = (treeNode: EventDataNode) => {
+const onLoadMore = (node: any) => {
   return new Promise<void>((resolve) => {
-    if (!treeNode.dataRef || treeNode.dataRef?.children?.length) {
+    if (!node || node.children?.length) {
       resolve()
       return
     }
-    apiLoad(treeNode.dataRef.key).then((addList: TreeNodeData[]) => {
-      treeNode.dataRef!.children = addList
+    apiLoad(node.key).then((addList: TreeNodeData[]) => {
+      node.children = addList
       if (treeData.value) {
         treeData.value = treeData.value.concat()
       }
@@ -111,6 +109,8 @@ const onLoadData = (treeNode: EventDataNode) => {
     })
   })
 }
+
+const handleTreeSelect = (_keys: any[], info: { node?: any }) => treeSelectToCheck(treeref.value, info?.node)
 
 const autoExpand = (list: TreeNodeData[]) => {
   if (list.length < 4) {
@@ -214,7 +214,7 @@ const handleOpen = () => {
   })
 
   treeData.value = data
-  treeCheckedKeys.value = { checked: checkList, halfChecked: [] }
+  treeCheckedKeys.value = checkList
 }
 
 const handleResetConfig = () => {
@@ -261,7 +261,7 @@ const handleClose = () => {
   treeData.value = []
   treeExpandedKeys.value = []
   treeSelectedKeys.value = []
-  treeCheckedKeys.value.checked = []
+  treeCheckedKeys.value = []
   renameConfig.show = false
   handleResetConfig()
 }
@@ -270,23 +270,33 @@ const handleTreeCheck = () => {
   onRunReplaceName()
 }
 
-const onDrop = (info: AntTreeNodeDropEvent) => {
-  const dropKey = info.node.key
-  const dragKey = info.dragNode.key
-  const dropPos = info.node.pos?.split('-') || []
+/** Key of the node that holds `key` as a direct child, or '' when it sits at the root. */
+const parentKeyOf = (key: string, nodes: TreeNodeData[] = treeData.value, parentKey = ''): string | undefined => {
+  for (let i = 0, maxi = nodes.length; i < maxi; i++) {
+    const node = nodes[i]
+    if (node.key === key) return parentKey
+    if (node.children && node.children.length > 0) {
+      const found = parentKeyOf(key, node.children, node.key)
+      if (found !== undefined) return found
+    }
+  }
+  return undefined
+}
 
-  let fromPos = info.dragNode.pos || ''
-  if (fromPos.indexOf('-') > 0) fromPos = fromPos.substring(0, fromPos.lastIndexOf('-') + 1)
-  let toPos = info.node.pos || ''
-  if (toPos.indexOf('-') > 0) toPos = toPos.substring(0, toPos.lastIndexOf('-') + 1)
-  const isTop = fromPos.indexOf(toPos) == 0 && fromPos.length == toPos.length + 2
-  console.log(fromPos, info.dragNode, 'to', toPos, info.node, info.dropPosition, dropPos, isTop)
-  if (fromPos != toPos && !isTop) {
+const onDrop = (info: { dragNode: TreeNodeData; dropNode: TreeNodeData; dropPosition: number }) => {
+  const dropKey = info.dropNode.key
+  const dragKey = info.dragNode.key
+
+  const fromParent = parentKeyOf(dragKey)
+  const toParent = parentKeyOf(dropKey)
+  // Dropping a node straight onto its own folder is allowed as well ("move to the top of it").
+  const isTop = fromParent === dropKey
+  if (fromParent !== toParent && !isTop) {
     message.warning('只能在同一个文件夹中拖放排序')
     return false
   }
 
-  const dropPosition = info.dropPosition - Number(dropPos[dropPos.length - 1])
+  const dropPosition = info.dropPosition
   const loop = (data: TreeNodeData[], key: string | number, callback: any) => {
     data.forEach((item, index) => {
       if (item.key === key) {
@@ -347,7 +357,7 @@ const handleOK = (type: string) => {
   }
   const idList: string[] = []
   const nameList: string[] = []
-  const checkMap = new Set(treeCheckedKeys.value.checked)
+  const checkMap = new Set(treeCheckedKeys.value)
   RunAllNode(treeData.value, (node) => {
     const isMatch = node.newtitle && node.newtitle !== node.rawtitle && checkMap.has(node.key)
     if (isMatch) {
@@ -386,7 +396,7 @@ const handleOK = (type: string) => {
             }
             return true
           })
-          treeCheckedKeys.value = { checked: [], halfChecked: [] }
+          treeCheckedKeys.value = []
         }
         message.success('批量重命名 成功')
       } else {
@@ -410,11 +420,11 @@ const handleContextMenu = (menuKey: string, treeNodeKey: string) => {
       checkList.push(node.key)
       return true
     })
-    if (checkList.length == treeCheckedKeys.value.checked.length) checkList = []
-    treeCheckedKeys.value = { checked: checkList, halfChecked: [] }
+    if (checkList.length == treeCheckedKeys.value.length) checkList = []
+    treeCheckedKeys.value = checkList
     return
   }
-  const checked = new Set(treeCheckedKeys.value.checked)
+  const checked = new Set(treeCheckedKeys.value)
   if (menuKey.startsWith('selectcopy')) {
     RunAllNode(treeData.value, (node) => {
       if (node.key == treeNodeKey) {
@@ -479,7 +489,7 @@ const handleContextMenu = (menuKey: string, treeNodeKey: string) => {
       return true
     })
   }
-  treeCheckedKeys.value.checked = Array.from(checked)
+  treeCheckedKeys.value = Array.from(checked)
 }
 
 const handleMultiOpt = () => {
@@ -990,8 +1000,8 @@ const handleSelectRow = (visible: boolean, treeNodeKey: string) => {
               <a-button type='text' size='small' tabindex='-1' :disabled='okLoading'
                         style='margin: 0'
                         @click="handleContextMenu('all', '')">
-                <IconFont :name="treeCheckedKeys.checked.length === allLen ? 'iconrsuccess' : 'iconpic2'" />
-                {{ treeCheckedKeys.checked.length === allLen ? '取消全选' : '全选' }}
+                <IconFont :name="treeCheckedKeys.length === allLen ? 'iconrsuccess' : 'iconpic2'" />
+                {{ treeCheckedKeys.length === allLen ? '取消全选' : '全选' }}
               </a-button>
               <a-button type='text' size='small' tabindex='-1' style='margin: 0' @click='handleMultiOpt'>
                 <IconFont :name="multiOpt ? 'iconrsuccess' : 'iconpic2'" />多次操作
@@ -1007,40 +1017,38 @@ const handleSelectRow = (visible: boolean, treeNodeKey: string) => {
           </div>
           <div style='height: 16px'></div>
           <div style='width: 100%; padding-right: 16px; overflow: hidden'>
-            <AntdTree
+            <a-tree
               ref='treeref'
-              v-model:expandedKeys='treeExpandedKeys'
-              v-model:selectedKeys='treeSelectedKeys'
-              v-model:checkedKeys='treeCheckedKeys'
-              :tree-data='treeData'
-              :load-data='onLoadData'
-              :tabindex='-1'
-              :focusable='false'
+              v-model:expanded-keys='treeExpandedKeys'
+              v-model:selected-keys='treeSelectedKeys'
+              v-model:checked-keys='treeCheckedKeys'
+              :data='treeData'
+              :load-more='onLoadMore'
               class='renametree'
               :checkable='true'
               block-node
               selectable
               check-strictly
+              action-on-node-click='expand'
+              :animation='false'
               :auto-expand-parent='false'
-              show-icon
-              :height='treeHeight'
+              :virtual-list-props="{ height: treeHeight }"
               :style="{ height: treeHeight + 'px' }"
-              :show-line='{ showLeafIcon: false }'
               draggable
-              @select='treeSelectToExpand'
+              @select='handleTreeSelect'
               @check='handleTreeCheck'
               @drop='onDrop'>
-              <template #switcherIcon>
-                <i class='ant-tree-switcher-icon iconfont Arrow' />
+              <template #switcher-icon>
+                <IconFont name="iconArrow-Down2" :size="15" />
               </template>
-              <template #title='{ dataRef }'>
-                <a-dropdown class='smallmenu' :trigger="['contextMenu']"
-                            @select='(value:any)=>handleContextMenu(value,dataRef.key)'
-                            @popup-visible-change='(visible:boolean)=>handleSelectRow(visible,dataRef.key)'>
-                  <span :class="dataRef.isMatch ? 'match fulltitle' : 'fulltitle'"
+              <template #title='node'>
+                <a-dropdown class='smallmenu' trigger='contextMenu'
+                            @select='(value:any)=>handleContextMenu(value,node.key)'
+                            @popup-visible-change='(visible:boolean)=>handleSelectRow(visible,node.key)'>
+                  <span :class="node.isMatch ? 'match fulltitle' : 'fulltitle'"
                         title='点击鼠标右键菜单'
-                        v-html='dataRef.title'></span>
-                  <template #content v-if='dataRef.isDir'>
+                        v-html='node.title'></span>
+                  <template #content v-if='node.isDir'>
                     <a-doption value='selectcopyall'>复制选择项全名</a-doption>
                     <a-doption value='selectcopyname'>复制选择项名称</a-doption>
                     <a-doption value='selectall'>选择全部子项</a-doption>
@@ -1054,7 +1062,7 @@ const handleSelectRow = (visible: boolean, treeNodeKey: string) => {
                   </template>
                 </a-dropdown>
               </template>
-            </AntdTree>
+            </a-tree>
           </div>
         </a-layout-content>
       </a-layout>
@@ -1118,11 +1126,11 @@ const handleSelectRow = (visible: boolean, treeNodeKey: string) => {
   color: unset !important;
 }
 
-.renametree .ant-tree-title .match {
+.renametree .arco-tree-node-title-text .match {
   color: rgba(var(--primary-6), 0.8);
 }
 
-.renametree .ant-tree-title i {
+.renametree .arco-tree-node-title-text i {
   color: green;
   font-style: normal;
   font-weight: bold;
@@ -1130,7 +1138,7 @@ const handleSelectRow = (visible: boolean, treeNodeKey: string) => {
   background: #c8e6c9;
 }
 
-.renametree .ant-tree-title b {
+.renametree .arco-tree-node-title-text b {
   color: #e91e63;
   font-style: normal;
   font-weight: bold;
@@ -1139,7 +1147,7 @@ const handleSelectRow = (visible: boolean, treeNodeKey: string) => {
   text-decoration: line-through;
 }
 
-.renametree .ant-tree-title s {
+.renametree .arco-tree-node-title-text s {
   color: #ff7d00;
   font-style: normal;
   font-weight: bold;
@@ -1163,7 +1171,7 @@ const handleSelectRow = (visible: boolean, treeNodeKey: string) => {
   padding: 4px;
 }
 
-.renametree .ant-tree-icon__customize .iconfont {
+.renametree .arco-tree-node-custom-icon .iconfont {
   font-size: 18px;
   margin-right: 2px;
 }
@@ -1173,7 +1181,7 @@ const handleSelectRow = (visible: boolean, treeNodeKey: string) => {
   flex-direction: column;
 }
 
-.ant-tree-treenode-draggable {
+.arco-tree-node-title-draggable {
   -webkit-user-drag: element !important;
 }
 
@@ -1187,15 +1195,15 @@ const handleSelectRow = (visible: boolean, treeNodeKey: string) => {
   overflow-y: auto;
 }
 
-.renametree .ant-tree-node-content-wrapper {
+.renametree .arco-tree-node-title {
   display: flex;
 }
 
-.renametree .ant-tree-node-content-wrapper .ant-tree-title {
+.renametree .arco-tree-node-title .arco-tree-node-title-text {
   flex: auto;
 }
 
-.renametree .ant-tree-node-content-wrapper .ant-tree-title .fulltitle {
+.renametree .arco-tree-node-title .arco-tree-node-title-text .fulltitle {
   width: 100%;
   display: inline-block;
 }

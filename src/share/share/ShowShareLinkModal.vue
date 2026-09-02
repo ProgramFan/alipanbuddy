@@ -7,13 +7,11 @@ import AliShare from '../../aliapi/share'
 import { humanExpiration } from '../../utils/format'
 import { useWinStore } from '../../store'
 
-import { Tree as AntdTree } from 'ant-design-vue'
-import { EventDataNode } from 'ant-design-vue/es/tree'
 import { modalCloseAll, modalSelectPanDir } from '../../utils/modal'
 import ShareDAL from './ShareDAL'
 import AliFileCmd from '../../aliapi/filecmd'
 import PanDAL from '../../pan/pandal'
-import { treeSelectToExpand } from '../../utils/antdtree'
+import { treeSelectToCheck } from '../../utils/arcotree'
 import { HanToPin } from '../../utils/utils'
 
 interface TreeNodeData {
@@ -126,6 +124,7 @@ const handleClose = () => {
   copyTreeExpandedKeys.value = []
   treeSelectedKeys.value = []
   treeCheckedKeys.value = []
+  treeHalfCheckedKeys.value = []
 }
 
 const treeref = ref()
@@ -134,15 +133,18 @@ const treeExpandedKeys = ref<string[]>([])
 const copyTreeExpandedKeys = ref<string[]>([])
 const treeSelectedKeys = ref<string[]>([])
 const treeCheckedKeys = ref<string[]>([])
+const treeHalfCheckedKeys = ref<string[]>([])
 
-const onLoadData = (treeNode: EventDataNode) => {
+const handleTreeSelect = (_keys: any[], info: { node?: any }) => treeSelectToCheck(treeref.value, info?.node)
+
+const onLoadMore = (node: any) => {
   return new Promise<void>((resolve) => {
-    if (share_token.value == '' || !treeNode.dataRef || treeNode.dataRef?.children?.length) {
+    if (share_token.value == '' || !node || node.children?.length) {
       resolve()
       return
     }
-    apiLoad(treeNode.dataRef.key).then((addList: TreeNodeData[]) => {
-      treeNode.dataRef!.children = addList
+    apiLoad(node.key).then((addList: TreeNodeData[]) => {
+      node.children = addList
       if (treeData.value) treeData.value = treeData.value.concat()
       resolve()
     })
@@ -271,12 +273,12 @@ const handleFilterChange = (val: any) => {
 }
 
 const handleOK = (saveType: string) => {
-  const checkedKeys = treeref.value.checkedKeys
+  const checkedKeys = treeCheckedKeys.value
   const checkedMap = new Map<string, boolean>()
   for (let i = 0, maxi = checkedKeys.length; i < maxi; i++) {
     checkedMap.set(checkedKeys[i].toString(), true)
   }
-  const halfCheckedKeys = treeref.value.halfCheckedKeys
+  const halfCheckedKeys = treeHalfCheckedKeys.value
   const halfCheckedMap = new Map<string, boolean>()
   for (let i = 0, maxi = halfCheckedKeys.length; i < maxi; i++) {
     halfCheckedMap.set(halfCheckedKeys[i].toString(), true)
@@ -498,36 +500,35 @@ async function getNodeAllFiles(share_id: string, share_token: string, file_id: s
       </div>
     </template>
     <div class='sharemodalbody'>
-      <AntdTree
+      <a-tree
         ref='treeref'
         v-model:expanded-keys='treeExpandedKeys'
         v-model:selected-keys='treeSelectedKeys'
         v-model:checked-keys='treeCheckedKeys'
-        :tree-data='filteredTreeData'
-        :load-data='onLoadData'
-        :tabindex='-1'
-        :focusable='false'
+        v-model:half-checked-keys='treeHalfCheckedKeys'
+        :data='filteredTreeData'
+        :load-more='onLoadMore'
         class='sharetree'
         :checkable='withsave'
         block-node
         selectable
+        action-on-node-click='expand'
+        :animation='false'
         :auto-expand-parent='false'
-        show-icon
-        :height='treeHeight'
+        :virtual-list-props="{ height: treeHeight }"
         :style="{ height: treeHeight + 'px' }"
-        :show-line='{ showLeafIcon: false }'
-        @select='treeSelectToExpand'>
-        <template #switcherIcon>
-          <i class='ant-tree-switcher-icon iconfont Arrow' />
+        @select='handleTreeSelect'>
+        <template #switcher-icon>
+          <IconFont name="iconArrow-Down2" :size="15" />
         </template>
-        <template #title="{ dataRef }">
-          <span :class="'sharetitleleft' + (fileList.has(dataRef.key) ? ' new' : '')">
-            {{ dataRef?.title }}
+        <template #title="node">
+          <span :class="'sharetitleleft' + (fileList.has(node.key) ? ' new' : '')">
+            {{ node?.title }}
           </span>
-          <span class='sharetitleright'>{{ dataRef.sizeStr }}</span>
-          <span class='sharetitleright'>{{ dataRef.timeStr }}</span>
+          <span class='sharetitleright'>{{ node.sizeStr }}</span>
+          <span class='sharetitleright'>{{ node.timeStr }}</span>
         </template>
-      </AntdTree>
+      </a-tree>
     </div>
     <div v-if='withsave && isAlbum == false' class='modalfoot'>
       <div style='flex-grow: 1'></div>
@@ -607,18 +608,18 @@ async function getNodeAllFiles(share_id: string, share_token: string, file_id: s
   padding: 4px;
 }
 
-.sharetree .ant-tree-icon__customize .iconfont {
+.sharetree .arco-tree-node-custom-icon .iconfont {
   font-size: 18px;
   margin-right: 2px;
 }
 
-.sharetree .ant-tree-node-content-wrapper {
+.sharetree .arco-tree-node-title {
   flex: auto;
   display: flex !important;
   flex-direction: row;
 }
 
-.sharetree .ant-tree-title {
+.sharetree .arco-tree-node-title-text {
   flex: auto;
   display: flex !important;
   flex-direction: row;

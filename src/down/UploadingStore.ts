@@ -1,7 +1,5 @@
 import { defineStore } from 'pinia'
-import { GetFocusNext, GetSelectedList, KeyboardSelectOne, MouseSelectOne, SelectAll } from '../utils/selecthelper'
-import { t } from '../i18n'
-
+import { createSelectionActions, createSelectionGetters, SelectionConfig, SelectionState } from '../store/selectableList'
 
 export interface IUploadingModel {
   UploadID: number
@@ -29,18 +27,8 @@ export interface IUploadingModel {
 
 type Item = IUploadingModel
 
-export interface UploadingState {
-
+export interface UploadingState extends SelectionState<Item, number> {
   ListLoading: boolean
-
-  ListDataShow: Item[]
-
-
-  ListSelected: Set<number>
-
-  ListFocusKey: number
-
-  ListSelectKey: number
 
   ListDataCount: number
 
@@ -50,10 +38,17 @@ export interface UploadingState {
 }
 
 type State = UploadingState
+
+/** 展示的是某个任务的子文件时用 UploadID，展示任务列表时用 TaskID */
 let KEY: 'UploadID' | 'TaskID' = 'UploadID'
 
+const listConfig: SelectionConfig<Item, number> = {
+  keyField: () => KEY,
+  emptyKey: 0
+}
+
 const useUploadingStore = defineStore('uploading', {
-  state: (): UploadingState => ({
+  state: (): State => ({
     ListLoading: false,
     ListDataShow: [],
     ListSelected: new Set<number>(),
@@ -65,33 +60,21 @@ const useUploadingStore = defineStore('uploading', {
   }),
 
   getters: {
+    ...createSelectionGetters<State>(),
+
     ListDataUploadingCount(state: State): number {
       return state.ListDataShow.length
-    },
-
-    IsListSelected(state: State): boolean {
-      return state.ListSelected.size > 0
-    },
-    ListSelectedCount(state: State): number {
-      return state.ListSelected.size
-    },
-    ListDataSelectCountInfo(state: State): string {
-      return t('transfer.selectedCount', { selected: state.ListSelected.size, total: state.ListDataShow.length })
-    },
-    IsListSelectedAll(state: State): boolean {
-      return state.ListSelected.size > 0 && state.ListSelected.size == state.ListDataShow.length
     }
   },
 
   actions: {
+    ...createSelectionActions(listConfig),
 
     aLoadListData(TaskID: number, TaskName: string, list: Item[], count: number) {
       KEY = TaskID ? 'UploadID' : 'TaskID'
       this.ListDataShow = list
 
-
       if (this.showTaskID == TaskID) {
-
         const oldSelected = this.ListSelected
         const newSelected = new Set<number>()
         let findFocusKey = false
@@ -111,7 +94,7 @@ const useUploadingStore = defineStore('uploading', {
 
         this.$patch({ ListSelected: newSelected, ListFocusKey: listFocusKey, ListSelectKey: listSelectKey, ListDataCount: count })
       } else {
-        this.$patch({ showTaskID: TaskID, ShowTaskName: TaskName, ListSelected: new Set<string>(), ListFocusKey: 0, ListSelectKey: 0, ListDataCount: count })
+        this.$patch({ showTaskID: TaskID, ShowTaskName: TaskName, ListSelected: new Set<number>(), ListFocusKey: 0, ListSelectKey: 0, ListDataCount: count })
       }
       this.mRefreshListDataShow(true)
     },
@@ -139,57 +122,9 @@ const useUploadingStore = defineStore('uploading', {
       this.ListSelected = newSelected
     },
 
-    mSelectAll() {
-      this.$patch({ ListSelected: SelectAll(this.ListDataShow, KEY, this.ListSelected), ListFocusKey: 0, ListSelectKey: 0 })
-      this.mRefreshListDataShow(false)
-    },
-
-    mMouseSelect(key: number, Ctrl: boolean, Shift: boolean) {
-      if (this.ListDataShow.length == 0) return
-      const data = MouseSelectOne(this.ListDataShow, KEY, this.ListSelected, this.ListFocusKey, this.ListSelectKey, key, Ctrl, Shift, 0)
-      this.$patch({ ListSelected: data.selectedNew, ListFocusKey: data.focusLast, ListSelectKey: data.selectedLast })
-      this.mRefreshListDataShow(false)
-    },
-
-    mKeyboardSelect(key: number, Ctrl: boolean, Shift: boolean) {
-      if (this.ListDataShow.length == 0) return
-      const data = KeyboardSelectOne(this.ListDataShow, KEY, this.ListSelected, this.ListFocusKey, this.ListSelectKey, key, Ctrl, Shift, 0)
-      this.$patch({ ListSelected: data.selectedNew, ListFocusKey: data.focusLast, ListSelectKey: data.selectedLast })
-      this.mRefreshListDataShow(false)
-    },
-
-    mRangSelect(lastkey: number, file_idList: number[]) {
-      if (this.ListDataShow.length == 0) return
-      const selectedNew = new Set<number>(this.ListSelected)
-      for (let i = 0, maxi = file_idList.length; i < maxi; i++) {
-        selectedNew.add(file_idList[i])
-      }
-      this.$patch({ ListSelected: selectedNew, ListFocusKey: lastkey, ListSelectKey: lastkey })
-      this.mRefreshListDataShow(false)
-    },
-
-    GetSelected() {
-      return GetSelectedList(this.ListDataShow, KEY, this.ListSelected)
-    },
-
-    GetSelectedFirst() {
-      const list = GetSelectedList(this.ListDataShow, KEY, this.ListSelected)
-      if (list.length > 0) return list[0]
-      return undefined
-    },
-
-    mSetFocus(key: number) {
-      this.ListFocusKey = key
-      this.mRefreshListDataShow(false)
-    },
-
     mGetFocus() {
       if (this.ListFocusKey > 0 && this.ListDataShow.length > 0) return this.ListDataShow[0][KEY]
       return this.ListFocusKey
-    },
-
-    mGetFocusNext(position: string) {
-      return GetFocusNext(this.ListDataShow, KEY, this.ListFocusKey, position, 0)
     },
 
     mDeleteFiles(idList: number[]) {

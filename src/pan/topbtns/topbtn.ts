@@ -15,7 +15,7 @@ import {
   modalSelectPanDir,
   modalUpload
 } from '../../utils/modal'
-import { ArrayKeyList } from '../../utils/utils'
+import { ArrayKeyList, IsEmpty } from '../../utils/utils'
 import PanDAL from '../pandal'
 import usePanTreeStore from '../pantreestore'
 import usePanFileStore from '../panfilestore'
@@ -24,7 +24,6 @@ import { Sleep } from '../../utils/format'
 import TreeStore from '../../store/treestore'
 import { copyToClipboard, showOpenDialog } from '../../tauri/app'
 import DownDAL from '../../down/DownDAL'
-import { isEmpty } from 'lodash'
 import { GetDriveID } from '../../aliapi/utils'
 import AliAlbum from '../../aliapi/album'
 import { getEncType } from '../../utils/proxyhelper'
@@ -98,7 +97,7 @@ export async function menuDownload(istree: boolean, tips: boolean = true) {
   const savePath = settingStore.AriaIsLocal ? settingStore.downSavePath : settingStore.ariaSavePath
   const savePathFull = settingStore.downSavePathFull
   const downSavePathDefault = settingStore.downSavePathDefault
-  if (isEmpty(savePath)) {
+  if (IsEmpty(savePath)) {
     message.error('未设置保存路径')
     modalDownload(istree)
     return
