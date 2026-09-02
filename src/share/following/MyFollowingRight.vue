@@ -178,7 +178,7 @@ const handleSearchEnter = (event: any) => {
     <div style="flex-grow: 1"></div>
     <div class="toppanbtn">
       <a-input-search ref="inputsearch" tabindex="-1" size="small" title="Ctrl+F / F3 / Space" placeholder="快速筛选"
-                      allow-clear v-model="myfollowingStore.ListSearchKey" @clear='(e:any)=>handleSearchInput("")'
+                      allow-clear v-model="myfollowingStore.ListSearchKey" @clear='()=>handleSearchInput("")'
                       @input="(val :any)=>handleSearchInput(val as string)" @press-enter="handleSearchEnter"
                       @keydown.esc=";($event.target as any).blur()" />
     </div>

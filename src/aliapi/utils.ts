@@ -1,6 +1,5 @@
 import { useFootStore, useSettingStore } from '../store'
 import DebugLog from '../utils/debuglog'
-import { Sleep } from '../utils/format'
 import message from '../utils/message'
 import AliHttp from './alihttp'
 import AliFile from './file'
@@ -315,25 +314,6 @@ export async function ApiBatchSuccess(title: string, batchList: string[], user_i
   const result = await ApiBatch(title, batchList, user_id, share_token)
   result.reslut.map((t) => successList.push(t.id))
   return successList
-}
-
-export async function ApiWaitAsyncTask(title: string, user_id: string, taskList: IAliBatchResult['async_task']): Promise<void> {
-  for (let i = 0, maxi = taskList.length; i < maxi; i++) {
-    const async_task_id = taskList[i].task_id
-    if (!user_id || !async_task_id) continue
-    for (let j = 0; j < 100; j++) {
-      const url = 'v2/async_task/get'
-      const postData = { async_task_id }
-      const resp = await AliHttp.Post(url, postData, user_id, '')
-      if (AliHttp.IsSuccess(resp.code)) {
-        if (resp.body.state == 'Succeed' || resp.body.state == 'succeed') break
-        if (resp.body.state == 'done' || resp.body.state == 'done') break
-        if (resp.body.state == 'Failed' || resp.body.state == 'failed') break
-        if (resp.body.state == 'Running' || resp.body.state == 'running') continue
-      }
-      await Sleep(1000)
-    }
-  }
 }
 
 export async function ApiGetAsyncTask(user_id: string, async_task_id: string): Promise<'running' | 'error' | 'success'> {

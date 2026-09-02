@@ -5,7 +5,6 @@ import useKeyboardStore from './keyboardstore'
 import type { MouseState } from './mousestore'
 import useMouseStore from './mousestore'
 import useLogStore from './logstore'
-import type { ModalState } from './modalstore'
 import useModalStore from './modalstore'
 import type { WinState } from './winstore'
 import useWinStore from './winstore'
@@ -21,15 +20,12 @@ import type { IOtherShareLinkModel } from '../share/share/OtherShareStore'
 import useOtherShareStore from '../share/share/OtherShareStore'
 import useMyShareStore from '../share/share/MyShareStore'
 import useMyFollowingStore from '../share/following/MyFollowingStore'
-import type { FollowingState } from '../share/following/OtherFollowingStore'
 import useOtherFollowingStore from '../share/following/OtherFollowingStore'
 
 import useUploadingStore from '../upload/UploadingStore'
-import useUploadedStore from '../upload/UploadedStore'
 import useDownedStore from '../download/DownedStore'
 import useDowningStore from '../download/DowningStore'
 
-import type { AsyncModel } from './footstore'
 import useFootStore from './footstore'
 
 const pinia = createPinia()
@@ -38,7 +34,6 @@ export {
   useSettingStore,
   useLogStore,
   useModalStore,
-  ModalState,
   useWinStore,
   WinState,
   useMouseStore,
@@ -56,12 +51,9 @@ export {
   useMyShareStore,
   useOtherShareStore,
   useOtherFollowingStore,
-  FollowingState,
   useMyFollowingStore,
   useFootStore,
-  AsyncModel,
   useUploadingStore,
-  useUploadedStore,
   useDowningStore,
   useDownedStore
 }

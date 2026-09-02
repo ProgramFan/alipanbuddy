@@ -6,7 +6,7 @@ import { IAliAlbumInfo, IAliGetFileModel } from '../../aliapi/alimodels'
 import AliAlbum from '../../aliapi/album'
 import message from '../../utils/message'
 
-const props = defineProps({
+defineProps({
   visible: {
     type: Boolean,
     required: true

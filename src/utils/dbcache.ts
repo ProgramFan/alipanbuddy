@@ -1,7 +1,7 @@
 import Dexie from 'dexie'
 import { IStateDebugLog } from './debuglog'
 
-export interface IStateFileHash {
+interface IStateFileHash {
   size: number
   mtime: number
   

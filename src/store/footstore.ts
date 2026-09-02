@@ -6,7 +6,7 @@ import { defineStore } from 'pinia'
 import { ITokenInfo } from '../user/userstore'
 import useAppStore from './appstore'
 
-export interface AsyncModel {
+interface AsyncModel {
   user_id: string
   key: string
   title: string
@@ -22,7 +22,7 @@ export interface AsyncModel {
   type: AsyncType
 }
 
-export interface FootState {
+interface FootState {
 
   taskVisible: boolean
   sponsorVisible: boolean

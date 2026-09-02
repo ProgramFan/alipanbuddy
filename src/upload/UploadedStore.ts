@@ -6,7 +6,7 @@ import { createSelectableListActions, createSelectableListState, createSelection
 
 type Item = IStateUploadTask
 
-export interface UploadedState extends SelectableListState<Item, number, number> {
+interface UploadedState extends SelectableListState<Item, number, number> {
   ListDataCount: number
 }
 

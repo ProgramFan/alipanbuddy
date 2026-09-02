@@ -15,7 +15,7 @@ export interface IShareSiteGroupModel {
   title: string
 }
 
-export interface ServerState {
+interface ServerState {
   shareSiteList: IShareSiteModel[]
   shareSiteGroupList: IShareSiteGroupModel[]
 }

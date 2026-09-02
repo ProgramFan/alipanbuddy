@@ -342,7 +342,7 @@ const handleHide = () => {
   }
 }
 
-const handleOK = (type: string) => {
+const handleOK = (_type: string) => {
   let reg = ''
   if (renameConfig.replace.enable && renameConfig.replace.chkReg) reg = renameConfig.replace.search
   if (renameConfig.delete.enable && renameConfig.delete.chkReg) reg = renameConfig.delete.search

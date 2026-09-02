@@ -24,7 +24,7 @@ export default defineComponent({
       })
     }
 
-    watch(value, (newvalue: any, oldvalue: any) => {
+    watch(value, (newvalue: any) => {
       const val = newvalue
       const id = 'mantine-' + props.name + '-label-' + val
       nextTick(() => {

@@ -1,7 +1,7 @@
 import message from './message'
 
 
-export function debounce(func: Function, wait: number, immediate: boolean = true, lastCall: boolean = true, leakCall: boolean = false) {
+function debounce(func: Function, wait: number, immediate: boolean = true, lastCall: boolean = true, leakCall: boolean = false) {
   if (lastCall !== false) lastCall = true
   if (immediate !== false) immediate = true
   let previous = 0

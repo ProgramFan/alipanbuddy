@@ -45,7 +45,7 @@ export const AriaCalls = {
   forceShutdown: () => rpc<string>('aria2.forceShutdown')
 }
 
-export class Aria2RpcError extends Error {
+class Aria2RpcError extends Error {
   code: number | string | undefined
   data: any
 

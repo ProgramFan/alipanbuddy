@@ -6,7 +6,7 @@ import { t } from '../i18n'
 const SEARCH_THRESHOLD = -200000
 
 /** T 里值类型为 K 的字段名，用作列表项主键字段 */
-export type SelectableListKeyField<T, K> = Extract<{ [P in keyof T]: T[P] extends K ? P : never }[keyof T], string>
+type SelectableListKeyField<T, K> = Extract<{ [P in keyof T]: T[P] extends K ? P : never }[keyof T], string>
 
 /** 多选列表最小 state：只够 createSelectionActions 使用 */
 export interface SelectionState<T, K extends string | number = string> {
@@ -233,7 +233,7 @@ export function createSelectableListActions<T, K extends string | number = strin
     },
 
     /** 默认不排序，需要排序的 store 重写本方法 */
-    mGetOrder(order: O, list: T[]): T[] {
+    mGetOrder(_order: O, list: T[]): T[] {
       return list
     },
 

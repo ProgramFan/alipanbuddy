@@ -114,7 +114,7 @@ const handleDelete = () => {
   }
   delLoading.value = true
   let drive_id = GetDriveID(user.user_id, panType.value)
-  AliFileCmd.ApiTrashBatch(user.user_id, drive_id, checkedKeys.value).then((success: string[]) => {
+  AliFileCmd.ApiTrashBatch(user.user_id, drive_id, checkedKeys.value).then((_success: string[]) => {
     delLoading.value = false
     if (checkedKeys.value.length == checkedKeysBak.length) {
       handleReset()
@@ -133,11 +133,11 @@ const handleMove = () => {
     message.error('账号错误')
     return
   }
-  modalSelectPanDir('cut', '', function(user_id: string, _drive_id: string, selectFile: any) {
+  modalSelectPanDir('cut', '', function(_user_id: string, _drive_id: string, selectFile: any) {
     if (!selectFile.file_id) return
     delLoading.value = true
     let drive_id = GetDriveID(user.user_id, panType.value)
-    AliFileCmd.ApiMoveBatch(user.user_id, drive_id, checkedKeys.value, selectFile.drive_id, selectFile.file_id).then((success: string[]) => {
+    AliFileCmd.ApiMoveBatch(user.user_id, drive_id, checkedKeys.value, selectFile.drive_id, selectFile.file_id).then((_success: string[]) => {
       delLoading.value = false
       if (checkedKeys.value.length == checkedKeysBak.length) {
         handleReset()

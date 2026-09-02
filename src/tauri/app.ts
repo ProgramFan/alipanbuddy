@@ -8,7 +8,7 @@
  */
 import { invoke } from './invoke'
 import { getPlatformInfo } from './bridge'
-import { getPlatform, rememberUserToken, setHttpProxyUrl } from './state'
+import { rememberUserToken, setHttpProxyUrl } from './state'
 import { throttle } from '../utils/debounce'
 import path from '../utils/path'
 
@@ -157,8 +157,6 @@ export function copyToClipboard(text: string): void {
 }
 
 // ---------- app info ----------
-
-export { getPlatform }
 
 export function getAppVersion(): string {
   return getPlatformInfo().appVersion

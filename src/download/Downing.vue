@@ -280,7 +280,7 @@ const handleTaskDetail = () => {
         :placeholder="t('transfer.quickFilter')"
         allow-clear
         v-model='downingStore.ListSearchKey'
-        @clear='(e:any)=>handleSearchInput("")'
+        @clear='()=>handleSearchInput("")'
         @input='(val:any)=>handleSearchInput(val as string)'
         @press-enter='handleSearchEnter'
         @keydown.esc='($event.target as any).blur()'

@@ -16,7 +16,7 @@ export default class message {
       content: count > 1 ? () => h('div', { innerHTML: msg + '<span class="messagebadge"><span>' + count + '</span></span>' }) : msg,
       position: 'bottom',
       duration: duration * 1000,
-      onClose: (id) => MessageMap.delete(key || msg)
+      onClose: () => MessageMap.delete(key || msg)
     })
   }
 
@@ -27,7 +27,7 @@ export default class message {
       content: count > 1 ? () => h('div', { innerHTML: msg + '<span class="messagebadge"><span>' + count + '</span></span>' }) : msg,
       position: 'bottom',
       duration: duration * 1000,
-      onClose: (id) => MessageMap.delete(key || msg)
+      onClose: () => MessageMap.delete(key || msg)
     })
   }
 
@@ -38,7 +38,7 @@ export default class message {
       content: count > 1 ? () => h('div', { innerHTML: msg + '<span class="messagebadge"><span>' + count + '</span></span>' }) : msg,
       position: 'bottom',
       duration: duration == 0 ? 1 : duration * 1000,
-      onClose: (id) => MessageMap.delete(key || msg)
+      onClose: () => MessageMap.delete(key || msg)
     })
   }
 
@@ -49,7 +49,7 @@ export default class message {
       content: count > 1 ? () => h('div', { innerHTML: msg + '<span class="messagebadge"><span>' + count + '</span></span>' }) : msg,
       position: 'bottom',
       duration: duration * 1000,
-      onClose: (id) => MessageMap.delete(key || msg)
+      onClose: () => MessageMap.delete(key || msg)
     })
   }
 

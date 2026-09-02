@@ -1,6 +1,5 @@
 <script setup lang='ts'>
 import { computed } from 'vue'
-import { usePanTreeStore } from '../../store'
 
 import {
   menuAddAlbumSelectFile,
@@ -51,7 +50,6 @@ const props = defineProps({
 })
 
 const istree = false
-const panTreeStore = usePanTreeStore()
 const isShowBtn = computed(() => {
   return (props.dirtype === 'pic' && props.inputpicType != 'mypic')
     || props.dirtype === 'mypic' || ['search', 'color', 'pan'].includes(props.dirtype)

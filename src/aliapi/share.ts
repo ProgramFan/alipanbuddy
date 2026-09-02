@@ -30,7 +30,7 @@ export interface UpdateShareModel {
 
 export default class AliShare {
 
-  static async ApiGetShareAnonymous(share_id: string, share_pwd = ''): Promise<IAliShareAnonymous> {
+  static async ApiGetShareAnonymous(share_id: string, _share_pwd = ''): Promise<IAliShareAnonymous> {
     const share: IAliShareAnonymous = {
       shareinfo: {
         share_id: share_id,
@@ -230,7 +230,7 @@ export default class AliShare {
   }
 
 
-  static async ApiCreatShare(user_id: string, drive_id: string, expiration: string, share_pwd: string, share_name: string, file_id_list: string[], isFolder = false): Promise<string | IAliShareItem> {
+  static async ApiCreatShare(user_id: string, drive_id: string, expiration: string, share_pwd: string, share_name: string, file_id_list: string[], _isFolder = false): Promise<string | IAliShareItem> {
     if (!user_id || !drive_id || file_id_list.length == 0) return '创建分享链接失败数据错误'
     const url = 'adrive/v2/share_link/create'
     const postData = { drive_id, expiration, share_pwd, share_name, file_id_list }

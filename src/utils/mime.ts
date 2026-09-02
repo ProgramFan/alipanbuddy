@@ -22,7 +22,7 @@ function buildMap(): Map<string, string> {
 }
 
 /** Returns the mime type for a file name / extension (with or without leading dot), or `false`. */
-export function lookup(pathOrExt: string): string | false {
+function lookup(pathOrExt: string): string | false {
   if (!pathOrExt || typeof pathOrExt !== 'string') return false
   if (!extMap) extMap = buildMap()
   const base = pathOrExt.split(/[\\/]/).pop() || ''

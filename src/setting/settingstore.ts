@@ -9,7 +9,7 @@ import { detectSystemLocale } from '../i18n'
 
 declare type ProxyType = 'none' | 'http' | 'https' | 'socks4' | 'socks4a' | 'socks5' | 'socks5h'
 
-export interface SettingState {
+interface SettingState {
   // 应用设置
   uiLanguage: 'zh-CN' | 'en-US'
   uiTheme: string
@@ -382,7 +382,7 @@ function _loadSetting(val: any) {
 
 let settingstr = ''
 
-export function LoadSetting() {
+function LoadSetting() {
   try {
     const json = getPreloadedSettingJson()
     if (json) {

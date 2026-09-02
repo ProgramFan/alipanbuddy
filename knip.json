@@ -1,0 +1,18 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "src/main.ts",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "scripts/*.mjs",
+    "src/**/__tests__/**/*.test.ts",
+    "src/download/integration/*.test.ts"
+  ],
+  "project": ["src/**/*.{ts,vue}"],
+  // Written by scripts/generate-secrets.mjs before dev/build/test, so it is not part of the reviewed sources.
+  "ignore": ["src/secrets.generated.ts"],
+  // The renderer is a plain webview: `buffer` is the npm polyfill package, not the Node builtin knip resolves it to.
+  "ignoreDependencies": ["buffer"],
+  // scripts/prepare-sidecars.mjs shells out to the developer's Rust toolchain to detect the host target triple.
+  "ignoreBinaries": ["rustc"]
+}

@@ -11,12 +11,12 @@ import { useSettingStore } from '../store'
 import { ALIYUN_APP_ID, ALIYUN_APP_SECRET } from '../secrets.generated'
 import { setActiveUserToken } from '../tauri/app'
 
-export const TokenReTimeMap = new Map<string, number>()
-export const TokenLockMap = new Map<string, number>()
-export const OpenApiTokenReTimeMap = new Map<string, number>()
-export const OpenApiTokenLockMap = new Map<string, number>()
-export const SessionLockMap = new Map<string, number>()
-export const SessionReTimeMap = new Map<string, number>()
+const TokenReTimeMap = new Map<string, number>()
+const TokenLockMap = new Map<string, number>()
+const OpenApiTokenReTimeMap = new Map<string, number>()
+const OpenApiTokenLockMap = new Map<string, number>()
+const SessionLockMap = new Map<string, number>()
+const SessionReTimeMap = new Map<string, number>()
 export default class AliUser {
 
   static async ApiSessionRefreshAccount(token: ITokenInfo, showMessage: boolean, forceRefresh: boolean = false): Promise<boolean> {

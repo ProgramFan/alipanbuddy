@@ -430,7 +430,7 @@ const handlerChangeType = () => {
       ]),
       okText: t('common.confirm'),
       cancelText: t('common.cancel'),
-      onBeforeOk: async (e: any) => {
+      onBeforeOk: async () => {
         if (settingStore.uiOpenApiClientId && settingStore.uiOpenApiClientSecret) {
           if (settingStore.uiEnableOpenApiType !== 'custom') cb({ uiEnableOpenApiType: 'custom' })
           client_id.value = settingStore.uiOpenApiClientId.trim()

@@ -9,7 +9,7 @@ import { createSelectableListActions, createSelectableListGetters, createSelecta
 
 type Item = IStateDownFile
 
-export type DowningState = SelectableListState<Item>
+type DowningState = SelectableListState<Item>
 
 type State = DowningState
 

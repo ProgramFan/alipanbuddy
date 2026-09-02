@@ -166,7 +166,7 @@ export function humanExpiration(expiration: string | undefined, timenow: number 
 
 const pk = 'abcDEfgFGHJIdeoOPQpyzABqwxC5678KLhijklmnMNWXYZ012rstuv34RSTUV99'
 export function randomSharePassword(): string {
-  return 'xxxx'.replace(/[x]/g, function (c) {
+  return 'xxxx'.replace(/[x]/g, function () {
     const r = Math.floor((Math.random() * 169) | 0) % (pk.length - 1)
     return pk.substring(r, r + 1)
   })

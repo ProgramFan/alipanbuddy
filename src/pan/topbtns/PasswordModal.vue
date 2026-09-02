@@ -157,7 +157,7 @@ const getCountTime = async () => {
                      :rules="[
                         { required: true, message:'旧密码必填'},
                         { minLength: 6, message: '密码最小长度为6个字符' },
-                        { validator: async (value: any, cb: any) => {
+                        { validator: async (_value: any, cb: any) => {
                             if (await getCountTime() > 0) {
                               cb('错误次数过多，请10s后再试')
                             } else {

@@ -13,7 +13,7 @@ export interface IPageImage {
   imageList: IAliGetFileModel[]
 }
 
-export interface AppState {
+interface AppState {
   appTheme: string
 
   appPage: string

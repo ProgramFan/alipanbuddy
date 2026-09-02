@@ -56,7 +56,7 @@ export interface IStateUploadTask {
   ChildFinishSize: number
 }
 
-export declare type UploadState =
+declare type UploadState =
   | '排队中' // 排队中， 等待上传
   | '读取中' // 读取文件夹包含的文件列表
   | 'hashing' // 计算hash，预秒传，秒传

@@ -178,7 +178,7 @@ const handleSelect = (TaskID: number, event: any, isCtrl: boolean = false) => {
     if (!uploadedStore.ListSelected.has(TaskID)) uploadedStore.ListFocusKey = -1
   }
 }
-const handleDbClick = (TaskID: number) => {
+const handleDbClick = (_TaskID: number) => {
   onSelectFile(undefined, 'pan')
 }
 
@@ -294,7 +294,7 @@ const onSelectFile = async (item: IStateUploadTask | undefined, cmd: string) => 
         :placeholder="t('transfer.quickFilter')"
         allow-clear
         v-model="uploadedStore.ListSearchKey"
-        @clear='(e:any)=>handleSearchInput("")'
+        @clear='()=>handleSearchInput("")'
         @input="(val:any)=>handleSearchInput(val as string)"
         @press-enter="handleSearchEnter"
         @keydown.esc="($event.target as any).blur()"

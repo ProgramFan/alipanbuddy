@@ -91,7 +91,7 @@ export function modalArchivePassword(user_id: string, drive_id: string, file_id:
   })
 }
 
-export function modalUpload(file_id: string, filelist: string[], ispic: boolean = false, encType: string = '') {
+export function modalUpload(file_id: string, filelist: string[], _ispic: boolean = false, encType: string = '') {
   const panTreeStore = usePanTreeStore()
   const panFileStore = usePanFileStore()
   const settingStore = useSettingStore()

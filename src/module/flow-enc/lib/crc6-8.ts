@@ -37,7 +37,7 @@ class Crc68 {
     return csTable
   }
 
-  static generateTable8MAXIM(polynomial: number): number[] {
+  static generateTable8MAXIM(_polynomial: number): number[] {
     const csTable: number[] = []
     for (let i = 0; i < 256; ++i) {
       let curr = i

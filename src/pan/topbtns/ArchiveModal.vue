@@ -25,14 +25,6 @@ interface TreeNodeData {
   size: number
 }
 
-export interface CheckNode {
-  file_id: string
-  name: string
-  halfChecked: boolean
-  isDir: boolean
-  children: CheckNode[]
-}
-
 const folderIconFn = () => h(IconFont, { name: 'iconfile-folder' })
 const fileIconFn = () => h(IconFont, { name: 'iconwenjian' })
 

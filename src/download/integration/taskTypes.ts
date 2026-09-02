@@ -1,6 +1,6 @@
 import path from '../../utils/path'
 
-export type DownloadTaskStatus =
+type DownloadTaskStatus =
   | 'active' | 'waiting' | 'paused' | 'error' | 'complete' | 'removed' | string
 
 export interface DownloadTaskFile {
@@ -24,7 +24,7 @@ export interface DownloadPeer {
   seeder: boolean
 }
 
-export interface DownloadBitTorrent {
+interface DownloadBitTorrent {
   infoHash?: string
   numSeeders?: number
   seeder?: string
@@ -52,15 +52,6 @@ export interface DownloadTask {
   bittorrent?: DownloadBitTorrent
   errorCode: string
   errorMessage: string
-}
-
-export interface DownloadGlobalStat {
-  downloadSpeed: string
-  uploadSpeed: string
-  numActive: string
-  numWaiting: string
-  numStopped: string
-  numStoppedTotal: string
 }
 
 const toNumber = (value: unknown): number => {

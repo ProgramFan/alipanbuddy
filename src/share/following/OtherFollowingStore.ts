@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { IAliOtherFollowingModel } from '../../aliapi/alimodels'
 
-export declare interface FollowingState {
+declare interface FollowingState {
   
   TuiJianLoading: boolean
   

@@ -1,7 +1,7 @@
 <script setup lang='ts'>
 import { PropType } from 'vue'
 
-const props = defineProps({
+defineProps({
   value: { type: Boolean },
   disabled: { type: Boolean },
   beforeChange: {

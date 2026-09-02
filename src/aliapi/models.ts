@@ -73,38 +73,6 @@ export interface IAliBatchResult {
   }[]
 }
 
-export interface IBatchResult {
-  count: number
-  task: {
-    file_id: string
-    task_id: string
-    newdrive_id: string
-    newfile_id: string
-  }[]
-  reslut: {
-    id: string
-    file_id: string
-  }[]
-  error: {
-    id: string
-    code: string
-    message: string
-  }[]
-}
-
-
-export interface IAliGetAlbumModel {
-  album_id: string
-  created_at: number
-  description: string
-  file_count: number
-  image_count: number
-  name: string
-  owner: string
-  updated_at: number
-  video_count: number
-}
-
 export interface IAliUserDriveDetails {
   album_drive_used_size: number
   backup_drive_used_size: number
@@ -125,57 +93,4 @@ export interface IAliUserDriveCapacity {
   expiredstr: string
   description: string
   latest_receive_time: string /* "2022-05-02T00:50:51.379Z" */
-}
-
-
-export interface IStateUploadFile {
-  UploadID: string
-  Info: {
-    user_id: string
-
-    localFilePath: string
-
-    parent_file_id: string
-    drive_id: string
-
-    path: string
-
-    name: string
-
-    size: number
-    sizeStr: string
-    icon: string
-    isDir: boolean
-    isMiaoChuan: boolean
-
-    sha1: string
-
-    crc64: string
-  }
-
-  Upload: {
-
-    DownState: string
-    DownTime: number
-    DownSize: number
-    DownSpeed: number
-    DownSpeedStr: string
-    DownProcess: number
-    IsStop: boolean
-    IsDowning: boolean
-    IsCompleted: boolean
-    IsFailed: boolean
-    /** 失败的代码 */
-    failedCode: number
-    /** 失败的消息 */
-    failedMessage: string
-
-    AutoTry: number
-
-    upload_id: string
-
-    file_id: string
-    /** 是否覆盖上传 */
-    IsBreakExist: boolean
-  }
 }

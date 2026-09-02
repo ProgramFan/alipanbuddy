@@ -27,7 +27,7 @@ export interface IUploadingModel {
 
 type Item = IUploadingModel
 
-export interface UploadingState extends SelectionState<Item, number> {
+interface UploadingState extends SelectionState<Item, number> {
   ListLoading: boolean
 
   ListDataCount: number

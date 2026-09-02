@@ -6,7 +6,6 @@ import {
   useFootStore,
   useKeyboardStore,
   useMouseStore,
-  useServerStore,
   useSettingStore,
   useUserStore,
   useWinStore
@@ -16,7 +15,6 @@ import { onHideRightMenu, TestAlt, TestCtrl, TestKey, TestShift } from '../utils
 import { mainWindowCmd, openExternal, readClipboardText } from '../tauri/app'
 import { Modal } from '@arco-design/web-vue'
 import DebugLog from '../utils/debuglog'
-import message from '../utils/message'
 import { t } from '../i18n'
 
 import Pan from '../pan/index.vue'
@@ -109,7 +107,7 @@ const handleToggleSidebar = () => {
   }
 }
 
-const handleThemeClick = (val: any) => {
+const handleThemeClick = () => {
   if (appStore.appTheme == 'system') {
     if (appStore.appDark) {
       useSettingStore().updateStore({ uiTheme: 'light' })

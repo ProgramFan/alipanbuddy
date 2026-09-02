@@ -20,7 +20,7 @@ import { t } from '../i18n'
 
 type Item = IAliGetFileModel
 
-export interface GridItem {
+interface GridItem {
   file_id: string
   files: IAliGetFileModel[]
 }

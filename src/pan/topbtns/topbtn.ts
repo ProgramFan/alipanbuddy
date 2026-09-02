@@ -27,7 +27,6 @@ import DownDAL from '../../download/DownDAL'
 import { GetDriveID } from '../../aliapi/utils'
 import AliAlbum from '../../aliapi/album'
 import { getEncType } from '../../utils/proxyhelper'
-import { t } from '../../i18n'
 import { Modal, Option, Select } from '@arco-design/web-vue'
 import { h } from 'vue'
 
@@ -368,8 +367,7 @@ export function menuCopySelectedFile(istree: boolean, copyby: string) {
         drive_id,
         file_idList,
         selectFile.drive_id,
-        selectFile.path || selectFile.file_id,
-        selectFile.description || ''
+        selectFile.path || selectFile.file_id
       )
       await PanDAL.aReLoadOneDirToRefreshTree(selectedData.user_id, selectFile.drive_id, selectFile.file_id)
       TreeStore.ClearDirSize(selectedData.drive_id, [selectFile.file_id])
@@ -379,8 +377,7 @@ export function menuCopySelectedFile(istree: boolean, copyby: string) {
         drive_id,
         file_idList,
         selectFile.drive_id,
-        selectFile.path || selectFile.file_id,
-        selectFile.description || ''
+        selectFile.path || selectFile.file_id
       )
       if (istree) {
         await PanDAL.aReLoadOneDirToShow(selectedData.drive_id, selectedData.parentDirID, false)
@@ -590,7 +587,7 @@ export function menuCreatShare(istree: boolean, shareby: string, driveType: stri
       content: encFiles.map(v => v.name).join(','),
       okText: '确认',
       cancelText: '取消',
-      onOk(e) {
+      onOk() {
         modalCreatNewShareLink(shareby, driveType, list)
       }
     })

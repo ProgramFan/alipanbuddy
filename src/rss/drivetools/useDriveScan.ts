@@ -13,13 +13,13 @@ export interface DriveScanItem {
   fileId: string
 }
 
-export interface DriveScanDeleteResult {
+interface DriveScanDeleteResult {
   report: string
   deletedFileKeys: string[]
   failed: number
 }
 
-export interface DriveScanTexts {
+interface DriveScanTexts {
   scanFailed: string
   scanEmpty: string
   scanFound?: (count: number) => string
@@ -45,7 +45,7 @@ export const driveKey = (target: DriveScanTarget) => `${target.userId}\n${target
 
 export const itemKey = (item: DriveScanItem) => `${item.userId}\n${item.driveId}\n${item.fileId}`
 
-export const loadDriveTargets = async (): Promise<DriveScanTarget[]> => {
+const loadDriveTargets = async (): Promise<DriveScanTarget[]> => {
   const users = await UserDAL.GetUserListFromDB()
   const targets: DriveScanTarget[] = []
   const seen = new Set<string>()

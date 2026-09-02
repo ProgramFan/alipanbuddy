@@ -40,7 +40,6 @@ import {
   modalDaoRuShareLink,
   modalPassword,
   modalRename,
-  modalSelectPanDir,
   modalUpload
 } from '../utils/modal'
 import { PanFileState } from './panfilestore'
@@ -260,7 +259,7 @@ const handleSelect = (file_id: string, event: any, isCtrl: boolean = false) => {
   }
 }
 
-const handleOpenFile = (event: Event, file: IAliGetFileModel | undefined) => {
+const handleOpenFile = (_event: Event, file: IAliGetFileModel | undefined) => {
   if (rangIsSelecting.value) return
   if (panfileStore.DirID == 'trash' || panfileStore.DirID == 'recover') {
     return
@@ -728,7 +727,7 @@ const onPanDragEnd = (ev: any) => {
         draggable='false'
         allow-clear
         @dragenter.stop='() => false'
-        @clear='(e:any)=>handleSearchInput("")'
+        @clear='()=>handleSearchInput("")'
         @input='(val:any)=>handleSearchInput(val as string)'
         @press-enter='handleSearchEnter'
         @keydown.esc=';($event.target as any).blur()' />

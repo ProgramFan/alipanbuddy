@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { onHideRightMenuScroll } from '../utils/keyboardhelper'
 
-export interface ModalState {
+interface ModalState {
   modalName: string
   modalData: any
 }

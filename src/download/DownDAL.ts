@@ -50,7 +50,7 @@ export interface IStateDownFile {
   }
 }
 
-export interface IStateDownInfo {
+interface IStateDownInfo {
 
   GID: string
   user_id: string

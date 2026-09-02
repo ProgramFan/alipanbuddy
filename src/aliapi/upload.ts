@@ -7,7 +7,7 @@ export default class AliUpload {
   static async UploadCreatFileWithPreHash(
     user_id: string, drive_id: string, parent_file_id: string,
     filename: string, fileSize: number,
-    prehash: string, check_name_mode: string, encType: string = ''
+    prehash: string, check_name_mode: string, _encType: string = ''
   ): Promise<IUploadCreat> {
     const result: IUploadCreat = {
       user_id,

@@ -18,7 +18,7 @@ export interface IOtherShareLinkModel {
 
 type Item = IOtherShareLinkModel
 
-export type OtherShareState = SelectableListState<Item>
+type OtherShareState = SelectableListState<Item>
 
 type State = OtherShareState
 

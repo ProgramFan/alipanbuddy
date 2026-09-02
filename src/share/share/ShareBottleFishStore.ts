@@ -5,7 +5,7 @@ import { createSelectableListActions, createSelectableListGetters, createSelecta
 
 type Item = IAliShareBottleFishItem
 
-export type ShareBottleFishState = SelectableListState<Item>
+type ShareBottleFishState = SelectableListState<Item>
 
 type State = ShareBottleFishState
 

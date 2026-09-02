@@ -26,7 +26,7 @@ interface TreeNodeData {
   sizeStr: string
 }
 
-export interface CheckNode {
+interface CheckNode {
   file_id: string
   name: string
   halfChecked: boolean
@@ -244,7 +244,7 @@ const expandedKeysFun = (treeData: TreeNodeData[]) => { //展开 key函数
   }
   let expandKeys: string[] = []
   const expandedKeysFn = (treeData: TreeNodeData[]) => {
-    treeData.forEach((item, index) => {
+    treeData.forEach((item) => {
       if (item.isDir) expandKeys.push(item.key)
       if (item.children) expandedKeysFn(item.children)
     })
@@ -317,7 +317,7 @@ const handleOK = (saveType: string) => {
   })
 }
 
-const handleOKAlbum = (saveType: string) => {
+const handleOKAlbum = (_saveType: string) => {
   message.error('暂不支持导入从相册分享的链接')
 }
 
@@ -493,7 +493,7 @@ async function getNodeAllFiles(share_id: string, share_token: string, file_id: s
             draggable='false'
             allow-clear
             @dragenter.stop='() => false'
-            @clear='(e:any)=>handleFilterChange("")'
+            @clear='()=>handleFilterChange("")'
             @input='(val:any)=>handleFilterChange(val as string)'
             @keydown.esc=';($event.target as any).blur()' />
         </div>

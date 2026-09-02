@@ -18,7 +18,7 @@ export default defineComponent({
       required: true
     }
   },
-  setup(props) {
+  setup() {
     const okLoading = ref(false)
     const formRef = ref()
     const form = reactive({

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import {
-  FollowingState,
   KeyboardState,
   useAppStore,
   useKeyboardStore,
@@ -29,7 +28,7 @@ const handleRefresh = () => FollowingDAL.aReloadOtherFollowingList(useUserStore(
 const tuijianSelectKey = ref(otherfollowingStore.TuiJianList[0].key)
 const tuijianList = ref<IAliOtherFollowingModel[]>(otherfollowingStore.TuiJianList[0].list)
 
-otherfollowingStore.$subscribe((_m: any, state: FollowingState) => {
+otherfollowingStore.$subscribe(() => {
   handleSelectList(tuijianSelectKey.value)
 })
 

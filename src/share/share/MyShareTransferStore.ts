@@ -5,7 +5,7 @@ import { createSelectableListActions, createSelectableListGetters, createSelecta
 
 type Item = IAliShareItem
 
-export type MyTransferShareState = SelectableListState<Item>
+type MyTransferShareState = SelectableListState<Item>
 
 type State = MyTransferShareState
 

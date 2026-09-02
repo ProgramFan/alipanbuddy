@@ -10,7 +10,7 @@ import { createSelectableListActions, createSelectableListState, createSelection
 
 type Item = IStateDownFile
 
-export interface DownState extends SelectableListState<Item> {
+interface DownState extends SelectableListState<Item> {
   ListDataCount: number
 }
 

@@ -135,37 +135,6 @@ export default class AliDirFileList {
     return add
   }
 
-  private static async _ApiDirFileListOnePageOpenApi(orderby: string, order: string, dir: IAliFileResp, type: string, pageIndex: number, search= true): Promise<boolean> {
-    let url = 'adrive/v1.0/openFile/list'
-    let postData
-    if (useSettingStore().uiFileListMode === 'movie' && search) {
-      postData = {
-        drive_id: dir.m_drive_id,
-        parent_file_id: (dir.dirID === 'resource_root' || dir.dirID === 'backup_root') ? 'root' : dir.dirID,
-        marker: dir.next_marker,
-        category: "video",
-        limit: 200,
-        order_by: orderby,
-        order_direction: order.toUpperCase()
-      }
-    } else {
-      postData = {
-        drive_id: dir.m_drive_id,
-        parent_file_id: (dir.dirID === 'resource_root' || dir.dirID === 'backup_root') ? 'root' : dir.dirID,
-        marker: dir.next_marker,
-        limit: 200,
-        order_by: orderby,
-        order_direction: order.toUpperCase()
-      }
-    }
-    if (type) {
-      postData = Object.assign(postData, { type })
-      pageIndex = -1
-    }
-    const resp = await AliHttp.Post(url, postData, dir.m_user_id, '')
-    return AliDirFileList._FileListOnePage(orderby, order, dir, resp, pageIndex, type)
-  }
-
   static async _ApiSearchFileListOnePage(orderby: string, order: string, dir: IAliFileResp, pageIndex: number): Promise<boolean> {
     let url = 'adrive/v1.0/openFile/search'
     let query = ''

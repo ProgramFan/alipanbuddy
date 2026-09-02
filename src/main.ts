@@ -23,7 +23,7 @@ import { getPageContext, getThemeState, initBridge, listen, parsePageRoute } fro
 import { installProxyUrlResolver } from './tauri/proxyResolver'
 import { installDragDropUpload } from './tauri/dragDrop'
 
-window.onerror = function (errorMessage, scriptURI, lineNo, columnNo, error) {
+window.onerror = function (errorMessage, _scriptURI, _lineNo, _columnNo, error) {
   try {
     if (errorMessage && typeof errorMessage === 'string') {
       if (errorMessage.indexOf('ResizeObserver') >= 0 || errorMessage.indexOf('listen EADDRINUSE') >= 0 || errorMessage.indexOf('connect ENOENT') >= 0) {
@@ -72,7 +72,7 @@ async function bootstrap() {
 
   const app = createApp(App)
   app.component('IconFont', IconFont)
-  app.config.errorHandler = function (err: any, vm, info) {
+  app.config.errorHandler = function (err: any, _vm, _info) {
     try {
       if (typeof err === 'string') {
         DebugLog.mSaveDanger('errorHandler', err)

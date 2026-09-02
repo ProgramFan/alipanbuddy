@@ -5,7 +5,7 @@ import { createSelectableListActions, createSelectableListGetters, createSelecta
 
 type Item = IAliMyFollowingModel
 
-export interface MyFollowingState extends SelectableListState<Item> {
+interface MyFollowingState extends SelectableListState<Item> {
   FollowingKeys: Set<string>
 }
 

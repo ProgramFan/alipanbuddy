@@ -9,7 +9,7 @@ import {
   modalShowShareLink
 } from '../../utils/modal'
 import AliShare from '../../aliapi/share'
-import { usePanTreeStore, usePanFileStore } from '../../store'
+import { usePanTreeStore } from '../../store'
 import message from '../../utils/message'
 import PanDAL from '../pandal'
 import { t } from '../../i18n'
@@ -35,7 +35,6 @@ const props = defineProps({
 
 const videoSelectType = ref('recent')
 const panTreeStore = usePanTreeStore()
-const panFileStore = usePanFileStore()
 
 const isWritableDirectory = (fileId: string) => !fileId.startsWith('search') && !['recent', 'favorite', 'trash'].includes(fileId)
 const canWriteCurrentDirectory = computed(() => isWritableDirectory(panTreeStore.selectDir.file_id || ''))

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 
-export interface LogState {
+interface LogState {
   logTime: number
 }
 

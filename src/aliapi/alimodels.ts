@@ -1,4 +1,4 @@
-export interface IAliFileVideoMeta {
+interface IAliFileVideoMeta {
   bitrate?: string
   clarity?: string
   code_name?: string
@@ -6,7 +6,7 @@ export interface IAliFileVideoMeta {
   fps?: string
 }
 
-export interface IAliFileAudioMeta {
+interface IAliFileAudioMeta {
   bit_rate?: string
   channel_layout?: string
   channels?: number

@@ -215,7 +215,7 @@ export default class AliHttp {
   }
 
 
-  static async GetString(url: string, user_id: string, fileSize: number, maxSize: number, requestHeaders: Record<string, string> = {}, allowProviderUrl: boolean = false): Promise<IUrlRespData> {
+  static async GetString(url: string, user_id: string, fileSize: number, maxSize: number, requestHeaders: Record<string, string> = {}): Promise<IUrlRespData> {
     if (!url.startsWith('http') && !url.startsWith('https')) {
       if (url.includes('adrive/v1.0') || url.includes('adrive/v1.1')) {
         url = AliHttp.baseOpenApi + url
@@ -353,11 +353,9 @@ export default class AliHttp {
         headers['Content-Type'] = 'application/json'
       }
       if (token) {
-        let token_type = token.token_type
         let access_token = token.access_token
         let need_open_api = url.includes('openapi')
         if (need_open_api && token.open_api_access_token) {
-          token_type = token.open_api_token_type || 'Bearer'
           access_token = token.open_api_access_token
         } else {
           headers['x-device-id'] = token.device_id

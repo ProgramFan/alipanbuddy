@@ -66,14 +66,14 @@ async function readBody(out: HttpResponseOut): Promise<Uint8Array> {
   return out.bodyBase64 ? fromBase64(out.bodyBase64) : new Uint8Array(0)
 }
 
-export const ALIYUN_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0'
+const ALIYUN_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0'
 
 function hasHeader(headers: AxiosHeaders, name: string): boolean {
   return headers.has(name) && String(headers.get(name) ?? '') !== ''
 }
 
 /** Same header rules Electron applied in `session.defaultSession.webRequest.onBeforeSendHeaders`. */
-export function injectAliyunHeaders(url: string, headers: AxiosHeaders) {
+function injectAliyunHeaders(url: string, headers: AxiosHeaders) {
   const isAliPan = url.includes('.aliyundrive.com') || url.includes('.alipan.com')
   const isOpenApi = url.includes('adrive/v1.0') || url.includes('adrive/v1.1')
   const forbid = url.includes('younoyes') || url.includes('onatoshi')

@@ -57,7 +57,7 @@ export interface ITokenInfo {
   }
 }
 
-export interface UserState {
+interface UserState {
   user_id: string
   userLogined: boolean
   userShowLogin: boolean

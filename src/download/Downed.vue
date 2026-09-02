@@ -236,7 +236,7 @@ const handleRightClick = (e: { event: MouseEvent; node: any }) => {
         :placeholder="t('share.quickFilter')"
         allow-clear
         v-model="downedStore.ListSearchKey"
-        @clear='(e:any)=>handleSearchInput("")'
+        @clear='()=>handleSearchInput("")'
         @input="(val:any)=>handleSearchInput(val as string)"
         @press-enter="handleSearchEnter"
         @keydown.esc="($event.target as any).blur()"

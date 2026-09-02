@@ -372,25 +372,6 @@ export async function AriaGetTaskFiles(gid: string): Promise<DownloadTaskFile[]>
 }
 
 
-export function AriaShoutDown() {
-  try {
-    const aria = GetAria()
-    if (aria) {
-      aria.call(AriaCalls.forceShutdown()).catch(() => {})
-    }
-  } catch {}
-  // 断开 WebSocket
-  CloseRemote()
-  // 清理本地引擎引用
-  if (Aria2EngineLocal) {
-    try {
-      Aria2EngineLocal.close().catch(() => {})
-    } catch {}
-    Aria2EngineLocal = undefined
-  }
-  IsAria2cOnlineLocal = false
-}
-
 export async function AriaAddUrl(file: IStateDownFile): Promise<string> {
   try {
     // 提交任务前先确保 Aria2 连接正常

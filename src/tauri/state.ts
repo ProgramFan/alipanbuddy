@@ -20,10 +20,6 @@ export function setHttpProxyUrl(url: string) {
   state.proxyUrl = url || ''
 }
 
-export function getHttpProxyUrl(): string {
-  return state.proxyUrl
-}
-
 /** `process.platform` equivalent reported by the backend (`win32` / `linux` / `darwin`). */
 export function setPlatform(platform: string) {
   state.platform = platform || 'linux'

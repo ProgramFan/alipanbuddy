@@ -248,7 +248,7 @@ const handleRightClick = (event: MouseEvent, key: string) => {
       <a-input-search ref="inputsearch" tabindex="-1"
                       size="small" title="Ctrl+F / F3 / Space"
                       :placeholder="t('share.quickFilter')"
-                      allow-clear @clear='(e:any)=>handleSearchInput("")'
+                      allow-clear @clear='()=>handleSearchInput("")'
                       v-model="store.ListSearchKey"
                       @input="(val:any)=>handleSearchInput(val as string)"
                       @press-enter="handleSearchEnter"

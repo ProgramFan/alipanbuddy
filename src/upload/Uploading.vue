@@ -42,7 +42,7 @@ watch(isUpload, (value, oldValue) => {
 })
 const menuShowDir = ref(false)
 const menuShowTask = ref(false)
-uploadingStore.$subscribe((_m: any, state: any) => {
+uploadingStore.$subscribe(() => {
   menuShowTask.value = !uploadingStore.showTaskID
   const selectItem = uploadingStore.GetSelectedFirst()
   menuShowDir.value = (selectItem && selectItem.isDir && !uploadingStore.showTaskID) || false
