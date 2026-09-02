@@ -15,7 +15,9 @@ const deps = Object.keys(pkg.dependencies || {}).length + Object.keys(pkg.devDep
 const renderer = tracked("'src/**/*.ts' 'src/**/*.vue' 'src/**/*.css'").filter((f) => !f.includes('__tests__') && !f.includes('/integration/'))
 const rendererTests = tracked("'src/**/*.test.ts'")
 const rust = tracked("'src-tauri/**/*.rs'")
-const i18n = readFileSync('src/i18n/index.ts', 'utf8').match(/^\s+'[^']+':/gm)?.length || 0
+const i18nSrc = readFileSync('src/i18n/index.ts', 'utf8')
+const i18nZh = i18nSrc.slice(i18nSrc.indexOf("'zh-CN': {"), i18nSrc.indexOf("'en-US': {"))
+const i18n = new Set([...i18nZh.matchAll(/'([\w.$-]+)':\s/g)].map((m) => m[1])).size
 const binaries = tracked("'static/engine/**' 'src-tauri/icons/**' 'public/**' 'screenshot/**'")
 
 let nodeModules = 'n/a'
@@ -29,7 +31,7 @@ const rows = [
   ['renderer lines (ts/vue/css)', lines(renderer)],
   ['renderer test lines', lines(rendererTests)],
   ['rust lines', lines(rust)],
-  ['i18n keys (per locale)', i18n / 2],
+  ['i18n keys (per locale)', i18n],
   ['tracked binaries/assets', mb(bytes(binaries))]
 ]
 const width = Math.max(...rows.map(([k]) => k.length))
