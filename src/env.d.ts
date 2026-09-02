@@ -54,8 +54,4 @@ declare type DownloadStates =
   | 'error' // 下载失败
   | 'cancelled' // 已取消
 
-declare module 'Go'
-declare module 'dom-to-image'
-declare module 'epubjs'
-declare module 'jschardet'
 declare function pinyinlite(text: string, config: any): any

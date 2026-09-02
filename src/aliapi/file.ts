@@ -1,4 +1,3 @@
-import { useSettingStore } from '../store'
 import DebugLog from '../utils/debuglog'
 import { GetExpiresTime, HanToPin } from '../utils/utils'
 import AliHttp from './alihttp'
@@ -6,7 +5,6 @@ import { IAliFileItem, IAliGetDirModel, IAliGetFileModel, IAliGetForderSizeModel
 import AliDirFileList from './dirfilelist'
 import { IDownloadUrl } from './models'
 import { DecodeEncName, GetDriveType } from './utils'
-import { getRawUrl } from '../utils/proxyhelper'
 import UserDAL from '../user/userdal'
 
 export default class AliFile {
@@ -59,31 +57,6 @@ export default class AliFile {
     return '网络错误'
   }
 
-
-  static async ApiFileInfoByPath(user_id: string, drive_id: string, file_path: string): Promise<IAliFileItem | undefined> {
-    if (!user_id || !drive_id || !file_path) return undefined
-    if (!file_path.startsWith('/')) file_path = '/' + file_path
-    const url = 'v2/file/get_by_path'
-    const postData = {
-      drive_id: drive_id,
-      file_path: file_path,
-      url_expire_sec: 14400,
-      office_thumbnail_process: 'image/resize,w_400/format,jpeg',
-      image_thumbnail_process: 'image/resize,w_400/format,jpeg',
-      image_url_process: 'image/resize,w_1920/format,jpeg',
-      video_thumbnail_process: 'video/snapshot,t_106000,f_jpg,ar_auto,m_fast,w_400'
-    }
-    const resp = await AliHttp.Post(url, postData, user_id, '')
-
-    if (AliHttp.IsSuccess(resp.code)) {
-      let fileInfo = resp.body as IAliFileItem
-      fileInfo.name = DecodeEncName(user_id, fileInfo).name
-      return fileInfo
-    } else if (!AliHttp.HttpCodeBreak(resp.code)) {
-      DebugLog.mSaveWarning('ApiFileInfoByPath err=' + file_path + ' ' + (resp.code || ''), resp.body)
-    }
-    return undefined
-  }
 
   static async ApiFileDownloadUrl(user_id: string, drive_id: string, file_id: string, expire_sec: number): Promise<IDownloadUrl | string> {
     if (!user_id || !drive_id || !file_id) return '参数错误'
@@ -259,23 +232,6 @@ export default class AliFile {
     return { size: 0, folder_count: 0, file_count: 0, reach_limit: false }
   }
 
-
-  static async ApiFileDownText(user_id: string, drive_id: string, file_id: string, filesize: number, maxsize: number, encType: string = '', password: string = ''): Promise<string> {
-    if (!user_id || !drive_id || !file_id) return ''
-    const downUrl = await getRawUrl(user_id, drive_id, file_id, encType, password)
-    if (typeof downUrl == 'string') return downUrl
-    // 原始文件大小
-    if (filesize === -1) filesize = downUrl.size
-    if (maxsize === -1) maxsize = downUrl.size
-    const resp = await AliHttp.GetString(downUrl.url, user_id, filesize, maxsize, downUrl.headers || {}, true)
-    if (AliHttp.IsSuccess(resp.code)) {
-      if (typeof resp.body == 'string') return resp.body
-      return JSON.stringify(resp.body, undefined, 2)
-    } else if (!AliHttp.HttpCodeBreak(resp.code)) {
-      DebugLog.mSaveWarning('ApiFileDownText err=' + file_id + ' ' + (resp.code || ''), resp.body)
-    }
-    return ''
-  }
 
   static async ApiUpdateVideoTime(user_id: string, drive_id: string, file_id: string, play_cursor: number): Promise<IAliFileItem | undefined> {
     if (!user_id || !drive_id || !file_id) return undefined

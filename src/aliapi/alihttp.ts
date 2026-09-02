@@ -7,6 +7,7 @@ import AliUser from './user'
 import message from '../utils/message'
 import DebugLog from '../utils/debuglog'
 import { v4 } from 'uuid'
+import { Sleep } from '../utils/format'
 
 export interface IUrlRespData {
   code: number
@@ -32,19 +33,6 @@ function BlobToBuff(body: Blob): Promise<ArrayBuffer | undefined> {
       resolve(reader.result as ArrayBuffer)
     }
   })
-}
-
-function Sleep(msTime: number): Promise<{ success: true; time: number }> {
-  return new Promise((resolve) =>
-    setTimeout(
-      () =>
-        resolve({
-          success: true,
-          time: msTime
-        }),
-      msTime
-    )
-  )
 }
 
 const IsDebugHttp = false
@@ -330,60 +318,6 @@ export default class AliHttp {
   }
 
 
-  static async GetBlob(url: string, user_id: string): Promise<IUrlRespData> {
-    if (!url.startsWith('http') && !url.startsWith('https')) {
-      if (url.includes('adrive/v1.0') || url.includes('adrive/v1.1')) {
-        url = AliHttp.baseOpenApi + url
-      } else {
-        url = AliHttp.baseApi + url
-      }
-    }
-    for (let i = 0; i <= 5; i++) {
-      const resp = await AliHttp._GetBlob(url, user_id)
-      if (AliHttp.HttpCodeBreak(resp.code)) return resp
-      else if (i == 5) return resp
-      else await Sleep(2000)
-    }
-    return { code: 611, header: '', body: 'NetError GetBlobLost' } as IUrlRespData
-  }
-
-  private static _GetBlob(url: string, user_id: string): Promise<IUrlRespData> {
-    return UserDAL.GetUserTokenFromDB(user_id).then((token) => {
-      const headers: any = {}
-      if (token) {
-        let token_type = token.token_type
-        let access_token = token.access_token
-        let need_open_api = url.includes('openapi')
-        if (need_open_api && token.open_api_access_token) {
-          token_type = token.open_api_token_type || 'Bearer'
-          access_token = token.open_api_access_token
-        } else {
-          headers['x-device-id'] = token.device_id
-          headers['x-signature'] = token.signature
-          headers['x-request-id'] = v4().toString()
-        }
-        headers['Authorization'] = token_type + ' ' + access_token
-      }
-      return axios
-        .get(url, {
-          withCredentials: false,
-          responseType: 'blob',
-          timeout: 30000,
-          headers
-        })
-        .then((response: AxiosResponse) => {
-          return {
-            code: response.status,
-            header: JSON.stringify(response.headers),
-            body: response.data
-          } as IUrlRespData
-        })
-        .catch(function(err: any) {
-          return AliHttp.CatchError(err, token)
-        })
-    })
-  }
-
   static async Post(url: string, postData: any, user_id: string, share_token: string): Promise<IUrlRespData> {
     if (!url.startsWith('http') && !url.startsWith('https')) {
       if (url.includes('adrive/v1.0') || url.includes('adrive/v1.1')) {
@@ -443,64 +377,6 @@ export default class AliHttp {
           withCredentials: false,
           responseType: 'json',
           timeout,
-          headers
-        })
-        .then((response: AxiosResponse) => {
-          return {
-            code: response.status,
-            header: JSON.stringify(response.headers),
-            body: response.data
-          } as IUrlRespData
-        })
-        .catch(function(err: any) {
-          return AliHttp.CatchError(err, token)
-        })
-    })
-  }
-
-  static async PostString(url: string, postData: any, user_id: string, share_token: string): Promise<IUrlRespData> {
-    if (!url.startsWith('http') && !url.startsWith('https')) {
-      if (url.includes('adrive/v1.0') || url.includes('adrive/v1.1')) {
-        url = AliHttp.baseOpenApi + url
-      } else {
-        url = AliHttp.baseApi + url
-      }
-    }
-    for (let i = 0; i <= 5; i++) {
-      const resp = await AliHttp._PostString(url, postData, user_id, share_token)
-      if (AliHttp.HttpCodeBreak(resp.code)) return resp
-      else if (i == 5) return resp
-      else await Sleep(2000)
-    }
-    return { code: 610, header: '', body: 'NetError PostStringLost' } as IUrlRespData
-  }
-
-  private static _PostString(url: string, postData: any, user_id: string, share_token: string): Promise<IUrlRespData> {
-    const headers: any = {}
-    return UserDAL.GetUserTokenFromDB(user_id).then((token) => {
-      if (token) {
-        let token_type = token.token_type
-        let access_token = token.access_token
-        let need_open_api = url.includes('openapi')
-        if (need_open_api && token.open_api_access_token) {
-          token_type = token.open_api_token_type || 'Bearer'
-          access_token = token.open_api_access_token
-        } else {
-          headers['x-device-id'] = token.device_id
-          headers['x-signature'] = token.signature
-          headers['x-request-id'] = v4().toString()
-        }
-        headers['Authorization'] = token_type + ' ' + access_token
-      }
-      if (share_token) {
-        headers['x-share-token'] = share_token
-      }
-
-      return axios
-        .post(url, postData, {
-          withCredentials: false,
-          responseType: 'text',
-          timeout: 50000,
           headers
         })
         .then((response: AxiosResponse) => {

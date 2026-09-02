@@ -38,11 +38,6 @@ pub async fn fs_rename(from: String, to: String) -> Result<(), FsError> {
 }
 
 #[tauri::command]
-pub async fn fs_copy(from: String, to: String) -> Result<u64, FsError> {
-    blocking(move || fsx::copy(&PathBuf::from(from), &PathBuf::from(to))).await
-}
-
-#[tauri::command]
 pub async fn fs_read_text(path: String) -> Result<String, FsError> {
     blocking(move || fsx::read_text(&PathBuf::from(path))).await
 }
@@ -72,9 +67,4 @@ pub async fn fs_append_bytes(path: String, base64: String) -> Result<(), FsError
 pub async fn fs_read_range(path: String, start: u64, length: usize) -> Result<String, FsError> {
     let bytes = blocking(move || fsx::read_range(&PathBuf::from(path), start, length.min(64 * 1024 * 1024))).await?;
     Ok(base64::engine::general_purpose::STANDARD.encode(bytes))
-}
-
-#[tauri::command]
-pub async fn fs_dir_size(path: String) -> Result<u64, FsError> {
-    blocking(move || Ok(fsx::dir_size(&PathBuf::from(path)))).await
 }

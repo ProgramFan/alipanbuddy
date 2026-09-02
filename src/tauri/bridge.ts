@@ -1,25 +1,20 @@
 /**
  * Tauri replacement for the former Electron preload script.
  * Installs the `window.WebXxx` API the renderer has always used, wires window↔window messaging
- * (main ↔ upload/download workers) over Tauri events and exposes platform information.
+ * (main ↔ upload worker) over Tauri events and exposes platform information.
  */
-import { emitTo, listen, type UnlistenFn } from '@tauri-apps/api/event'
+import { emitTo, listen } from '@tauri-apps/api/event'
 import { decodeWinMsg, encodeWinMsg } from './winmsg'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { invoke, isTauri } from './invoke'
 import { rememberUserToken, setHttpProxyUrl } from './state'
 
 export interface PlatformInfo {
-  platform: 'win32' | 'darwin' | 'linux' | string
+  platform: 'win32' | 'linux' | string
   arch: string
-  version: string
   appVersion: string
-  execPath: string
   appPath: string
   resourcePath: string
-  argv0: string
-  argv: string[]
-  windowLabel: string
   /** contents of `<appPath>/setting.config` (empty when missing) - the settings store loads synchronously */
   settingJson: string
 }
@@ -29,22 +24,17 @@ export interface PageContext {
   data?: any
   theme?: string
   dark: boolean
-  windowType: 'main' | 'upload' | 'download' | 'preview'
+  windowType: 'main' | 'upload' | 'preview'
 }
 
-export type WorkerKind = 'upload' | 'download'
+export type WorkerKind = 'upload'
 
 let platformInfo: PlatformInfo = {
   platform: 'linux',
   arch: 'x64',
-  version: '',
   appVersion: '',
-  execPath: '',
   appPath: '',
   resourcePath: '',
-  argv0: '',
-  argv: [],
-  windowLabel: 'main',
   settingJson: ''
 }
 let initialized = false
@@ -66,8 +56,8 @@ export function parsePageRoute(): { page: string; type: string; label: string } 
 }
 
 // ---------- worker window messaging ----------
-const workerReady: Record<WorkerKind, boolean> = { upload: false, download: false }
-const workerPending: Record<WorkerKind, any[]> = { upload: [], download: [] }
+const workerReady: Record<WorkerKind, boolean> = { upload: false }
+const workerPending: Record<WorkerKind, any[]> = { upload: [] }
 
 function sendToWorker(kind: WorkerKind, event: any) {
   if (workerReady[kind]) {
@@ -84,7 +74,7 @@ function flushWorker(kind: WorkerKind) {
   while (queue.length) emitTo(kind, 'WinMsg', encodeWinMsg(queue.shift())).catch(() => {})
 }
 
-/** Called by the upload/download worker window once `window.WinMsg` is installed. */
+/** Called by the upload worker window once `window.WinMsg` is installed. */
 export async function markWorkerReady(kind: WorkerKind) {
   await invoke('worker_ready', { kind }).catch(() => {})
 }
@@ -96,16 +86,13 @@ function installWindowApi() {
     emitTo('main', 'WinMsg', encodeWinMsg(event)).catch(() => {})
   }
   window.WinMsgToUpload = (event: any) => sendToWorker('upload', event)
-  window.WinMsgToDownload = (event: any) => sendToWorker('download', event)
-
-  window.WebGetPathForFile = (_file: File) => ''
 
   window.WebToElectron = (data: any) => {
     try {
       const cmd = data?.cmd
       if (!cmd) return
       if (typeof cmd === 'string') {
-        if (['close', 'exit', 'relaunch', 'minsize', 'maxsize'].includes(cmd)) {
+        if (['close', 'exit', 'minsize', 'maxsize'].includes(cmd)) {
           invoke('main_window_cmd', { cmd }).catch(() => {})
         } else if (cmd === 'preventSleep') {
           invoke('prevent_sleep', { flag: !!data.flag }).catch(() => {})
@@ -127,12 +114,6 @@ function installWindowApi() {
       .catch(() => callback && callback('missing'))
   }
 
-  window.WebToElectronCB = (data: any, callback?: (result: string) => void) => {
-    invoke<string>('main_window_cmd', { cmd: data?.cmd || '' })
-      .then((result) => callback && callback(result || 'backdata'))
-      .catch(() => callback && callback('backdata'))
-  }
-
   window.WebShowOpenDialogSync = (config: any, callback: (files: string[] | undefined) => void) => {
     invoke<string[] | null>('open_dialog', { options: config || {} })
       .then((files) => callback(files || []))
@@ -141,7 +122,7 @@ function installWindowApi() {
 
   window.WebPlatformSync = (callback: (data: any) => void) => {
     try {
-      callback({ ...platformInfo, appPath: platformInfo.appPath, asarPath: platformInfo.resourcePath })
+      callback({ ...platformInfo })
     } catch {}
   }
 
@@ -157,7 +138,6 @@ function installWindowApi() {
     if (data?.user_id && data?.access_token) invoke('proxy_set_token', { userId: data.user_id, accessToken: data.access_token }).catch(() => {})
   }
   window.WebSaveTheme = (data: any) => invoke('save_theme', { theme: data?.theme || '' }).catch(() => {})
-  window.WebReload = () => location.reload()
   window.WebRelaunch = () => invoke('relaunch_app').catch(() => {})
   window.WebRelaunchAria = () => invoke<number>('aria_rpc_port').catch(() => 16800)
   window.WebSetProgressBar = (data: any) => {
@@ -275,12 +255,10 @@ async function installListeners() {
     })
   })
   await listen<{ kind: WorkerKind }>('worker-ready', (event) => {
-    const kind = event.payload?.kind
-    if (kind === 'upload' || kind === 'download') flushWorker(kind)
+    if (event.payload?.kind === 'upload') flushWorker('upload')
   })
   await listen<{ kind: WorkerKind }>('worker-reset', (event) => {
-    const kind = event.payload?.kind
-    if (kind === 'upload' || kind === 'download') workerReady[kind] = false
+    if (event.payload?.kind === 'upload') workerReady.upload = false
   })
 }
 

@@ -1,5 +1,5 @@
-//! Window factory: main window, hidden upload/download worker windows, preview (PageImage)
-//! windows and the login / share-site browser windows.
+//! Window factory: main window, the hidden upload worker window, preview (PageImage) windows
+//! and the login / share-site browser windows.
 
 use std::path::PathBuf;
 
@@ -15,6 +15,7 @@ pub const APP_UA: &str = "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.3
 pub const BROWSER_UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0";
 
 pub const MAIN: &str = "main";
+pub const UPLOAD: &str = "upload";
 pub const LOGIN: &str = "login";
 pub const SITE: &str = "site";
 
@@ -122,7 +123,7 @@ pub fn create_main_window(app: &AppHandle, show: bool) -> tauri::Result<WebviewW
                 let user_data = handle.state::<AppState>().user_data.clone();
                 paths::setting_bool(&user_data, "uiExitOnClose")
             };
-            if cfg!(target_os = "macos") || exit_on_close {
+            if exit_on_close {
                 // the main window closing ends the app (Electron: mainWindow 'closed' -> app.quit())
                 handle.exit(0);
             } else {
@@ -209,23 +210,22 @@ pub fn open_page_window(app: &AppHandle, page: String, data: serde_json::Value, 
     Ok(())
 }
 
-/// Hidden renderer windows that run the upload / download work loops (formerly BrowserWindows
-/// linked to the main window with MessagePorts; now Tauri events).
+/// Hidden renderer window that runs the upload work loop (formerly a BrowserWindow linked to the
+/// main window with MessagePorts; now Tauri events). Downloads run in the main window.
 pub fn ensure_transfer_worker(app: &AppHandle, kind: &str) -> tauri::Result<()> {
-    if kind != "upload" && kind != "download" {
+    if kind != UPLOAD {
         return Ok(());
     }
-    if app.get_webview_window(kind).is_some() {
+    if app.get_webview_window(UPLOAD).is_some() {
         return Ok(());
     }
-    let _ = app.emit_to(MAIN, "worker-reset", json!({ "kind": kind }));
-    let win = app_window(app, kind, &format!("page=PageWorker&type={kind}"), 10.0, 10.0, Placement::Default, "dark", false)?;
-    let _ = win.set_title(if kind == "upload" { "神行云盘助手上传进程" } else { "神行云盘助手下载进程" });
+    let _ = app.emit_to(MAIN, "worker-reset", json!({ "kind": UPLOAD }));
+    let win = app_window(app, UPLOAD, "page=PageWorker&type=upload", 10.0, 10.0, Placement::Default, "dark", false)?;
+    let _ = win.set_title("神行云盘助手上传进程");
     let handle = app.clone();
-    let kind_owned = kind.to_string();
     win.on_window_event(move |event| {
         if let WindowEvent::Destroyed = event {
-            let _ = handle.emit_to(MAIN, "worker-reset", json!({ "kind": kind_owned }));
+            let _ = handle.emit_to(MAIN, "worker-reset", json!({ "kind": UPLOAD }));
         }
     });
     Ok(())
@@ -242,12 +242,12 @@ fn is_login_callback(url: &url::Url) -> bool {
 fn browser_window(app: &AppHandle, label: &'static str, url: &str, title: &str, size: (f64, f64), nav_event: &'static str, closed_event: &'static str, block_login_callback: bool) -> tauri::Result<WebviewWindow> {
     let parsed = url::Url::parse(url).map_err(tauri::Error::InvalidUrl)?;
     let handle = app.clone();
-    #[allow(unused_mut)]
-    let mut builder = WebviewWindowBuilder::new(app, label, WebviewUrl::External(parsed))
+    let builder = WebviewWindowBuilder::new(app, label, WebviewUrl::External(parsed))
         .title(title)
         .inner_size(size.0, size.1)
         .center()
         .user_agent(BROWSER_UA)
+        .data_directory(browser_data_dir(app, label))
         .on_navigation(move |u| {
             let text = u.to_string();
             let _ = handle.emit_to(MAIN, nav_event, json!({ "url": text }));
@@ -256,10 +256,6 @@ fn browser_window(app: &AppHandle, label: &'static str, url: &str, title: &str, 
             }
             true
         });
-    #[cfg(any(windows, target_os = "linux"))]
-    {
-        builder = builder.data_directory(browser_data_dir(app, label));
-    }
     let win = builder.build()?;
     let handle = app.clone();
     win.on_window_event(move |event| {

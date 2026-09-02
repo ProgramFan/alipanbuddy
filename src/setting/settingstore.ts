@@ -61,7 +61,6 @@ export interface SettingState {
   downSavePath: string
   downSavePathDefault: boolean
   downSavePathFull: boolean
-  downSaveBreakWeiGui: boolean
   downFileMax: number
   downThreadMax: number
   downGlobalSpeed: number
@@ -90,7 +89,6 @@ export interface SettingState {
 
   // 上传下载综合设置
   downAutoShutDown: number
-  downSaveShowPro: boolean
   downSmallFileFirst: boolean
   downUploadBreakFile: boolean
   downUploadWhatExist: string
@@ -128,12 +126,9 @@ export interface SettingState {
 
   ariaBtTracker: string
   ariaTrackerSources: string[]
-  ariaAutoSyncTracker: boolean
   ariaMaxOverallUploadLimit: number
-  ariaKeepSeeding: boolean
   ariaSeedRatio: number
   ariaSeedTime: number
-  ariaResumeAllWhenLaunched: boolean
 
   // API 密钥 (BYOK)
 }
@@ -197,7 +192,6 @@ const setting: SettingState = {
   downSavePath: '',
   downSavePathDefault: true,
   downSavePathFull: true,
-  downSaveBreakWeiGui: true,
   downFileMax: 5,
   downThreadMax: 4,
   downGlobalSpeed: 0,
@@ -224,7 +218,6 @@ const setting: SettingState = {
 
   // 上传下载综合设置
   downAutoShutDown: 0,
-  downSaveShowPro: true,
   downSmallFileFirst: false,
   downUploadBreakFile: false,
   downUploadWhatExist: 'refuse',
@@ -265,13 +258,9 @@ const setting: SettingState = {
     'https://cdn.jsdelivr.net/gh/ngosang/trackerslist@master/trackers_best_ip.txt',
     'https://cdn.jsdelivr.net/gh/ngosang/trackerslist@master/trackers_best.txt'
   ],
-  ariaAutoSyncTracker: true,
   ariaMaxOverallUploadLimit: 0,
-  ariaKeepSeeding: false,
   ariaSeedRatio: 2,
-  ariaSeedTime: 2880,
-  ariaResumeAllWhenLaunched: false,
-
+  ariaSeedTime: 2880
 }
 
 function _loadSetting(val: any) {
@@ -324,7 +313,6 @@ function _loadSetting(val: any) {
   setting.downSavePath = defaultString(val.downSavePath, '')
   setting.downSavePathDefault = defaultBool(val.downSavePathDefault, true)
   setting.downSavePathFull = defaultBool(val.downSavePathFull, true)
-  setting.downSaveBreakWeiGui = defaultBool(val.downSaveBreakWeiGui, true)
   setting.downFileMax = defaultValue(val.downFileMax, [5, 1, 2, 3, 4, 5])
   setting.downThreadMax = defaultValue(val.downThreadMax, [4, 1, 2, 4, 8, 16, 24, 32])
   setting.downGlobalSpeed = defaultNumberSub(val.downGlobalSpeed, 0, 0, 999)
@@ -337,7 +325,6 @@ function _loadSetting(val: any) {
 
   // 上传下载综合设置
   setting.downAutoShutDown = 0
-  setting.downSaveShowPro = defaultBool(val.downSaveShowPro, true)
   setting.downSmallFileFirst = defaultBool(val.downSmallFileFirst, false)
   setting.downUploadBreakFile = defaultBool(val.downUploadBreakFile, false)
   setting.downUploadWhatExist = defaultValue(val.downUploadWhatExist, ['ignore', 'overwrite', 'auto_rename', 'refuse'])
@@ -386,12 +373,9 @@ function _loadSetting(val: any) {
         'https://cdn.jsdelivr.net/gh/ngosang/trackerslist@master/trackers_best_ip.txt',
         'https://cdn.jsdelivr.net/gh/ngosang/trackerslist@master/trackers_best.txt'
       ]
-  setting.ariaAutoSyncTracker = defaultBool(val.ariaAutoSyncTracker, true)
   setting.ariaMaxOverallUploadLimit = defaultNumber(val.ariaMaxOverallUploadLimit, 0)
-  setting.ariaKeepSeeding = defaultBool(val.ariaKeepSeeding, false)
   setting.ariaSeedRatio = defaultNumber(val.ariaSeedRatio, 2)
   setting.ariaSeedTime = defaultNumber(val.ariaSeedTime, 2880)
-  setting.ariaResumeAllWhenLaunched = defaultBool(val.ariaResumeAllWhenLaunched, false)
 
   // API 密钥
 }
@@ -494,10 +478,7 @@ const useSettingStore = defineStore('setting', {
       SaveSetting()
       useAppStore().toggleTheme(setting.uiTheme)
       if (Object.hasOwn(partial, 'uiTheme')) window.WebSaveTheme({ theme: setting.uiTheme })
-      window.MainProxyHost = setting.debugProxyHost
-      window.MainProxyPort = setting.debugProxyPort
       window.WinMsgToUpload({ cmd: 'SettingRefresh', setting: settingstr })
-      window.WinMsgToDownload({ cmd: 'SettingRefresh', setting: settingstr })
     },
     updateFileColor(key: string, title: string) {
       if (!key) return

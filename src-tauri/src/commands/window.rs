@@ -18,9 +18,6 @@ pub fn main_window_cmd(app: AppHandle, cmd: String) -> Result<String, String> {
             app.exit(0);
             Ok("exit".into())
         }
-        "relaunch" => {
-            app.restart();
-        }
         "minsize" => {
             if let Some(w) = win {
                 let _ = w.minimize();
@@ -37,14 +34,13 @@ pub fn main_window_cmd(app: AppHandle, cmd: String) -> Result<String, String> {
                 Ok("maximize".into())
             }
         }
-        _ => Ok("backdata".into()),
+        _ => Ok("unknown".into()),
     }
 }
 
-/// `WebToWindow({ cmd })` for the calling (preview) window.
+/// `WebToWindow({ cmd })` for the calling (preview / worker) window.
 #[tauri::command]
-pub fn window_cmd(app: AppHandle, window: Window, cmd: String) -> String {
-    let label = window.label().to_string();
+pub fn window_cmd(window: Window, cmd: String) -> String {
     match cmd.as_str() {
         "close" => {
             let _ = window.close();
@@ -54,18 +50,6 @@ pub fn window_cmd(app: AppHandle, window: Window, cmd: String) -> String {
             let _ = window.minimize();
             "minsize".into()
         }
-        "top" => {
-            let state = app.state::<AppState>();
-            let mut map = state.always_on_top.lock();
-            let current = map.get(&label).copied().unwrap_or(false);
-            let _ = window.set_always_on_top(!current);
-            map.insert(label, !current);
-            if current {
-                "untop".into()
-            } else {
-                "top".into()
-            }
-        }
         "maxsize" => {
             if window.is_maximized().unwrap_or(false) {
                 let _ = window.unmaximize();
@@ -74,23 +58,6 @@ pub fn window_cmd(app: AppHandle, window: Window, cmd: String) -> String {
                 let _ = window.maximize();
                 "maximize".into()
             }
-        }
-        "fullscreen" => {
-            let full = window.is_fullscreen().unwrap_or(false);
-            let _ = window.set_fullscreen(!full);
-            if full {
-                "unfullscreen".into()
-            } else {
-                "fullscreen".into()
-            }
-        }
-        "enterfullscreen" => {
-            let _ = window.set_fullscreen(true);
-            "fullscreen".into()
-        }
-        "exitfullscreen" => {
-            let _ = window.set_fullscreen(false);
-            "unfullscreen".into()
         }
         _ => "unknown".into(),
     }
@@ -113,12 +80,14 @@ pub fn get_page_context(app: AppHandle, window: Window) -> PageContext {
     }
     let dark = window.theme().map(|t| matches!(t, tauri::Theme::Dark)).unwrap_or(false);
     let (page, window_type) = match label.as_str() {
-        "upload" | "download" => ("PageWorker", label.as_str()),
+        "upload" => ("PageWorker", "upload"),
         _ => ("PageMain", "main"),
     };
     PageContext { page: page.into(), data: serde_json::Value::Null, theme: String::new(), dark, window_type: window_type.into() }
 }
 
+/// `kind` is always `"upload"` (the download worker window is gone); it is still sent by the
+/// renderer and echoed back in the `worker-ready` / `worker-reset` events.
 #[tauri::command]
 pub async fn ensure_transfer_worker(app: AppHandle, kind: String) -> Result<(), String> {
     windows::ensure_transfer_worker(&app, &kind).map_err(|e| e.to_string())

@@ -36,11 +36,9 @@ export function PageMain() {
           run: async () => {
             if (window.MainProxyServer) return
             const settingStore = useSettingStore()
-            window.MainProxyHost = settingStore.debugProxyHost
             const wantPort = Number(settingStore.debugProxyPort)
             // The Rust proxy picks another port when the configured one is busy
             const port = await invoke<number>('proxy_start', { port: wantPort })
-            window.MainProxyPort = String(port)
             window.MainProxyServer = { port }
             if (port !== wantPort) settingStore.updateStore({ debugProxyPort: String(port) })
           }

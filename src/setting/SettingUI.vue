@@ -93,7 +93,7 @@ function openSupport() {
         <a-radio tabindex='-1' value='rss'>{{ t('nav.plugins') }}</a-radio>
       </a-radio-group>
     </div>
-    <template v-if="['win32', 'darwin'].includes(platform)">
+    <template v-if="platform === 'win32'">
       <div class='settingspace'></div>
       <div class='settinghead'>{{ t('settings.startup') }}</div>
       <div class='settingrow'>

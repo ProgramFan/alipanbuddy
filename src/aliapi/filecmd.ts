@@ -3,7 +3,6 @@ import AliHttp from './alihttp'
 import { IAliFileItem, IAliGetFileModel } from './alimodels'
 import AliDirFileList from './dirfilelist'
 import { ApiBatch, ApiBatchMaker, ApiBatchMaker2, ApiBatchSuccess, EncodeEncName } from './utils'
-import { IDownloadUrl } from './models'
 import AliFile from './file'
 import message from '../utils/message'
 import usePanFileStore from '../pan/panfilestore'
@@ -253,23 +252,6 @@ export default class AliFileCmd {
     const result = await ApiBatch('', batchList, user_id, '')
     result.reslut.map((t) => {
       if (t.body) successList.push(AliDirFileList.getFileInfo(user_id, t.body as IAliFileItem, 'download_url'))
-      return true
-    })
-    return successList
-  }
-
-  static async ApiGetFileDownloadUrlBatch(user_id: string, drive_id: string, file_idList: string[]): Promise<IDownloadUrl[]> {
-    const batchList = ApiBatchMaker('/file/get_download_url', file_idList, (file_id: string) => {
-      return {
-        drive_id: drive_id,
-        file_id: file_id,
-        expire_sec: 14400
-      }
-    })
-    const successList: IDownloadUrl[] = []
-    const result = await ApiBatch('', batchList, user_id, '')
-    result.reslut.map((t) => {
-      if (t.body) successList.push(t.body as IDownloadUrl)
       return true
     })
     return successList

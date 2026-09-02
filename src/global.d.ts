@@ -7,22 +7,15 @@ declare global {
 
   // eslint-disable-next-line no-unused-vars
   interface Window {
-    Go: any
-    require: any
-    Electron: any
-    openDatabase: any
     WebRelaunchAria: () => Promise<number>
     platform: string
-    WebGetPathForFile: (file: File) => string
     WinMsg: any
     postdataFunc: any
     WebUserToken: any
     WebToElectron: any
     WebToWindow: any
-    WebToElectronCB: any
     WebClearCache: any
     WebRelaunch: any
-    WebReload: any
     WebGetCookies: any
     WebClearCookies: any
     WebSaveTheme: any
@@ -31,12 +24,8 @@ declare global {
     WebShowOpenDialogSync: any
     WebPlatformSync: any
     MainProxyServer: any
-    MainProxyHost: any
-    MainProxyPort: any
     WinMsgToUpload: any
-    WinMsgToDownload: any
     WinMsgToMain: any
-    IsMainPage: boolean
     WebSetProxy: any
     WebSetProgressBar: any
   }

@@ -7,7 +7,7 @@ vi.mock('../../utils/aria2c', () => ({
 }))
 
 import { AriaConnect, AriaRawCall } from '../../utils/aria2c'
-import { batchPauseTasks, batchRemoveTasks, batchResumeTasks, buildSelectFileOption, normalizeTaskListResult } from './aria2TaskApi'
+import { batchPauseTasks, batchRemoveTasks, batchResumeTasks, normalizeTaskListResult } from './aria2TaskApi'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -43,10 +43,6 @@ describe('normalizeTaskFiles', () => {
 })
 
 describe('aria2TaskApi helpers', () => {
-  it('builds aria2 select-file option from selected file indexes', () => {
-    expect(buildSelectFileOption([0, 2, Number.NaN, 4, -1])).toEqual({ 'select-file': '2,4' })
-  })
-
   it('normalizes task list results returned by aria2', () => {
     const list = normalizeTaskListResult([
       { gid: 'g1', totalLength: '9', completedLength: '3', files: [{ index: '1', path: '/tmp/a.bin', length: '9', selected: 'true' }] }

@@ -5,9 +5,8 @@ import AliHttp, { IUrlRespData } from './alihttp'
 import ServerHttp from './server'
 import { ApiBatch, ApiBatchMaker, ApiBatchSuccess } from './utils'
 import { useSettingStore } from '../store'
-import { IAliFileItem, IAliShareAnonymous, IAliShareBottleFish, IAliShareFileItem, IAliShareItem } from './alimodels'
+import { IAliShareAnonymous, IAliShareBottleFish, IAliShareFileItem, IAliShareItem } from './alimodels'
 import getFileIcon from './fileicon'
-import { IAliBatchResult } from './models'
 
 export interface IAliShareFileResp {
   items: IAliShareFileItem[]
@@ -30,19 +29,6 @@ export interface UpdateShareModel {
 }
 
 export default class AliShare {
-
-  static async ApiShareFileCheckAvailable(user_id: string, drive_id: string, file_id_list: string[]) {
-    if (!user_id || !drive_id || !file_id_list) return []
-    const url = 'adrive/v2/share_link/check_available'
-    const postData = { drive_id, file_id_list }
-    const resp = await AliHttp.Post(url, postData, user_id, '')
-    if (AliHttp.IsSuccess(resp.code)) {
-      return resp.body.invalid_items as IAliFileItem[]
-    } else if (!AliHttp.HttpCodeBreak(resp.code)) {
-      DebugLog.mSaveWarning('ApiShareFileCheckAvailable err=' + (resp.code || ''))
-    }
-    return []
-  }
 
   static async ApiGetShareAnonymous(share_id: string, share_pwd = ''): Promise<IAliShareAnonymous> {
     const share: IAliShareAnonymous = {
@@ -269,29 +255,6 @@ export default class AliShare {
     else if (resp.body?.code) return resp.body.code.toString()
     else return '创建分享链接失败'
   }
-
-  static async ApiCreatShareBatch(user_id: string, drive_id: string, expiration: string, share_pwd: string, file_id_list: string[]): Promise<IAliBatchResult> {
-    const batchList: string[] = []
-    for (let i = 0, maxi = file_id_list.length; i < maxi; i++) {
-      const postData: any = {
-        body: {
-          drive_id,
-          expiration,
-          share_pwd: share_pwd,
-          file_id_list: [file_id_list[i]]
-        },
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        id: file_id_list[i],
-        method: 'POST',
-        url: '/share_link/create'
-      }
-      batchList.push(JSON.stringify(postData))
-    }
-    return await ApiBatch('', batchList, user_id, '')
-  }
-
 
   static async ApiCancelShareBatch(user_id: string, share_idList: string[]): Promise<string[]> {
     const batchList = ApiBatchMaker('/share_link/cancel', share_idList, (share_id: string) => {

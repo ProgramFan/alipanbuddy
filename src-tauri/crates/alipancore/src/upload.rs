@@ -51,19 +51,7 @@ pub enum UploadError {
 }
 
 pub fn build_client(proxy: Option<&str>) -> reqwest::Client {
-    let mut builder = reqwest::Client::builder()
-        .danger_accept_invalid_certs(true)
-        .connect_timeout(Duration::from_secs(15))
-        .read_timeout(Duration::from_secs(30))
-        .pool_max_idle_per_host(8);
-    if let Some(p) = proxy.filter(|p| !p.is_empty()) {
-        if let Ok(px) = reqwest::Proxy::all(p) {
-            builder = builder.proxy(px);
-        }
-    } else {
-        builder = builder.no_proxy();
-    }
-    builder.build().unwrap_or_else(|_| reqwest::Client::new())
+    crate::net::build(crate::net::client_builder(proxy).connect_timeout(Duration::from_secs(15)).read_timeout(Duration::from_secs(30)).pool_max_idle_per_host(8))
 }
 
 struct ReadState {

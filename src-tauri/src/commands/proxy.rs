@@ -5,7 +5,6 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use alipancore::proxy::{ProxyContext, ProxyServer, ResolveRequest, TokenLookup, UrlResolver};
-use serde::Serialize;
 use serde_json::json;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::oneshot;
@@ -35,21 +34,13 @@ fn build_resolver(app: AppHandle) -> UrlResolver {
 pub fn build_context(app: &AppHandle) -> ProxyContext {
     let proxy = app.state::<AppState>().http_proxy.lock().clone();
     let make = |follow: bool| {
-        let mut builder = reqwest::Client::builder()
-            .danger_accept_invalid_certs(true)
+        let builder = alipancore::net::client_builder(Some(proxy.as_str()))
             .pool_max_idle_per_host(16)
             .connect_timeout(Duration::from_secs(15))
             // never replace our explicit `Referer` with the previous url
             .referer(false)
             .redirect(if follow { reqwest::redirect::Policy::limited(10) } else { reqwest::redirect::Policy::none() });
-        if !proxy.is_empty() {
-            if let Ok(p) = reqwest::Proxy::all(&proxy) {
-                builder = builder.proxy(p);
-            }
-        } else {
-            builder = builder.no_proxy();
-        }
-        builder.build().unwrap_or_else(|_| reqwest::Client::new())
+        alipancore::net::build(builder)
     };
     let tokens = app.state::<AppState>().user_tokens.clone();
     let lookup: TokenLookup = Arc::new(move |user_id: &str| tokens.lock().get(user_id).cloned());
@@ -95,20 +86,6 @@ pub async fn proxy_stop(app: AppHandle) {
     stop_server(&app).await;
 }
 
-#[derive(Serialize)]
-pub struct ProxyStatus {
-    running: bool,
-    port: u16,
-}
-
-#[tauri::command]
-pub async fn proxy_status(app: AppHandle) -> ProxyStatus {
-    let state = app.state::<AppState>();
-    let running = state.proxy.lock().await.is_some();
-    let port = *state.proxy_port.lock();
-    ProxyStatus { running, port }
-}
-
 #[tauri::command]
 pub fn proxy_provide_url(app: AppHandle, id: String, url: String) {
     if let Some(tx) = app.state::<AppState>().pending_urls.lock().remove(&id) {
@@ -128,9 +105,4 @@ pub fn proxy_set_token(app: AppHandle, user_id: String, access_token: String) {
 #[tauri::command]
 pub fn get_local_ip() -> String {
     local_ip_address::local_ip().map(|ip| ip.to_string()).unwrap_or_else(|_| "127.0.0.1".to_string())
-}
-
-#[tauri::command]
-pub fn find_free_port(port: u16) -> u16 {
-    alipancore::aria::find_free_port(port)
 }

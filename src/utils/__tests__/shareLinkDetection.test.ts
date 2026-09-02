@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canImportShareLink, detectShareLink } from '../shareLinkDetection'
+import { detectShareLink } from '../shareLinkDetection'
 
 describe('剪贴板分享链接识别', () => {
   it('识别可直接导入的阿里云盘链接和提取码', () => {
@@ -13,12 +13,12 @@ describe('剪贴板分享链接识别', () => {
   })
 
   it('识别旧域名 aliyundrive.com 的分享链接', () => {
-    expect(canImportShareLink('https://www.aliyundrive.com/s/abc123')).toBe(true)
+    expect(detectShareLink('https://www.aliyundrive.com/s/abc123')?.canImport).toBe(true)
   })
 
   it('不识别其他网盘链接', () => {
     expect(detectShareLink('https://pan.baidu.com/s/1abc_DEF?pwd=2x3y')).toBeUndefined()
-    expect(canImportShareLink('pan.quark.cn/s/abc123')).toBe(false)
+    expect(detectShareLink('pan.quark.cn/s/abc123')?.canImport).not.toBe(true)
   })
 
   it('不会把普通网页当成分享链接', () => {

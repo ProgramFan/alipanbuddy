@@ -38,14 +38,6 @@ export function showItemInFolder(filePath: string): Promise<void> {
   return bridgeShowItemInFolder(filePath)
 }
 
-export function getPlatform(): string {
-  return getPlatformInfo().platform
-}
-
-export function getArch(): string {
-  return getPlatformInfo().arch
-}
-
 export function getAppVersion(): string {
   return getPlatformInfo().appVersion
 }
@@ -57,14 +49,6 @@ export function getUserData(): string {
 export function getUserDataPath(fileName: string): string {
   try {
     return path.join(getPlatformInfo().appPath, fileName)
-  } catch {
-    return ''
-  }
-}
-
-export function getResourcesPath(fileName: string): string {
-  try {
-    return path.join(getPlatformInfo().resourcePath, fileName)
   } catch {
     return ''
   }

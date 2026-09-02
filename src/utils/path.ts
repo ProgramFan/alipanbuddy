@@ -42,14 +42,6 @@ const path = {
     return isWindows() ? '\\' : '/'
   },
 
-  get delimiter(): string {
-    return isWindows() ? ';' : ':'
-  },
-
-  isAbsolute(p: string): boolean {
-    return rootOf(p) !== '' && (isWindows() ? /^([a-zA-Z]:)?[\\/]/.test(p) : p.startsWith('/'))
-  },
-
   normalize(p: string): string {
     if (!p) return '.'
     const sep = path.sep
@@ -67,17 +59,6 @@ const path = {
     const filtered = parts.filter((v) => typeof v === 'string' && v.length > 0)
     if (!filtered.length) return '.'
     return path.normalize(filtered.join(path.sep))
-  },
-
-  resolve(...parts: string[]): string {
-    let resolved = ''
-    for (let i = parts.length - 1; i >= 0; i--) {
-      const p = parts[i]
-      if (!p) continue
-      resolved = resolved ? path.join(p, resolved) : p
-      if (path.isAbsolute(p)) break
-    }
-    return path.normalize(resolved || '.')
   },
 
   dirname(p: string): string {

@@ -2,7 +2,7 @@ import { FileSystemErrorMessage } from '../../utils/filehelper'
 import DebugLog from '../../utils/debuglog'
 import message from '../../utils/message'
 import fs from '../../tauri/fs'
-import { invoke } from '../../tauri/invoke'
+import { flowencFile } from '../../tauri/flowenc'
 import path from '../../utils/path'
 import { decodeName, encodeName } from '../../module/flow-enc/utils'
 
@@ -75,7 +75,7 @@ export async function DoJiaMi(mode: string,
           continue
         }
         // the Rust side reproduces `new FlowEnc(password, encType, size)` + encrypt/decrypt transform (symmetric stream cipher)
-        const promise = invoke<number>('flowenc_file', { alg, password, src: filePath, dst: outFilePathTemp })
+        const promise = flowencFile(alg, password, filePath, outFilePathTemp)
           .then(() => fs.rename(outFilePathTemp, outFilePath))
           .then(() => {
             count++

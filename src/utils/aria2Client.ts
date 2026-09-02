@@ -14,7 +14,7 @@ export interface Aria2ClientOptions {
   path?: string
 }
 
-export class Aria2RpcError extends Error {
+class Aria2RpcError extends Error {
   code: number | string | undefined
   data: any
 

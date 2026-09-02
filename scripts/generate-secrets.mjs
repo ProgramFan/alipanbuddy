@@ -9,18 +9,11 @@ const repoRoot = path.resolve(fileURLToPath(new URL('..', import.meta.url)))
 const envFile = path.join(repoRoot, '.env.local')
 const outputFile = path.join(repoRoot, 'src', 'secrets.generated.ts')
 
-const secretNames = [
-  'ALIYUN_APP_ID',
-  'ALIYUN_APP_SECRET',
-  'APPLE_ID',
-  'APPLE_PASSWORD',
-  'APPLE_TEAM_ID'
-]
+const secretNames = ['ALIYUN_APP_ID', 'ALIYUN_APP_SECRET']
 
 function parseArgs(argv) {
   return {
-    mode: argv.find((arg) => arg.startsWith('--mode='))?.split('=')[1] || 'local',
-    strict: argv.includes('--strict')
+    mode: argv.find((arg) => arg.startsWith('--mode='))?.split('=')[1] || 'local'
   }
 }
 
@@ -58,14 +51,6 @@ function readExistingValues(filePath) {
   return output
 }
 
-function readRequiredNames() {
-  const raw = process.env.REQUIRED_RELEASE_SECRETS || ''
-  return raw
-    .split(',')
-    .map((name) => name.trim())
-    .filter(Boolean)
-}
-
 function main() {
   const args = parseArgs(process.argv.slice(2))
   const localEnv = args.mode === 'ci' ? {} : parseEnvFile(envFile)
@@ -81,13 +66,6 @@ function main() {
       kept.push(name)
     }
     values[name] = value
-  }
-
-  const required = args.strict ? readRequiredNames() : []
-  const missing = required.filter((name) => !values[name])
-  if (missing.length) {
-    console.error(`Missing required release secrets: ${missing.join(', ')}`)
-    process.exit(1)
   }
 
   const lines = [

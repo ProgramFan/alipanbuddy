@@ -133,11 +133,6 @@ const cb = (val: any) => {
     </div>
 
     <div class="settingspace"></div>
-    <div class="settinghead">{{ t('settings.upload.taskbarProgress') }}</div>
-    <div class="settingrow">
-      <MySwitch :value="settingStore.downSaveShowPro" @update:value="cb({ downSaveShowPro: $event })">{{ t('settings.upload.taskbarProgressSwitch') }}</MySwitch>
-    </div>
-    <div class="settingspace"></div>
     <div class="settinghead">
       {{ t('settings.upload.preFilter') }}
       <a-popover position="bottom">

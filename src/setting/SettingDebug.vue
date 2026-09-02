@@ -7,7 +7,6 @@ import message from '../utils/message'
 import { getLocalIp } from '../utils/proxyhelper'
 import { invoke } from '../tauri/invoke'
 import { Sleep } from '../utils/format'
-import { onMounted, ref } from 'vue'
 import { t } from '../i18n'
 
 const settingStore = useSettingStore()
@@ -46,7 +45,6 @@ const handleResetPort = async () => {
   try {
     await invoke('proxy_stop').catch(() => {})
     const port = await invoke<number>('proxy_start', { port: debugProxyPort })
-    window.MainProxyPort = String(port)
     window.MainProxyServer = { port }
     cb({ debugProxyPort: String(port) })
     await Sleep(2000)

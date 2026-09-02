@@ -1,24 +1,12 @@
 //! User data directory resolution (mirrors Electron's `userData`, including the `userdir.config`
-//! override) and one-time migration of the settings from the Electron install.
+//! override).
 
 use std::path::{Path, PathBuf};
 
 use tauri::{AppHandle, Manager};
 
-/// Earlier installs (Electron "BoxPlayer", first Tauri builds) whose settings are migrated once.
-const LEGACY_APP_NAMES: &[&str] = &["com.xbyboxplayer.app", "BoxPlayer"];
-const MIGRATED_FILES: &[&str] = &["setting.config", "config.json", "theme.json", "download.session", "dht.dat", "dht6.dat"];
-
 pub fn resource_dir(app: &AppHandle) -> PathBuf {
     app.path().resource_dir().unwrap_or_else(|_| std::env::current_dir().unwrap_or_default())
-}
-
-fn legacy_user_data_dirs() -> Vec<PathBuf> {
-    #[cfg(target_os = "macos")]
-    let base = dirs::home_dir().map(|h| h.join("Library").join("Application Support"));
-    #[cfg(not(target_os = "macos"))]
-    let base = dirs::config_dir();
-    base.map(|b| LEGACY_APP_NAMES.iter().map(|n| b.join(n)).collect()).unwrap_or_default()
 }
 
 pub fn resolve_user_data_dir(app: &AppHandle) -> PathBuf {
@@ -33,26 +21,14 @@ pub fn resolve_user_data_dir(app: &AppHandle) -> PathBuf {
             }
         }
     }
-    let dir = app.path().app_config_dir().unwrap_or_else(|_| dirs::config_dir().unwrap_or_default().join("com.alipanbuddy.app"));
+    // Without a config directory every setting, account and task list would be lost on each
+    // launch, so there is nothing sensible to fall back to.
+    let dir = app.path().app_config_dir().unwrap_or_else(|err| {
+        log::error!("no app config directory: {err}");
+        panic!("cannot resolve the user data directory: {err}");
+    });
     let _ = std::fs::create_dir_all(&dir);
-    migrate_from_electron(&dir);
     dir
-}
-
-fn migrate_from_electron(target: &Path) {
-    if target.join("setting.config").exists() {
-        return;
-    }
-    let Some(legacy) = legacy_user_data_dirs().into_iter().find(|d| d.join("setting.config").exists()) else { return };
-    log::info!("migrating settings from {} to {}", legacy.display(), target.display());
-    for name in MIGRATED_FILES {
-        let from = legacy.join(name);
-        if from.exists() {
-            if let Err(err) = std::fs::copy(&from, target.join(name)) {
-                log::warn!("migrate {name}: {err}");
-            }
-        }
-    }
 }
 
 pub fn read_json(path: &Path) -> Option<serde_json::Value> {

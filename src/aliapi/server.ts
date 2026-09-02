@@ -1,10 +1,9 @@
 import { b64decode, Sleep } from '../utils/format'
 import { getPkgVersion } from '../utils/utils'
 import axios, { AxiosResponse } from 'axios'
-import { IShareSiteGroupModel, IShareSiteModel, useServerStore, useSettingStore } from '../store'
+import { IShareSiteGroupModel, IShareSiteModel } from '../store'
 import ShareDAL from '../share/share/ShareDAL'
 import { modalShowPost } from '../utils/modal'
-import message from '../utils/message'
 import DebugLog from '../utils/debuglog'
 
 export interface IServerRespData {
@@ -125,9 +124,6 @@ export default class ServerHttp {
             if (add.url.length > 0) list.push(add)
           }
           ShareDAL.SaveShareSite(list)
-        }
-        if (jsonData.HELP && jsonData.HELP.length > 0) {
-          useServerStore().mSaveHelpUrl(jsonData.HELP)
         }
         if (jsonData.POST && jsonData.POST.length > 0) {
           let postId = localStorage.getItem('postmodal')

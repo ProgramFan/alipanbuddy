@@ -80,7 +80,7 @@ export const normalizeTaskFiles = (files: any[] = []): DownloadTaskFile[] =>
     selected: toBoolean(file.selected)
   }))
 
-export const normalizePeers = (peers: any[] = []): DownloadPeer[] =>
+const normalizePeers = (peers: any[] = []): DownloadPeer[] =>
   peers.map((peer) => ({
     peerId: String(peer.peerId || ''),
     ip: String(peer.ip || ''),

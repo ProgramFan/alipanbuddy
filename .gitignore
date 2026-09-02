@@ -1,75 +1,27 @@
+# Dependencies
 node_modules
-.pnpm-store/
-.tools/
-.DS_Store
+
+# Build output
 dist*
-*.local
-.debug.env
-tmp
-**/.tmp
-.build-tools
 release
 
-.idea
-
-localVersion
-
-# 包管理器锁文件 - 只保留 pnpm-lock.yaml
-package-lock.json
-yarn.lock
-
-# 环境变量和敏感配置文件
+# Environment and generated secrets (.env.example stays tracked)
 .env
 .env.local
 .env.*.local
-config/secrets.json
-config/keys.json
-
-# 包含机密信息的恢复脚本
-scripts/
-!scripts/
-scripts/*
-!scripts/generate-secrets.mjs
-!scripts/version-utils.mjs
-!scripts/prepare-sidecars.mjs
-!scripts/build-linux-packages.sh
-!scripts/linux-tarball/
-
 src/secrets.generated.ts
-
-
-docs/
-!docs/
-docs/*
-!docs/releases/
-docs/releases/*
-!docs/releases/*.md
-!docs/promotion/
-docs/promotion/*
-!docs/promotion/*.md
-!docs/superpowers/
-docs/superpowers/*
-!docs/superpowers/plans/
-docs/superpowers/plans/*
-plans/
-!docs/superpowers/plans/
-*.swift
-AGENT.md
-SKILL_ITERATION_LOG.md
-node_modules/
-
-
-# 文档与媒体产物：只保留 README 类 Markdown 与发行说明
-*.md
-!README*.md
-!**/README*.md
-!docs/releases/*.md
-*.html
-*.mp4
-*.mov
-*.py
 
 # Tauri
 src-tauri/target
 src-tauri/gen
 src-tauri/binaries
+
+# Editor / OS junk
+.DS_Store
+.idea
+.vscode/*
+*.swp
+
+# Logs
+*.log
+logs

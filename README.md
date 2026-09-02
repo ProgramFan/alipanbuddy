@@ -23,7 +23,7 @@
   <img alt="Vue" src="https://img.shields.io/badge/Vue-3-42b883?style=flat-square&logo=vuedotjs&logoColor=white">
   <img alt="Tauri" src="https://img.shields.io/badge/Tauri-2-24c8db?style=flat-square&logo=tauri&logoColor=white">
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-ESNext-3178c6?style=flat-square&logo=typescript&logoColor=white">
-  <img alt="Platforms" src="https://img.shields.io/badge/macOS%20%7C%20Windows%20%7C%20Linux-desktop-blue?style=flat-square">
+  <img alt="Platforms" src="https://img.shields.io/badge/Windows%20%7C%20Linux-desktop-blue?style=flat-square">
 </p>
 
 ---
@@ -69,23 +69,11 @@
 | Windows（x64 / ARM64） | `*-setup.exe` |
 | Debian / Ubuntu | `*.deb` |
 | Fedora / openSUSE | `*.rpm` |
-| Linux 通用（tar 包安装） | `alipanbuddy-*-linux-<arch>.tar.gz` |
 
-Linux tar 包本身就是一份 FHS 前缀目录（`bin/`、`lib/alipanbuddy/`、`share/`），自带桌面图标与
-菜单项，解压后运行 `install.sh` 即可作为桌面应用安装：
-
-```bash
-tar -xzf alipanbuddy-<版本>-linux-x86_64.tar.gz
-cd alipanbuddy-<版本>-linux-x86_64
-sudo ./install.sh          # 安装到 /usr/local；或 ./install.sh --user 安装到 ~/.local
-# 卸载：sudo ./install.sh --uninstall
-```
-
-三种 Linux 包共用同一套目录结构：主程序与自带的 aria2c 位于 `/usr/lib/alipanbuddy/`，
+两种 Linux 包共用同一套目录结构：主程序与自带的 aria2c 位于 `/usr/lib/alipanbuddy/`，
 `/usr/bin/alipanbuddy` 是符号链接，因此不会与系统的 aria2 软件包冲突。
 
-macOS 不再提供预构建安装包，可自行构建：`pnpm run build:mac`。构建产物如被 Gatekeeper
-拦截，可在确认来源可信后执行 `sudo xattr -d com.apple.quarantine /Applications/alipanbuddy.app`。
+macOS 不再支持：既不提供预构建安装包，也不再维护本地构建路径。
 
 ---
 
@@ -98,7 +86,7 @@ macOS 不再提供预构建安装包，可自行构建：`pnpm run build:mac`。
 - Rust stable 工具链（`rustup`）
 - Linux 需要 WebKitGTK 开发包：Fedora `webkit2gtk4.1-devel gtk3-devel libsoup3-devel librsvg2-devel libappindicator-gtk3-devel`，
   Debian/Ubuntu `libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf`
-- macOS / Windows / Linux
+- Windows / Linux
 
 ### 常用命令
 
@@ -109,8 +97,10 @@ pnpm run typecheck                 # 渲染端类型检查（vue-tsc）
 pnpm run typecheck:rust            # Rust 类型检查（cargo check）
 pnpm run test                      # Vitest
 pnpm run test:rust                 # Rust 核心库单元测试（cargo test -p alipancore）
-pnpm run build                     # 递增版本号 → 类型检查 → Vite 打包 → tauri build 生成安装包
-pnpm run build:mac | build:linux | build:windows | build:windows:arm64
+pnpm run build:linux               # tauri build --no-bundle → 生成 .deb / .rpm
+pnpm run build:windows             # NSIS 安装包（x64）
+pnpm run build:windows:arm64       # NSIS 安装包（ARM64）
+pnpm run build:debug               # 调试构建（不打包，带 devtools）
 ```
 
 ### 私有配置与密钥
@@ -121,7 +111,7 @@ pnpm run build:mac | build:linux | build:windows | build:windows:arm64
 pnpm run secrets:generate   # 生成 src/secrets.generated.ts（已 ignore，已有值不会被空值覆盖）
 ```
 
-`pnpm dev` / `pnpm run build` / `pnpm run test` 会自动执行该步骤。没有内置凭据的构建也可以使用：在
+`pnpm dev` / 各个 `build:*` / `pnpm run test` 会自动执行该步骤。没有内置凭据的构建也可以使用：在
 「设置 → 账户设置 → OpenAPI 授权」中选择“自定义凭据”，填入自己在
 [阿里云盘开放平台](https://www.aliyundrive.com/developer) 申请的 client id / secret。
 
@@ -146,8 +136,8 @@ src/setting/          设置页
 src/layout/           主布局、图片查看器
 src/store/            Pinia 状态
 src/utils/            通用工具
-scripts/              密钥生成、aria2c sidecar 准备、版本工具
-static/engine/        各平台 aria2c 可执行文件与 aria2.conf
+scripts/              密钥生成、aria2c sidecar 准备、Linux 打包
+static/engine/        各平台 aria2c 可执行文件
 ```
 
 ---

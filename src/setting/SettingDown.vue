@@ -87,21 +87,6 @@ const handleSelectDownSavePath = () => {
         </template>
       </a-popover>
     </div>
-    <div class='settingrow'>
-      <MySwitch :value='settingStore.downSaveBreakWeiGui' @update:value='cb({ downSaveBreakWeiGui: $event })'> {{ t('settings.download.newTask') }}
-        {{ t('settings.download.skipRestricted') }}
-      </MySwitch>
-      <a-popover position='bottom'>
-        <IconFont name="iconbulb" />
-        <template #content>
-          <div>
-            <span class='opred'>{{ t('settings.defaultOn') }}</span>
-            <hr />
-            {{ t('settings.download.skipRestrictedTip') }}
-          </div>
-        </template>
-      </a-popover>
-    </div>
   </div>
 
   <div class='settingcard'>

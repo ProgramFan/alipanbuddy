@@ -364,21 +364,6 @@ export default class AliDirFileList {
   //   return AliDirFileList._FileListOnePage(orderby, order, dir, resp, pageIndex)
   // }
 
-  static async ApiSearchByName(user_id: string, drive_id: string, keyword: string, limit: number = 50): Promise<IAliGetFileModel[]> {
-    if (!keyword || !user_id || !drive_id) return []
-    const query = `name match "${keyword.replaceAll('"', '\\"')}"`
-    const postData = {
-      drive_id,
-      limit,
-      fields: '*',
-      query,
-      order_by: 'updated_at DESC'
-    }
-    const resp = await AliHttp.Post('adrive/v1.0/openFile/search', postData, user_id, '')
-    const items = (resp?.body?.items || []) as any[]
-    return items.map((item: any) => AliDirFileList.getFileInfo(user_id, item, '', drive_id))
-  }
-
   static async ApiDirFileList(user_id: string, drive_id: string, dirID: string, dirName: string, order: string, type: string = '', albumID?: string, refresh: boolean = true): Promise<IAliFileResp> {
     const dir: IAliFileResp = {
       items: [],
@@ -869,23 +854,6 @@ export default class AliDirFileList {
     const resp = await AliHttp.Post(url, postData, dir.m_user_id, '')
     return AliDirFileList._FileListOnePage(orderby, order, dir, resp, pageIndex)
   }
-
-  static async _ApiVideoFileListOnePage(orderby: string, order: string, dir: IAliFileResp, pageIndex: number): Promise<boolean> {
-    const url = 'adrive/v2/video/compilation/list'
-    const postData = {
-      name: dir.dirID.substring('video'.length),
-      use_compilation: true,
-      duration: 0,
-      order_by: (orderby + ' ' + order).toLowerCase(),
-      hidden_type: 'NO_HIDDEN',
-      limit: 100,
-      marker: dir.next_marker,
-      url_expire_sec: 14400
-    }
-    const resp = await AliHttp.Post(url, postData, dir.m_user_id, '')
-    return AliDirFileList._FileListOnePage(orderby, order, dir, resp, pageIndex)
-  }
-
 
   static _FileListOnePage(orderby: string, order: string, dir: IAliFileResp, resp: IUrlRespData, pageIndex: number, type: string = '', refresh: boolean = true): boolean {
     try {

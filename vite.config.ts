@@ -1,6 +1,5 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import pkg from './package.json'
 
 const host = process.env.TAURI_DEV_HOST
 
@@ -8,9 +7,6 @@ const host = process.env.TAURI_DEV_HOST
 export default defineConfig(({ command }) => {
   const isBuild = command === 'build'
   return {
-    define: {
-      __APP_VERSION__: JSON.stringify(pkg.version)
-    },
     plugins: [vue()],
     // Tauri expects a fixed port and fails if that port is not available
     clearScreen: false,
@@ -26,7 +22,7 @@ export default defineConfig(({ command }) => {
     },
     envPrefix: ['VITE_', 'TAURI_ENV_*'],
     build: {
-      // Tauri uses Chromium (WebView2) on Windows and WebKit on macOS/Linux
+      // Tauri uses Chromium (WebView2) on Windows and WebKitGTK on Linux
       target: process.env.TAURI_ENV_PLATFORM == 'windows' ? 'chrome105' : 'safari14',
       minify: !process.env.TAURI_ENV_DEBUG ? 'esbuild' : false,
       sourcemap: !!process.env.TAURI_ENV_DEBUG,

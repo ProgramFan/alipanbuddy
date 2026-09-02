@@ -1,5 +1,4 @@
 mod aria;
-mod bridge;
 mod commands;
 mod paths;
 mod state;
@@ -11,7 +10,6 @@ use tauri_plugin_autostart::MacosLauncher;
 
 use crate::state::AppState;
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
@@ -36,7 +34,6 @@ pub fn run() {
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, Some(vec!["--autostart"])))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init())
-        .plugin(tauri_plugin_os::init())
         .invoke_handler(tauri::generate_handler![
             commands::system::platform_info,
             commands::system::open_dialog,
@@ -55,12 +52,10 @@ pub fn run() {
             commands::system::clear_browsing_data,
             commands::system::set_proxy,
             commands::system::relaunch_app,
-            commands::system::quit_app,
             commands::system::save_theme,
             commands::system::get_theme_state,
             commands::system::set_launch_at_login,
             commands::system::aria_rpc_port,
-            commands::system::aria_restart,
             commands::window::main_window_cmd,
             commands::window::window_cmd,
             commands::window::open_page_window,
@@ -79,13 +74,11 @@ pub fn run() {
             commands::fs::fs_mkdir,
             commands::fs::fs_remove,
             commands::fs::fs_rename,
-            commands::fs::fs_copy,
             commands::fs::fs_read_text,
             commands::fs::fs_write_text,
             commands::fs::fs_write_bytes,
             commands::fs::fs_append_bytes,
             commands::fs::fs_read_range,
-            commands::fs::fs_dir_size,
             commands::transfer::file_prehash,
             commands::transfer::file_sha1,
             commands::transfer::file_sha1_cancel,
@@ -96,10 +89,8 @@ pub fn run() {
             commands::transfer::flowenc_bytes,
             commands::proxy::proxy_start,
             commands::proxy::proxy_stop,
-            commands::proxy::proxy_status,
             commands::proxy::proxy_provide_url,
             commands::proxy::get_local_ip,
-            commands::proxy::find_free_port,
             commands::proxy::proxy_set_token,
             commands::http::http_request,
             commands::http::http_body_chunk,
@@ -113,7 +104,7 @@ pub fn run() {
             app.manage(AppState::new(user_data.clone(), resource_dir));
             {
                 let state = app.state::<AppState>();
-                match tauri::async_runtime::block_on(bridge::start(state.body_store.clone())) {
+                match tauri::async_runtime::block_on(alipancore::bodybridge::start(state.body_store.clone())) {
                     Ok(port) => {
                         log::info!("loopback bridge on 127.0.0.1:{port}");
                         *state.bridge_port.lock() = port;
@@ -142,10 +133,8 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building AlipanBuddy")
         .run(|app, event| match event {
-            #[cfg(target_os = "macos")]
-            RunEvent::Reopen { .. } => windows::show_main(app),
             RunEvent::Exit => {
-                // covers the quit paths that never raise CloseRequested (tray quit, quit_app)
+                // covers the quit paths that never raise CloseRequested (tray quit, `WebToElectron({ cmd: 'exit' })`)
                 windows::save_window_geometry(app);
                 let handle = app.clone();
                 tauri::async_runtime::block_on(commands::proxy::stop_server(&handle));

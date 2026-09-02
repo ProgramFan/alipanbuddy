@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { buildUpstreamProxyHeaders, ensureInlinePreviewRange, normalizeProxyRangeHeaders, normalizeProxyStatusCode } from '../proxyHeaders'
 
 const settingState = {
   debugProxyHost: '127.0.0.1',
@@ -91,9 +90,8 @@ describe('getProxyUrl', () => {
   it('targets the configured proxy host and port', async () => {
     settingState.debugProxyHost = '192.168.1.8'
     settingState.debugProxyPort = '4961'
-    const { getProxyUrl, getRedirectUrl } = await import('../proxyhelper')
+    const { getProxyUrl } = await import('../proxyhelper')
     expect(getProxyUrl({ user_id: 'u1' }).startsWith('http://192.168.1.8:4961/proxy?')).toBe(true)
-    expect(getRedirectUrl({ user_id: 'u1', proxy_url: 'https://a.b/c' })).toBe('http://192.168.1.8:4961/redirect?user_id=u1&proxy_url=https%3A%2F%2Fa.b%2Fc')
   })
 })
 
@@ -148,14 +146,6 @@ describe('getRawUrl', () => {
   })
 })
 
-describe('getUrlFileName', () => {
-  it('extracts the RFC 5987 file name from an OSS download url', async () => {
-    const { getUrlFileName } = await import('../proxyhelper')
-    expect(getUrlFileName("https://cdn.example.com/x?response-content-disposition=attachment%3B%20filename%2A%3DUTF-8%27%27%E8%A7%86%E9%A2%91.mp4&x-oss-expires=1")).toBe('视频.mp4')
-    expect(getUrlFileName('https://cdn.example.com/x?x-oss-expires=1')).toBe('')
-  })
-})
-
 describe('getLocalIp', () => {
   it('asks the backend for the LAN address and falls back to loopback', async () => {
     const { getLocalIp } = await import('../proxyhelper')
@@ -163,66 +153,5 @@ describe('getLocalIp', () => {
     expect(invoke).toHaveBeenCalledWith('get_local_ip')
     invoke.mockRejectedValueOnce(new Error('no network'))
     expect(await getLocalIp()).toBe('127.0.0.1')
-  })
-})
-
-describe('buildUpstreamProxyHeaders', () => {
-  it('keeps range and media auth headers while dropping conditional and hop-by-hop headers', () => {
-    const headers = buildUpstreamProxyHeaders({
-      host: '127.0.0.1:4961',
-      connection: 'keep-alive',
-      range: 'bytes=32768-33051',
-      'if-none-match': '"b968913fc5e95732a0646ac5c32db3db"',
-      'accept-encoding': 'gzip, deflate, br',
-      referer: 'https://www.aliyundrive.com/',
-      authorization: 'Bearer local-token',
-      'user-agent': 'Mozilla/5.0'
-    }, JSON.stringify({
-      'X-Emby-Authorization': 'MediaBrowser Token="server-token"',
-      'X-Emby-Token': 'server-token'
-    }))
-
-    expect(headers.range).toBe('bytes=32768-33051')
-    expect(headers['x-emby-authorization']).toBe('MediaBrowser Token="server-token"')
-    expect(headers['x-emby-token']).toBe('server-token')
-    expect(headers['accept-encoding']).toBe('identity')
-    expect(headers.host).toBeUndefined()
-    expect(headers.connection).toBeUndefined()
-    expect(headers['if-none-match']).toBeUndefined()
-    expect(headers.referer).toBeUndefined()
-    expect(headers.authorization).toBeUndefined()
-  })
-})
-
-describe('ensureInlinePreviewRange', () => {
-  it('requests the complete PDF when an inline preview has no range request', () => {
-    expect(ensureInlinePreviewRange({}, true).range).toBe('bytes=0-')
-  })
-
-  it('preserves PDF.js byte-range requests and leaves downloads unchanged', () => {
-    expect(ensureInlinePreviewRange({ range: 'bytes=524288-589823' }, true).range).toBe('bytes=524288-589823')
-    expect(ensureInlinePreviewRange({}, false).range).toBeUndefined()
-  })
-})
-
-describe('normalizeProxyStatusCode', () => {
-  it('marks a content-range response as partial even when the upstream incorrectly returns 200', () => {
-    expect(normalizeProxyStatusCode(200, 'bytes 0-524287/21662389')).toBe(206)
-  })
-
-  it('keeps ordinary complete and already-partial responses unchanged', () => {
-    expect(normalizeProxyStatusCode(200)).toBe(200)
-    expect(normalizeProxyStatusCode(206, 'bytes 0-524287/21662389')).toBe(206)
-  })
-})
-
-describe('normalizeProxyRangeHeaders', () => {
-  it('keeps the accept-ranges value PDF.js requires when an upstream duplicates bytes', () => {
-    expect(normalizeProxyRangeHeaders({ 'content-range': 'bytes 0-65535/36240717', 'accept-ranges': ['bytes', 'bytes'] })['accept-ranges']).toBe('bytes')
-    expect(normalizeProxyRangeHeaders({ 'content-range': 'bytes 0-65535/36240717', 'accept-ranges': 'bytes, bytes' })['accept-ranges']).toBe('bytes')
-  })
-
-  it('does not rewrite unrelated range capabilities', () => {
-    expect(normalizeProxyRangeHeaders({ 'content-range': 'bytes 0-65535/36240717', 'accept-ranges': ['bytes', 'none'] })['accept-ranges']).toEqual(['bytes', 'none'])
   })
 })

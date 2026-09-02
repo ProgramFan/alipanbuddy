@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useAppStore } from '../store'
-import DownSync from './DownSync.vue'
 import DownDowning from './DownDowning.vue'
 import DownDowned from './DownDowned.vue'
 import DownUploading from './DownUploading.vue'
@@ -32,10 +31,6 @@ withDefaults(defineProps<{ sidebarVisible?: boolean }>(), { sidebarVisible: true
           <template #icon><IconFont name="iconcloud_success" /></template>
           {{ t('transfer.uploaded') }}
         </a-menu-item>
-<!--        <a-menu-item key="SyncRight">-->
-<!--          <template #icon><IconFont name="iconcloud-sync" /></template>-->
-<!--          文件夹同步 x-->
-<!--        </a-menu-item>-->
       </a-menu>
     </a-layout-sider>
     <a-layout-content class="xbyright">
@@ -44,7 +39,6 @@ withDefaults(defineProps<{ sidebarVisible?: boolean }>(), { sidebarVisible: true
         <a-tab-pane key="DownedRight" title="2"><DownDowned /></a-tab-pane>
         <a-tab-pane key="UploadingRight" title="3"><DownUploading /></a-tab-pane>
         <a-tab-pane key="UploadedRight" title="4"><DownUploaded /></a-tab-pane>
-        <a-tab-pane key="SyncRight" title="5"><DownSync /></a-tab-pane>
       </a-tabs>
     </a-layout-content>
   </a-layout>

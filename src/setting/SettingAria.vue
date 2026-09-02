@@ -201,9 +201,6 @@ const handleSyncTrackers = async () => {
       <a-button :loading="trackerSyncing" size="small" type="outline" tabindex="-1" @click="handleSyncTrackers">{{ t('settings.aria.syncTracker') }}</a-button>
       <span class="settingitem">{{ t('settings.aria.autoSyncEvery12h') }}</span>
     </div>
-    <div class="settingrow">
-      <AntdCheckbox tabindex="-1" :checked="settingStore.ariaAutoSyncTracker" @change="(e:any)=>cb({ ariaAutoSyncTracker: e.target.checked })">{{ t('settings.aria.autoSyncTrackerOnStart') }}</AntdCheckbox>
-    </div>
 
     <div class="settingspace"></div>
     <div class="settinghead">{{ t('settings.aria.uploadLimit') }}</div>
@@ -222,18 +219,12 @@ const handleSyncTrackers = async () => {
     <div class="settingspace"></div>
     <div class="settinghead">{{ t('settings.aria.seeding') }}</div>
     <div class="settingrow">
-      <AntdCheckbox tabindex="-1" :checked="settingStore.ariaKeepSeeding" @change="(e:any)=>cb({ ariaKeepSeeding: e.target.checked })">{{ t('settings.aria.keepSeeding') }}</AntdCheckbox>
-    </div>
-    <div class="settingrow" v-show="!settingStore.ariaKeepSeeding">
       <span class="settinglabel">{{ t('settings.aria.seedRatio') }}</span>
       <a-input-number tabindex="-1" :model-value="settingStore.ariaSeedRatio" :min="0" :step="0.5" :style="{ width: '100px' }" @update:model-value="(v: number) => cb({ ariaSeedRatio: v || 0 })" />
       <span class="settingitem">{{ t('settings.aria.times') }}</span>
       <span class="settinglabel" style="margin-left: 16px">{{ t('settings.aria.seedTime') }}</span>
       <a-input-number tabindex="-1" :model-value="settingStore.ariaSeedTime" :min="0" :step="60" :style="{ width: '100px' }" @update:model-value="(v: number) => cb({ ariaSeedTime: v || 0 })" />
       <span class="settingitem">{{ t('settings.aria.minutes') }}</span>
-    </div>
-    <div class="settingrow">
-      <AntdCheckbox tabindex="-1" :checked="settingStore.ariaResumeAllWhenLaunched" @change="(e:any)=>cb({ ariaResumeAllWhenLaunched: e.target.checked })">{{ t('settings.aria.resumeOnLaunch') }}</AntdCheckbox>
     </div>
 
     <div class="settingspace"></div>

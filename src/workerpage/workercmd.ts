@@ -4,7 +4,6 @@ import { ApplySettingJson } from '../setting/settingstore'
 import TreeStore from '../store/treestore'
 import UserDAL from '../user/userdal'
 import DebugLog from '../utils/debuglog'
-import { DownloadTrigger } from './uidownload'
 import { UploadAdd, UploadCmd, UploadReport } from './uiupload'
 
 // eslint-disable-next-line no-unused-vars
@@ -23,19 +22,6 @@ export function WorkerPage(type: string) {
     workerTimer = setTimeout(func, 6000) 
     const element = document.createElement('div')
     element.innerHTML = '<h3 class="workertitle">上传进程</h3>'
-    document.body.append(element)
-  }
-  if (type == 'download') {
-    window.WinMsg = WinMsgDownload
-    const func = () => {
-      try {
-        DownloadTrigger()
-      } catch {}
-      workerTimer = setTimeout(func, 1000)
-    }
-    workerTimer = setTimeout(func, 6000) 
-    const element = document.createElement('div')
-    element.innerHTML = '<h3 class="workertitle">下载进程</h3>'
     document.body.append(element)
   }
 }
@@ -89,16 +75,4 @@ function LoadAllDirList(user_id: string, drive_id: string, drive_root: string): 
     .finally(() => {
       AllDirLock.delete(drive_id)
     })
-}
-
-export const WinMsgDownload = function (arg: any) {
-  // console.log(arg)
-  try {
-    if (arg.cmd == 'SettingRefresh') {
-      if (typeof arg.setting === 'string') ApplySettingJson(arg.setting)
-      useSettingStore().$reset()
-    } else if (arg.cmd == 'ClearUserToken') {
-      UserDAL.ClearUserTokenMap()
-    }
-  } catch {}
 }

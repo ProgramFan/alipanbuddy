@@ -83,9 +83,6 @@ importers:
       secp256k1:
         specifier: ^5.0.0
         version: 5.0.1
-      semver:
-        specifier: ^7.8.5
-        version: 7.8.5
       typescript:
         specifier: ^5.4.4
         version: 5.9.3
@@ -3402,7 +3399,8 @@ snapshots:
   semver@6.3.1:
     optional: true
 
-  semver@7.8.5: {}
+  semver@7.8.5:
+    optional: true
 
   set-blocking@2.0.0:
     optional: true

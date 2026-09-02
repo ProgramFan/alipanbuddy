@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
+use alipancore::bodybridge::BodyStore;
 use alipancore::proxy::ProxyServer;
 use alipancore::speed::SpeedLimiter;
 use parking_lot::Mutex;
@@ -43,12 +44,11 @@ pub struct AppState {
     pub sha1_cancels: Mutex<HashMap<u64, Arc<AtomicBool>>>,
     pub keep_awake: Mutex<KeepAwakeHandle>,
     pub http_proxy: Mutex<String>,
-    pub always_on_top: Mutex<HashMap<String, bool>>,
     pub last_resize: Mutex<std::time::Instant>,
     pub rpc_client: reqwest::Client,
-    /// loopback body server (crate::bridge)
+    /// loopback body server (alipancore::bodybridge)
     pub bridge_port: Mutex<u16>,
-    pub body_store: Arc<crate::bridge::BodyStore>,
+    pub body_store: Arc<BodyStore>,
     /// `user_id -> access_token`, pushed by the renderer (`proxy_set_token`) for the image proxy route.
     pub user_tokens: Arc<Mutex<HashMap<String, String>>>,
 }
@@ -71,11 +71,10 @@ impl AppState {
             sha1_cancels: Mutex::new(HashMap::new()),
             keep_awake: Mutex::new(KeepAwakeHandle(None)),
             http_proxy: Mutex::new(String::new()),
-            always_on_top: Mutex::new(HashMap::new()),
             last_resize: Mutex::new(std::time::Instant::now()),
-            rpc_client: reqwest::Client::builder().no_proxy().timeout(std::time::Duration::from_secs(3)).build().unwrap_or_default(),
+            rpc_client: alipancore::net::loopback_client(std::time::Duration::from_secs(3)),
             bridge_port: Mutex::new(0),
-            body_store: Arc::new(crate::bridge::BodyStore::default()),
+            body_store: Arc::new(BodyStore::default()),
             user_tokens: Arc::new(Mutex::new(HashMap::new())),
         }
     }

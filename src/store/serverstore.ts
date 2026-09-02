@@ -18,14 +18,12 @@ export interface IShareSiteGroupModel {
 export interface ServerState {
   shareSiteList: IShareSiteModel[]
   shareSiteGroupList: IShareSiteGroupModel[]
-  helpUrl: string
 }
 
 const useServerStore = defineStore('serverstore', {
   state: (): ServerState => ({
     shareSiteList: [],
-    shareSiteGroupList: [],
-    helpUrl: 'aHR0cHM6Ly9naXRodWIuY29tL2dhb3poYW5nbWluL2FsaXl1bnBhbg=='
+    shareSiteGroupList: []
   }),
   actions: {
 
@@ -35,10 +33,6 @@ const useServerStore = defineStore('serverstore', {
 
     mSaveShareSiteGroupList(shareSiteGroupList: IShareSiteGroupModel[]) {
       this.shareSiteGroupList = shareSiteGroupList || []
-    },
-
-    mSaveHelpUrl(url: string) {
-      this.helpUrl = url || 'aHR0cHM6Ly9naXRodWIuY29tL2dhb3poYW5nbWluL2FsaXl1bnBhbg=='
     }
   }
 })

@@ -20,7 +20,7 @@ import { WorkerPage } from './workerpage/workercmd'
 import { setLocale } from './i18n'
 import UserDAL from './user/userdal'
 import IconFont from './components/IconFont.vue'
-import { getPageContext, getThemeState, initBridge, listen, markWorkerReady, parsePageRoute, type WorkerKind } from './tauri/bridge'
+import { getPageContext, getThemeState, initBridge, listen, markWorkerReady, parsePageRoute } from './tauri/bridge'
 import { installProxyUrlResolver } from './tauri/proxyResolver'
 import { installDragDropUpload } from './tauri/dragDrop'
 
@@ -106,10 +106,9 @@ async function bootstrap() {
 
   const route = parsePageRoute()
   if (route.page === 'PageWorker') {
-    const kind = (route.type === 'download' ? 'download' : 'upload') as WorkerKind
-    WorkerPage(kind)
+    WorkerPage('upload')
     appStore.togglePage('PageWorker')
-    await markWorkerReady(kind)
+    await markWorkerReady('upload')
   } else if (route.page === 'PageImage') {
     const ctx = await getPageContext()
     const pageUserId = String(ctx?.data?.user_id || '')
@@ -121,7 +120,6 @@ async function bootstrap() {
     installProxyUrlResolver()
     installDragDropUpload()
     PageMain()
-    window.IsMainPage = true
     appStore.togglePage('PageMain')
   }
 }

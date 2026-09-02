@@ -228,11 +228,6 @@ const handleClickBottleFish = async () => {
               @click='modalDaoRuShareLink()'>
       <IconFont name="iconlink2" />{{ t('file.importShare') }}
     </a-button>
-    <!-- AI 整理暂时隐藏 -->
-    <!-- <a-button v-if="!isselected && ['pan', 'pic', 'mypic'].includes(dirtype)" type='text' size='small' tabindex='-1'
-              @click='handleAiOrganizeCurrentDir'>
-      <IconFont name="iconscan" />AI 整理
-    </a-button> -->
   </div>
 </template>
 <style></style>

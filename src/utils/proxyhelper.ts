@@ -88,12 +88,6 @@ export function getProxyUrl(info: FileInfo) {
   return `${proxyUrl}?${buildQuery(query)}`
 }
 
-export function getRedirectUrl(info: FileInfo) {
-  let { debugProxyHost, debugProxyPort } = useSettingStore()
-  let redirectUrl = `http://${debugProxyHost}:${debugProxyPort}/redirect`
-  return `${redirectUrl}?${buildQuery(info)}`
-}
-
 export async function getRawUrl(user_id: string, drive_id: string, file_id: string, encType: string = '', password: string = ''): Promise<string | IRawUrl> {
   const downUrl = await AliFile.ApiFileDownloadUrl(user_id, drive_id, file_id, 14400)
   if (typeof downUrl == 'string') return downUrl
@@ -104,12 +98,4 @@ export async function getRawUrl(user_id: string, drive_id: string, file_id: stri
     data.url = getProxyUrl({ user_id, drive_id, file_id, encType, password, file_size: data.size, proxy_url: downUrl.url })
   }
   return data
-}
-
-export function getUrlFileName(url: string) {
-  let fileNameMatch = decodeURIComponent(url).match(/filename\*?=[^=;]*;?''([^&]+)/)
-  if (fileNameMatch && fileNameMatch[1]) {
-    return fileNameMatch[1]
-  }
-  return ''
 }

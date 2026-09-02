@@ -1,5 +1,5 @@
 import CryptoJS from 'crypto-js'
-import { flowencBytes, type FlowEncAlg } from '../../tauri/flowenc'
+import { type FlowEncAlg } from '../../tauri/flowenc'
 
 const cachePasswdOutward: { [key: string]: string } = {}
 
@@ -31,16 +31,6 @@ class FlowEnc {
     this.encryptType = encryptType
     this.sizeSalt = sizeSalt
     cachePasswdOutward[password + encryptType] = this.passwdOutward
-  }
-
-  /** 加密buff (whole buffer, positioned at offset 0) */
-  encryptBuff(data: Uint8Array | Buffer): Promise<Uint8Array> {
-    return flowencBytes(this.encryptType, this.password, this.sizeSalt, data)
-  }
-
-  /** 解密buff (whole buffer, positioned at offset 0) */
-  decryptBuff(data: Uint8Array | Buffer): Promise<Uint8Array> {
-    return flowencBytes(this.encryptType, this.password, this.sizeSalt, data)
   }
 
   static getPassWdOutward(password: string, encryptType: string): string {

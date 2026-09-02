@@ -1,15 +1,5 @@
-import { MD5 } from 'crypto-js'
 import pkg from '../../package.json'
-import { invoke } from '../tauri/invoke'
 
-
-export function ArrayCopyReverse(arr: any[]): any[] {
-  const copy: any[] = []
-  for (let i = arr.length - 1; i >= 0; i--) {
-    copy.push(arr[i])
-  }
-  return copy
-}
 
 export function ArrayCopy(arr: any[]): any[] {
   const copy: any[] = []
@@ -19,17 +9,6 @@ export function ArrayCopy(arr: any[]): any[] {
   return copy
 }
 
-export function MapKeyToArray<T>(map: Map<T, any>): T[] {
-  const arr: T[] = []
-  const keys = map.keys()
-  for (let i = 0, maxi = map.size; i < maxi; i++) {
-    const value = keys.next().value
-    if (value !== undefined) {
-      arr.push(value)
-    }
-  }
-  return arr
-}
 
 export function MapValueToArray<T>(map: Map<any, T>): T[] {
   const arr: T[] = []
@@ -61,25 +40,6 @@ export function ArrayKeyList<T>(keyname: string, arr: any[]): T[] {
   return selectkeys
 }
 
-export function BlobToString(body: Blob, encoding: string): Promise<string> {
-  return new Promise((resolve) => {
-    const reader = new FileReader()
-    reader.readAsText(body, encoding)
-    reader.onload = function() {
-      resolve((reader.result as string) || '')
-    }
-  })
-}
-
-export function BlobToBuff(body: Blob): Promise<ArrayBuffer | undefined> {
-  return new Promise((resolve) => {
-    const reader = new FileReader()
-    reader.readAsArrayBuffer(body)
-    reader.onload = function() {
-      resolve(reader.result as ArrayBuffer)
-    }
-  })
-}
 
 export function HanToPin(input: string): string {
   if (!input) return ''
@@ -113,40 +73,10 @@ export function GetExpiresTime(downUrl: string) {
   }
 }
 
-export function GetOssExpires(downUrl: string) {
-  let url = decodeURIComponent(downUrl)
-  if (!url || !url.includes('x-oss-expires=')) return 0
-  try {
-    let expires = url.substring(url.indexOf('x-oss-expires=') + 'x-oss-expires='.length)
-    expires = expires.substring(0, expires.indexOf('&'))
-    return parseInt(expires) - Math.floor(Date.now() / 1000)
-  } catch {
-    return 0
-  }
-}
-
-export function hashCode(key: string) {
-  let hash = 0
-  for (let i = 0, maxi = key.length; i < maxi; i++) {
-    hash = ((hash << 5) - hash + key.charCodeAt(i++)) << 0
-  }
-  return (hash >>> 0).toString(16).padStart(8, '0')
-}
-
-export function md5Code(key: string) {
-  return MD5(key).toString()
-}
 
 export function getPkgVersion() {
   return pkg.version
 }
 
 /** Returns `port` when it is free, otherwise the next free port above it (answered by the Rust side). */
-export function portIsOccupied(port: number) {
-  return invoke<number>('find_free_port', { port })
-    .then((freePort) => {
-      if (freePort !== port) console.log(`this port ${port} is occupied. using ${freePort}`)
-      return freePort || port
-    })
-    .catch(() => port)
-}
+

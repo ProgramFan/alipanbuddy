@@ -54,24 +54,12 @@ Download the installer for your platform from GitHub Releases:
 | Windows (x64 / ARM64) | `*-setup.exe` |
 | Debian / Ubuntu | `*.deb` |
 | Fedora / openSUSE | `*.rpm` |
-| Generic Linux (tarball) | `alipanbuddy-*-linux-<arch>.tar.gz` |
 
-The Linux tarball unpacks as a ready-made FHS prefix (`bin/`, `lib/alipanbuddy/`, `share/`) with a desktop entry and icons; extract it and run `install.sh` to install it as a desktop application:
-
-```bash
-tar -xzf alipanbuddy-<version>-linux-x86_64.tar.gz
-cd alipanbuddy-<version>-linux-x86_64
-sudo ./install.sh          # installs into /usr/local; or ./install.sh --user for ~/.local
-# uninstall: sudo ./install.sh --uninstall
-```
-
-All three Linux packages share one layout: the app and its bundled aria2c live in
+Both Linux packages share one layout: the app and its bundled aria2c live in
 `/usr/lib/alipanbuddy/` with `/usr/bin/alipanbuddy` as a symlink, so nothing collides
 with the system aria2 package.
 
-macOS installers are no longer prebuilt; build one yourself with `pnpm run build:mac`
-(if Gatekeeper blocks it, run `sudo xattr -d com.apple.quarantine /Applications/alipanbuddy.app`
-after verifying the source).
+macOS is no longer supported: there are no prebuilt installers and no maintained local build path.
 
 ---
 
@@ -88,11 +76,13 @@ pnpm run typecheck                  # renderer type check (vue-tsc)
 pnpm run typecheck:rust             # cargo check
 pnpm run test                       # Vitest
 pnpm run test:rust                  # cargo test -p alipancore
-pnpm run build                      # bump version → type check → vite build → tauri build (installers)
-pnpm run build:mac | build:linux | build:windows | build:windows:arm64
+pnpm run build:linux                # tauri build --no-bundle → .deb / .rpm
+pnpm run build:windows              # NSIS installer (x64)
+pnpm run build:windows:arm64        # NSIS installer (ARM64)
+pnpm run build:debug                # debug build (no bundling, devtools enabled)
 ```
 
-Aliyun Drive OpenAPI client id / secret live in `.env.local` (see `.env.example`); `pnpm run secrets:generate` writes `src/secrets.generated.ts` (git-ignored, existing values are never overwritten with empty ones) and runs automatically before `dev`, `build`, and `test`. Builds without built-in credentials can still log in: pick "Custom credentials" under Settings → Account → OpenAPI Authorization and enter your own client id / secret from the [Aliyun Drive developer portal](https://www.aliyundrive.com/developer).
+Aliyun Drive OpenAPI client id / secret live in `.env.local` (see `.env.example`); `pnpm run secrets:generate` writes `src/secrets.generated.ts` (git-ignored, existing values are never overwritten with empty ones) and runs automatically before `dev`, every `build:*`, and `test`. Builds without built-in credentials can still log in: pick "Custom credentials" under Settings → Account → OpenAPI Authorization and enter your own client id / secret from the [Aliyun Drive developer portal](https://www.aliyundrive.com/developer).
 
 See [README.md](./README.md) for the project layout.
 

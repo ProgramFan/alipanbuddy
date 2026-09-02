@@ -58,16 +58,7 @@ body[arco-theme='dark'] .fileitem.focus {
 }
 
 .iconfile_video,
-.iconfile-video,
-.iconfile-mkv,
-.iconfile-avi,
-.iconfile-flv,
-.iconfile-mp4,
-.iconfile-mov,
-.iconfile-asf,
-.iconfile-wmv,
-.iconfile-ts,
-.iconfile-rmvb {
+.iconfile-video {
     color: #3482f0 !important;
 }
 
@@ -75,7 +66,6 @@ body[arco-theme='dark'] .fileitem.focus {
 .iconfile-flac,
 .iconfile-ape,
 .iconfile-wav,
-.iconfile-cue,
 .iconfile-ogg,
 .iconfile-mp3 {
     color: #565bf5 !important;
@@ -86,15 +76,7 @@ body[arco-theme='dark'] .fileitem.focus {
 }
 
 .iconfile-img,
-.iconfile-ai,
-.iconfile-bmp,
-.iconfile-eps,
-.iconfile-gif,
-.iconfile-png,
-.iconfile-jpg,
-.iconfile-psd,
-.iconfile-svg,
-.iconfile-tif {
+.iconfile-psd {
     color: #fa8d11 !important;
 }
 
@@ -134,24 +116,8 @@ body[arco-theme='dark'] .fileitem.focus {
 .fileicon .iconwenjian,
 .iconfile-apk,
 .iconfile-exe,
-.iconfile-xci,
-.iconfile-nsp,
-.iconfile-bin,
-.iconfile-dmg,
-.iconfile-vmdk,
 .iconfile-iso,
-.iconfile-gho,
-.iconfile-mds,
-.iconfile-vhd,
-.iconfile-god,
 .iconfile-7z,
-.iconfile-swf,
-.iconfile-ssa,
-.iconfile-ass,
-.iconfile-srt,
-.iconfile-stl,
-.iconfile-scc,
-.iconfile-html,
 .iconfile-bt {
     color: #999999 !important;
 }

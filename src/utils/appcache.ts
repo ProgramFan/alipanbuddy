@@ -169,7 +169,6 @@ export default class AppCache {
     } else {
       message.success('清理缓存成功，自动重启神行云盘助手')
       Sleep(3000).then(() => {
-        // window.WebReload()
         window.WebRelaunch()
       })
     }

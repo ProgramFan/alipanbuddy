@@ -402,8 +402,4 @@ export default class AliUpload {
       return 'error'
     }
   }
-
-  static isNetworkError(e: Error): boolean {
-    return e.message == 'Network Error' || e.message.includes('socket hang up') || e.message.includes('getaddrinfo ENOTFOUND') || e.message.includes('timeout of') || e.message.includes('connect ECONNRESET') || e.message.includes('connect ETIMEDOUT') || e.message.includes('EPIPE')
-  }
 }

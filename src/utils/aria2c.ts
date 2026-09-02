@@ -13,6 +13,7 @@ import AliTrash from '../aliapi/trash'
 import path from './path'
 import fs from '../tauri/fs'
 import { getRawUrl } from './proxyhelper'
+import { Sleep } from './format'
 import { getImageProxyBase } from './imageproxy'
 import { callAriaClient, getAriaAddUriGid, isAriaDuplicateGidError } from './aria2Rpc'
 import { buildAriaAddOptions } from '../down/integration/aria2AddOptions'
@@ -113,19 +114,6 @@ export async function AriaTest(https: boolean, host: string, port: number, secre
       message.error('连接失败 ' + (error.message ? error.message : '') + ' ' + url + ' secret=' + secret)
       return false
     })
-}
-
-function Sleep(msTime: number) {
-  return new Promise((resolve) =>
-    setTimeout(
-      () =>
-        resolve({
-          success: true,
-          time: msTime
-        }),
-      msTime
-    )
-  )
 }
 
 

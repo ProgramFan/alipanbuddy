@@ -32,12 +32,11 @@ it('does not reject WMA raw download urls as preview-only audio', async () => {
 })
 
 it('still routes encrypted WMA files through the decrypting proxy instead of refusing them', async () => {
-  const { getRawUrl, getUrlFileName } = await import('../proxyhelper')
+  const { getRawUrl } = await import('../proxyhelper')
   const raw = await getRawUrl('u1', 'd1', 'f1', 'xbyEncrypt1')
   expect(typeof raw).toBe('object')
   const url = new URL((raw as any).url)
   expect(url.pathname).toBe('/proxy')
   expect(url.searchParams.get('proxy_url')).toBe(WMA_URL)
   expect(url.searchParams.get('encType')).toBe('xbyEncrypt1')
-  expect(getUrlFileName(WMA_URL)).toBe('song.wma')
 })

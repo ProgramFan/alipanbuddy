@@ -224,7 +224,6 @@ export default class UserDAL {
       DB.saveUser(token)
         .then(() => {
           window.WinMsgToUpload({ cmd: 'ClearUserToken' })
-          window.WinMsgToDownload({ cmd: 'ClearUserToken' })
         })
         .catch(() => {
         })

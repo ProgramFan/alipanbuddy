@@ -81,21 +81,10 @@ body {
     flex-basis: unset !important;
 }
 
+/* Drag regions are started from JS (see NO_DRAG_SELECTOR in src/tauri/bridge.ts):
+   Tauri has no `-webkit-app-region`, so only the selectors themselves still matter here. */
 .q-electron-drag {
     user-select: none;
-    -webkit-app-region: drag;
-}
-
-.q-electron-drag--exception,
-.q-electron-drag button,
-.q-electron-drag ul,
-.q-electron-drag li,
-.q-electron-drag .arco-menu-item,
-.q-electron-drag .arco-menu-pop,
-.q-electron-drag .arco-menu-pop-header,
-.q-electron-drag .arco-menu-overflow-wrap,
-.q-electron-drag .arco-avatar {
-    -webkit-app-region: no-drag;
 }
 
 * {
@@ -420,7 +409,6 @@ body[arco-theme='dark'] .toppanbtn .arco-btn.danger:active {
 }
 
 .arco-modal-close-btn {
-    -webkit-app-region: no-drag;
     position: absolute;
     right: 20px;
 }
@@ -928,17 +916,6 @@ body[arco-theme='dark'] .toppanarea {
 .arco-modal {
     border-radius: var(--md-shape-lg) !important;
     box-shadow: var(--md-elevation-3) !important;
-}
-
-.shortcut-key {
-    display: inline-flex;
-    font-family: 'Inter', sans-serif;
-    font-size: 12px;
-    background-color: #f3f4f6;
-    border-radius: 0.25rem;
-    margin-left: 0.5rem;
-    padding-left: 0.25rem;
-    padding-right: 0.25rem;
 }
 
 .arco-btn-text.arco-btn-status-warning:hover {

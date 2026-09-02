@@ -31,11 +31,6 @@ export function ParseShareIDList(txt: string): IID[] {
   return list
 }
 
-export function ParseShareIDOne(txt: string): IID {
-  txt = txt.replaceAll('密码', '提取码').replaceAll('password', '提取码').replaceAll('pwd', '提取码').replaceAll('PWD', '提取码')
-  txt = txt.replaceAll('\n提取码', '提取码')
-  return GetShareID(txt)
-}
 
 
 function GetShareID(txt: string): IID {

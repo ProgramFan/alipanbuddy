@@ -61,9 +61,6 @@ const fs = {
   rename(from: string, to: string): Promise<void> {
     return invoke('fs_rename', { from, to })
   },
-  copyFile(from: string, to: string): Promise<void> {
-    return invoke('fs_copy', { from, to })
-  },
   readTextFile(path: string): Promise<string> {
     return invoke<string>('fs_read_text', { path })
   },
@@ -78,9 +75,6 @@ const fs = {
   },
   async readRange(path: string, start: number, length: number): Promise<Uint8Array> {
     return fromBase64(await invoke<string>('fs_read_range', { path, start, length }))
-  },
-  dirSize(path: string): Promise<number> {
-    return invoke<number>('fs_dir_size', { path })
   }
 }
 

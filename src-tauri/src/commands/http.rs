@@ -43,13 +43,11 @@ pub struct HttpResponseOut {
 }
 
 pub fn build_client(proxy: &str, follow_redirects: bool) -> reqwest::Client {
-    let mut builder = reqwest::Client::builder()
-        .danger_accept_invalid_certs(true)
+    // gzip only (brotli/deflate are not compiled in): decoding Aliyun's big listing responses with
+    // them failed on a real host ("error decoding response body"); the identity retry below covers
+    // the remaining cases.
+    let builder = alipancore::net::client_builder(Some(proxy))
         .http1_only()
-        // gzip only: brotli/deflate decoding of Aliyun's big listing responses failed on a real host
-        // ("error decoding response body"); the identity retry below covers the remaining cases.
-        .no_brotli()
-        .no_deflate()
         .pool_max_idle_per_host(16)
         .pool_idle_timeout(Duration::from_secs(60))
         .tcp_keepalive(Duration::from_secs(30))
@@ -57,12 +55,7 @@ pub fn build_client(proxy: &str, follow_redirects: bool) -> reqwest::Client {
         // per-read stall limit; the overall body deadline is applied per request below
         .read_timeout(Duration::from_secs(45))
         .redirect(if follow_redirects { reqwest::redirect::Policy::limited(10) } else { reqwest::redirect::Policy::none() });
-    if proxy.is_empty() {
-        builder = builder.no_proxy();
-    } else if let Ok(p) = reqwest::Proxy::all(proxy) {
-        builder = builder.proxy(p);
-    }
-    builder.build().unwrap_or_else(|_| reqwest::Client::new())
+    alipancore::net::build(builder)
 }
 
 struct Performed {
@@ -249,9 +242,9 @@ pub async fn http_request(app: AppHandle, request: HttpRequestArg) -> Result<Htt
     log::info!("http {} {} -> {} {}B in {}ms", request.method, label, status.as_u16(), body.len(), started.elapsed().as_millis());
     let state = app.state::<AppState>();
     let bridge_port = *state.bridge_port.lock();
-    let (body_base64, body_id, body_url) = if body.len() > crate::bridge::INLINE_LIMIT && bridge_port > 0 {
+    let (body_base64, body_id, body_url) = if body.len() > alipancore::bodybridge::INLINE_LIMIT && bridge_port > 0 {
         let content_type = headers.iter().find(|(k, _)| k == "content-type").map(|(_, v)| v.clone()).unwrap_or_default();
-        let id = state.body_store.insert(content_type, body.to_vec());
+        let id = state.body_store.insert(content_type, body);
         (String::new(), Some(id), Some(format!("http://127.0.0.1:{bridge_port}/body/{id}")))
     } else {
         (base64::engine::general_purpose::STANDARD.encode(&body), None, None)

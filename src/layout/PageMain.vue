@@ -13,7 +13,7 @@ import {
 } from '../store'
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-vue-next'
 import { onHideRightMenu, TestAlt, TestCtrl, TestKey, TestShift } from '../utils/keyboardhelper'
-import { copyToClipboard, getFromClipboard, openExternal } from '../utils/electronhelper'
+import { getFromClipboard, openExternal } from '../utils/electronhelper'
 import { Modal } from '@arco-design/web-vue'
 import DebugLog from '../utils/debuglog'
 import message from '../utils/message'
@@ -26,7 +26,6 @@ import UserLogin from '../user/UserLogin.vue'
 import ShutDown from '../setting/ShutDown.vue'
 
 import MyModal from './MyModal.vue'
-import { B64decode } from '../utils/format'
 import { throttle } from '../utils/debounce'
 import { modalDaoRuShareLink } from '../utils/modal'
 import { detectShareLink } from '../utils/shareLinkDetection'
@@ -525,17 +524,6 @@ body {
 }
 
 /* 菜单项仍可点击，隐藏标签留下的菜单空白则可用于拖动窗口。 */
-#xbyhead2 .arco-menu,
-#xbyhead2 .arco-menu-horizontal .arco-menu-inner,
-#xbyhead2 .arco-menu-overflow-wrap {
-  -webkit-app-region: drag;
-}
-
-#xbyhead2 .arco-menu-horizontal .arco-menu-item,
-#xbyhead2 .arco-menu-horizontal .arco-menu-item * {
-  -webkit-app-region: no-drag;
-}
-
 #xbyhead2 .arco-menu-horizontal .arco-menu-pop,
 #xbyhead2 .arco-menu-horizontal .arco-menu-pop-header {
   background: transparent !important;

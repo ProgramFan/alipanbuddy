@@ -164,7 +164,7 @@ const useAppStore = defineStore('app', {
           break
         }
         case 'down': {
-          next(this.appTabMenuMap, this.appTab, ['DowningRight', 'DownedRight', 'UploadingRight', 'UploadedRight', 'SyncRight'])
+          next(this.appTabMenuMap, this.appTab, ['DowningRight', 'DownedRight', 'UploadingRight', 'UploadedRight'])
           break
         }
         case 'share': {

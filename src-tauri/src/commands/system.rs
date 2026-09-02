@@ -23,20 +23,14 @@ pub struct PlatformInfo {
     arch: &'static str,
     version: String,
     app_version: String,
-    exec_path: String,
     app_path: String,
     resource_path: String,
-    argv0: String,
-    argv: Vec<String>,
-    window_label: String,
     setting_json: String,
 }
 
 fn node_platform() -> &'static str {
     if cfg!(target_os = "windows") {
         "win32"
-    } else if cfg!(target_os = "macos") {
-        "darwin"
     } else {
         "linux"
     }
@@ -53,20 +47,15 @@ fn node_arch() -> &'static str {
 }
 
 #[tauri::command]
-pub fn platform_info(app: AppHandle, window: Window) -> PlatformInfo {
+pub fn platform_info(app: AppHandle) -> PlatformInfo {
     let state = app.state::<AppState>();
-    let argv: Vec<String> = std::env::args().collect();
     PlatformInfo {
         platform: node_platform(),
         arch: node_arch(),
         version: tauri::VERSION.to_string(),
         app_version: app.package_info().version.to_string(),
-        exec_path: std::env::current_exe().map(|p| p.display().to_string()).unwrap_or_default(),
         app_path: state.user_data.display().to_string(),
         resource_path: state.resource_dir.display().to_string(),
-        argv0: argv.first().cloned().unwrap_or_default(),
-        argv,
-        window_label: window.label().to_string(),
         setting_json: std::fs::read_to_string(state.user_file("setting.config")).unwrap_or_default(),
     }
 }
@@ -80,11 +69,8 @@ pub struct DialogFilter {
 
 #[derive(Debug, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
-#[allow(dead_code)]
 pub struct OpenDialogOptions {
     title: Option<String>,
-    #[serde(rename = "buttonLabel")]
-    button_label: Option<String>,
     #[serde(rename = "defaultPath")]
     default_path: Option<String>,
     filters: Option<Vec<DialogFilter>>,
@@ -165,9 +151,7 @@ pub fn show_item_in_folder(app: AppHandle, path: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn shutdown_computer(app: AppHandle, sudo: Option<bool>, quit_app: Option<bool>) {
-    let result = if cfg!(target_os = "macos") {
-        Command::new("osascript").args(["-e", "tell application \"System Events\" to shut down"]).spawn()
-    } else if cfg!(target_os = "windows") {
+    let result = if cfg!(target_os = "windows") {
         Command::new("shutdown").args(["-s", "-f", "-t", "0"]).spawn()
     } else if sudo.unwrap_or(false) {
         Command::new("sudo").args(["shutdown", "-h", "now"]).spawn()
@@ -324,11 +308,6 @@ pub fn relaunch_app(app: AppHandle) {
 }
 
 #[tauri::command]
-pub fn quit_app(app: AppHandle) {
-    app.exit(0);
-}
-
-#[tauri::command]
 pub fn save_theme(app: AppHandle, theme: String) {
     let state = app.state::<AppState>();
     paths::write_theme(&state.user_data, &theme);
@@ -363,9 +342,4 @@ pub fn set_launch_at_login(app: AppHandle, enable: bool, show: Option<bool>) -> 
 #[tauri::command]
 pub fn aria_rpc_port(app: AppHandle) -> Result<u16, String> {
     crate::aria::ensure_running(&app)
-}
-
-#[tauri::command]
-pub fn aria_restart(app: AppHandle) -> Result<u16, String> {
-    crate::aria::restart(&app)
 }

@@ -1074,10 +1074,6 @@ const handleSelectRow = (visible: boolean, treeNodeKey: string) => {
   border-bottom: none !important;
 }
 
-.renamemulti .arco-modal-header,
-.renamemulti .arco-modal-title {
-  -webkit-app-region: drag;
-}
 
 .renamemulti .arco-modal-body {
   padding: 0 !important;

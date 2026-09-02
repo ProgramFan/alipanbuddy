@@ -35,11 +35,6 @@ const applyAriaOptions = () => AriaApplyAdvancedOptions().catch(() => {})
   <div class="settingcard">
     <div class="settinghead">{{ t('settings.aria.seeding') }}</div>
     <div class="settingrow">
-      <AntdCheckbox tabindex="-1" :checked="settingStore.ariaKeepSeeding" @change="(e:any) => { cb({ ariaKeepSeeding: e.target.checked }); applyAriaOptions() }">
-        {{ t('settings.aria.keepSeeding') }}
-      </AntdCheckbox>
-    </div>
-    <div class="settingrow" v-show="!settingStore.ariaKeepSeeding">
       <span class="settinglabel">{{ t('settings.aria.seedRatio') }}</span>
       <a-input-number tabindex="-1" :model-value="settingStore.ariaSeedRatio" :min="0" :step="0.5" :style="{ width: '90px' }" @update:model-value="(v: number) => { cb({ ariaSeedRatio: v || 0 }); applyAriaOptions() }" />
       <span class="settingitem">{{ t('settings.aria.times') }}</span>
@@ -65,11 +60,6 @@ const applyAriaOptions = () => AriaApplyAdvancedOptions().catch(() => {})
 
     <div class="settingspace"></div>
     <div class="settinghead">{{ t('settings.downloadAdvanced.trackerSync') }}</div>
-    <div class="settingrow">
-      <AntdCheckbox tabindex="-1" :checked="settingStore.ariaAutoSyncTracker" @change="(e:any) => cb({ ariaAutoSyncTracker: e.target.checked })">
-        {{ t('settings.aria.autoSyncTrackerOnStart') }} {{ t('settings.aria.autoSyncEvery12h') }}
-      </AntdCheckbox>
-    </div>
     <div class="settingrow">
       <a-button :loading="trackerSyncing" size="small" type="outline" tabindex="-1" @click="handleSyncTrackers">{{ t('settings.aria.syncTracker') }}</a-button>
     </div>
@@ -137,11 +127,6 @@ const applyAriaOptions = () => AriaApplyAdvancedOptions().catch(() => {})
 
     <div class="settingspace"></div>
     <div class="settinghead">{{ t('settings.downloadAdvanced.taskRecovery') }}</div>
-    <div class="settingrow">
-      <AntdCheckbox tabindex="-1" :checked="settingStore.ariaResumeAllWhenLaunched" @change="(e:any) => cb({ ariaResumeAllWhenLaunched: e.target.checked })">
-        {{ t('settings.aria.resumeOnLaunch') }}
-      </AntdCheckbox>
-    </div>
     <div class="settingrow">
       <AntdCheckbox tabindex="-1" :checked="settingStore.ariaTaskNotification" @change="(e:any) => cb({ ariaTaskNotification: e.target.checked })">
         {{ t('settings.downloadAdvanced.taskNotification') }}

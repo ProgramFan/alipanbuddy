@@ -34,4 +34,3 @@ export function detectShareLink(text: string): DetectedShareLink | undefined {
   return undefined
 }
 
-export const canImportShareLink = (text: string): boolean => detectShareLink(text)?.canImport === true

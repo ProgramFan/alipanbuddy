@@ -1,5 +1,5 @@
 <script lang="ts">
-import { modalCloseAll, modalDownload } from '../../utils/modal'
+import { modalCloseAll } from '../../utils/modal'
 import { defineComponent, ref } from 'vue'
 import useSettingStore from "../../setting/settingstore";
 import { menuDownload } from './topbtn'

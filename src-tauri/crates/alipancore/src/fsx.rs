@@ -155,10 +155,6 @@ pub fn rename(from: &Path, to: &Path) -> Result<(), FsError> {
     Ok(())
 }
 
-pub fn copy(from: &Path, to: &Path) -> Result<u64, FsError> {
-    Ok(fs::copy(from, to)?)
-}
-
 pub fn read_text(path: &Path) -> Result<String, FsError> {
     Ok(fs::read_to_string(path)?)
 }
@@ -195,21 +191,6 @@ pub fn read_range(path: &Path, start: u64, len: usize) -> Result<Vec<u8>, FsErro
     Ok(buf)
 }
 
-/// Total size of all regular files below `path` (errors are ignored, symlinks are not followed).
-pub fn dir_size(path: &Path) -> u64 {
-    let mut total = 0u64;
-    let Ok(entries) = fs::read_dir(path) else { return 0 };
-    for entry in entries.flatten() {
-        let Ok(ft) = entry.file_type() else { continue };
-        if ft.is_dir() {
-            total += dir_size(&entry.path());
-        } else if ft.is_file() {
-            total += entry.metadata().map(|m| m.len()).unwrap_or(0);
-        }
-    }
-    total
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -229,10 +210,8 @@ mod tests {
         let entries = read_dir(&root.join("a")).unwrap();
         assert_eq!(entries.len(), 1);
         assert!(entries[0].is_directory && entries[0].name == "b");
-        assert_eq!(dir_size(root), 11);
         rename(&sub.join("x.txt"), &sub.join("y.txt")).unwrap();
         assert!(exists(&sub.join("y.txt")) && !exists(&sub.join("x.txt")));
-        copy(&sub.join("y.txt"), &root.join("z.txt")).unwrap();
         let err = stat(&root.join("missing"), true).unwrap_err();
         assert_eq!(err.code, "ENOENT");
         remove(&root.join("missing"), false, true).unwrap();

@@ -1,7 +1,6 @@
 name: Build Release
 
 on:
-  workflow_dispatch:
   push:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'
@@ -19,7 +18,6 @@ jobs:
 
     steps:
       - name: Create shared release draft
-        if: startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -54,16 +52,17 @@ jobs:
       - name: Checkout Git repository
         uses: actions/checkout@v4
 
+      # pnpm has to exist before setup-node so that `cache: pnpm` can find the store.
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          run_install: false
+
       - name: Install Node
         uses: actions/setup-node@v4
         with:
           node-version: 22.12.0
-
-      - uses: pnpm/action-setup@v3
-        name: Install pnpm
-        with:
-          version: 10.32.1
-          run_install: false
+          cache: 'pnpm'
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -74,19 +73,6 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri -> target
-
-      - name: Get Pnpm Store Directory
-        shell: bash
-        run: |
-          echo "PNPM_STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
-
-      - name: Setup Pnpm Cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.PNPM_STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
 
       - name: Install Linux dependencies
         if: startsWith(matrix.os, 'ubuntu')
@@ -115,15 +101,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+          tagName: ${{ github.ref_name }}
           releaseName: AlipanBuddy ${{ github.ref_name }}
           releaseDraft: true
-          prerelease: true
           args: ${{ matrix.args }}
 
       # Linux skips Tauri's bundler: scripts/build-linux-packages.sh assembles the
-      # tar.gz / deb / rpm from one FHS staging tree (binaries in /usr/lib/alipanbuddy
-      # with a /usr/bin symlink, so the bundled aria2c never collides with the system one).
+      # deb / rpm from one FHS staging tree (binaries in /usr/lib/alipanbuddy with a
+      # /usr/bin symlink, so the bundled aria2c never collides with the system one).
       - name: Build Tauri App (Linux binary)
         if: startsWith(matrix.os, 'ubuntu')
         run: pnpm exec tauri build ${{ matrix.args }} --no-bundle
@@ -133,22 +118,14 @@ jobs:
         run: bash scripts/build-linux-packages.sh ${{ matrix.target }} --require-all
 
       - name: Upload Linux packages to release
-        if: startsWith(matrix.os, 'ubuntu') && startsWith(github.ref, 'refs/tags/')
+        if: startsWith(matrix.os, 'ubuntu')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${GITHUB_REF_NAME}" dist-linux/*.tar.gz dist-linux/*.deb dist-linux/*.rpm --repo "${GITHUB_REPOSITORY}" --clobber
-
-      - name: Archive Linux packages (manual run)
-        if: startsWith(matrix.os, 'ubuntu') && !startsWith(github.ref, 'refs/tags/')
-        uses: actions/upload-artifact@v4
-        with:
-          name: linux-packages-${{ matrix.target }}
-          path: dist-linux/*
+        run: gh release upload "${GITHUB_REF_NAME}" dist-linux/*.deb dist-linux/*.rpm --repo "${GITHUB_REPOSITORY}" --clobber
 
   finalize-release:
     name: Finalize Release
     needs: release
-    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -164,16 +141,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
-          version_without_v="${GITHUB_REF_NAME#v}"
-          release_doc=""
-          shopt -s nullglob
-          for candidate in "docs/releases/${GITHUB_REF_NAME}.md" "docs/releases/${version_without_v}.md" docs/releases/*"${GITHUB_REF_NAME}"-release.md docs/releases/*"${version_without_v}"-release.md; do
-            if [[ -f "${candidate}" ]]; then
-              release_doc="${candidate}"
-              break
-            fi
-          done
-          if [[ -n "${release_doc}" ]]; then
+          release_doc="docs/releases/${GITHUB_REF_NAME}.md"
+          if [[ -f "${release_doc}" ]]; then
             echo "Using release notes from ${release_doc}"
             cp "${release_doc}" release-notes.md
           else
@@ -199,5 +168,5 @@ jobs:
             --repo "${GITHUB_REPOSITORY}" \
             --title "AlipanBuddy ${GITHUB_REF_NAME}" \
             --notes-file release-notes.md \
-            --prerelease \
+            --prerelease=false \
             --draft=false

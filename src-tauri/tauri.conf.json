@@ -20,11 +20,10 @@
   "bundle": {
     "active": true,
     "targets": [
-      "nsis",
-      "dmg"
+      "nsis"
     ],
     "category": "Utility",
-    "copyright": "copyright ©2026 GaoZhangMin",
+    "copyright": "copyright ©2026 programfan",
     "publisher": "AlipanBuddy",
     "shortDescription": "AlipanBuddy (神行云盘助手) - Aliyun Drive desktop client",
     "longDescription": "AlipanBuddy (神行云盘助手) is an Aliyun Drive desktop client: multi-account login, file and album management, sharing, aria2c downloads, encrypted upload/download.",
@@ -32,34 +31,11 @@
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
-      "icons/icon.icns",
       "icons/icon.ico"
     ],
     "externalBin": [
       "binaries/aria2c"
     ],
-    "resources": {
-      "resources/aria2.conf": "engine/aria2.conf"
-    },
-    "macOS": {
-      "minimumSystemVersion": "10.15",
-      "entitlements": "../build/entitlements.mac.plist",
-      "hardenedRuntime": true,
-      "dmg": {
-        "windowSize": {
-          "width": 560,
-          "height": 320
-        },
-        "appPosition": {
-          "x": 160,
-          "y": 160
-        },
-        "applicationFolderPosition": {
-          "x": 400,
-          "y": 160
-        }
-      }
-    },
     "windows": {
       "nsis": {
         "installMode": "perMachine",

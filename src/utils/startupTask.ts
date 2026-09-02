@@ -1,4 +1,4 @@
-export const STARTUP_TASK_TIMEOUT_MS = 5_000
+const STARTUP_TASK_TIMEOUT_MS = 5_000
 
 /** Prevent one unavailable cloud provider from blocking the whole application startup. */
 export const withStartupTimeout = <T>(task: Promise<T>, label: string, timeoutMs = STARTUP_TASK_TIMEOUT_MS): Promise<T> => {

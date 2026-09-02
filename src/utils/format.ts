@@ -89,20 +89,6 @@ export function humanDateTime(value: number | string | undefined): string {
   return y + '-' + m + '-' + d + ' ' + h + ':' + minute + ':' + second 
 }
 
-export function humanDateTimeYMD(value: number | string | undefined): string {
-  if (!value) return ''
-  if (typeof value === 'string') value = parseInt(value)
-  if (value > 1000000000 && value < 10000000000) value = value * 1000
-  const date = new Date(value)
-  const y = date.getFullYear().toString()
-  if (y == 'NaN') return ''
-  let m: number | string = date.getMonth() + 1
-  m = m < 10 ? '0' + m.toString() : m.toString()
-  let d: number | string = date.getDate()
-  d = d < 10 ? '0' + d.toString() : d.toString()
-
-  return y + '-' + m + '-' + d 
-}
 
 export function humanDateTimeDateStr(value: string | undefined): string {
   if (!value) return ''
@@ -178,125 +164,6 @@ export function humanExpiration(expiration: string | undefined, timenow: number 
   }
 }
 
-
-export function GetKeyHashHex(full: string): string {
-  const buffa = Buffer.from(full)
-
-  let h1b, k1
-
-  const remainder = buffa.length & 3 
-  const bytes = buffa.length - remainder
-  let h1 = 0
-  const c1 = 0xcc9e2d51
-  const c2 = 0x1b873593
-  let i = 0
-
-  while (i < bytes) {
-    k1 = buffa.readUInt8(i) | (buffa.readUInt8(++i) << 8) | (buffa.readUInt8(++i) << 16) | (buffa.readUInt8(++i) << 24)
-    ++i
-    k1 = ((k1 & 0xffff) * c1 + ((((k1 >>> 16) * c1) & 0xffff) << 16)) & 0xffffffff
-    k1 = (k1 << 15) | (k1 >>> 17)
-    k1 = ((k1 & 0xffff) * c2 + ((((k1 >>> 16) * c2) & 0xffff) << 16)) & 0xffffffff
-    h1 ^= k1
-    h1 = (h1 << 13) | (h1 >>> 19)
-    h1b = ((h1 & 0xffff) * 5 + ((((h1 >>> 16) * 5) & 0xffff) << 16)) & 0xffffffff
-    h1 = (h1b & 0xffff) + 0x6b64 + ((((h1b >>> 16) + 0xe654) & 0xffff) << 16)
-  }
-
-  k1 = 0
-  switch (remainder) {
-    case 3:
-      k1 ^= buffa.readUInt8(i + 2) << 16
-      break
-    case 2:
-      k1 ^= buffa.readUInt8(i + 1) << 8
-      break
-    case 1:
-      k1 ^= buffa.readUInt8(i)
-      k1 = ((k1 & 0xffff) * c1 + ((((k1 >>> 16) * c1) & 0xffff) << 16)) & 0xffffffff
-      k1 = (k1 << 15) | (k1 >>> 17)
-      k1 = ((k1 & 0xffff) * c2 + ((((k1 >>> 16) * c2) & 0xffff) << 16)) & 0xffffffff
-      h1 ^= k1
-      break
-  }
-
-  h1 ^= buffa.length
-  h1 ^= h1 >>> 16
-  h1 = ((h1 & 0xffff) * 0x85ebca6b + ((((h1 >>> 16) * 0x85ebca6b) & 0xffff) << 16)) & 0xffffffff
-  h1 ^= h1 >>> 13
-  h1 = ((h1 & 0xffff) * 0xc2b2ae35 + ((((h1 >>> 16) * 0xc2b2ae35) & 0xffff) << 16)) & 0xffffffff
-  h1 ^= h1 >>> 16
-  return (h1 >>> 0).toString(16).padStart(8, '0') 
-}
-
-
-export function GetKeyHashNumber(full: string): number {
-  const buffa = Buffer.from(full)
-
-  let h1b, k1
-
-  const remainder = buffa.length & 3 
-  const bytes = buffa.length - remainder
-  let h1 = 0
-  const c1 = 0xcc9e2d51
-  const c2 = 0x1b873593
-  let i = 0
-
-  while (i < bytes) {
-    k1 = buffa.readUInt8(i) | (buffa.readUInt8(++i) << 8) | (buffa.readUInt8(++i) << 16) | (buffa.readUInt8(++i) << 24)
-    ++i
-    k1 = ((k1 & 0xffff) * c1 + ((((k1 >>> 16) * c1) & 0xffff) << 16)) & 0xffffffff
-    k1 = (k1 << 15) | (k1 >>> 17)
-    k1 = ((k1 & 0xffff) * c2 + ((((k1 >>> 16) * c2) & 0xffff) << 16)) & 0xffffffff
-    h1 ^= k1
-    h1 = (h1 << 13) | (h1 >>> 19)
-    h1b = ((h1 & 0xffff) * 5 + ((((h1 >>> 16) * 5) & 0xffff) << 16)) & 0xffffffff
-    h1 = (h1b & 0xffff) + 0x6b64 + ((((h1b >>> 16) + 0xe654) & 0xffff) << 16)
-  }
-
-  k1 = 0
-  switch (remainder) {
-    case 3:
-      k1 ^= buffa.readUInt8(i + 2) << 16
-      break
-    case 2:
-      k1 ^= buffa.readUInt8(i + 1) << 8
-      break
-    case 1:
-      k1 ^= buffa.readUInt8(i)
-      k1 = ((k1 & 0xffff) * c1 + ((((k1 >>> 16) * c1) & 0xffff) << 16)) & 0xffffffff
-      k1 = (k1 << 15) | (k1 >>> 17)
-      k1 = ((k1 & 0xffff) * c2 + ((((k1 >>> 16) * c2) & 0xffff) << 16)) & 0xffffffff
-      h1 ^= k1
-      break
-  }
-
-  h1 ^= buffa.length
-  h1 ^= h1 >>> 16
-  h1 = ((h1 & 0xffff) * 0x85ebca6b + ((((h1 >>> 16) * 0x85ebca6b) & 0xffff) << 16)) & 0xffffffff
-  h1 ^= h1 >>> 13
-  h1 = ((h1 & 0xffff) * 0xc2b2ae35 + ((((h1 >>> 16) * 0xc2b2ae35) & 0xffff) << 16)) & 0xffffffff
-  h1 ^= h1 >>> 16
-  return h1 >>> 0 
-}
-
-export function StringsToMap(list: string[]): Map<string, boolean> {
-  const map = new Map<string, boolean>()
-  try {
-    for (let i = 0, maxi = list.length; i < maxi; i++) {
-      map.set(list[i], true)
-    }
-  } catch {}
-  return map
-}
-
-export function guid(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-    const r = (Math.random() * 16) | 0
-    const v = c == 'x' ? r : (r & 0x3) | 0x8
-    return v.toString(16)
-  })
-}
 const pk = 'abcDEfgFGHJIdeoOPQpyzABqwxC5678KLhijklmnMNWXYZ012rstuv34RSTUV99'
 export function randomSharePassword(): string {
   return 'xxxx'.replace(/[x]/g, function (c) {
@@ -305,14 +172,6 @@ export function randomSharePassword(): string {
   })
 }
 
-
-export function b64encode(str: string): string {
-  try {
-    return Buffer.from(str).toString('base64')
-  } catch {
-    return ''
-  }
-}
 
 
 export function b64decode(base64: string): string {
@@ -335,18 +194,6 @@ export function B64decode(b64str: string): string {
   }
 }
 
-export function B64encode(str: string): string {
-  if (!str) return ''
-  try {
-    let b64str = b64encode(str)
-    b64str = b64str.replaceAll('+', '-')
-    b64str = b64str.replaceAll('/', '_')
-    b64str = b64str.replaceAll('=', '*')
-    return b64str
-  } catch {
-    return ''
-  }
-}
 
 export function Sleep(msTime: number) {
   return new Promise((resolve) =>
@@ -361,13 +208,3 @@ export function Sleep(msTime: number) {
   )
 }
 
-
-export function Unicode(str: string): string {
-  const v = str.split('')
-  let ascii = ''
-  for (let i = 0, maxi = v.length; i < maxi; i++) {
-    const code = Number(v[i].charCodeAt(0))
-    ascii += '\\u' + code.toString(16).padStart(4, '0')
-  }
-  return ascii
-}

@@ -155,11 +155,6 @@ pub fn ensure_running(app: &AppHandle) -> Result<u16, String> {
     Ok(port)
 }
 
-pub fn restart(app: &AppHandle) -> Result<u16, String> {
-    shutdown_blocking(app);
-    ensure_running(app)
-}
-
 /// Graceful shutdown: `aria2.forceShutdown` over RPC (bounded), then kill.
 pub fn shutdown_blocking(app: &AppHandle) {
     let state = app.state::<AppState>();
