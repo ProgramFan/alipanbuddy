@@ -22,7 +22,7 @@ import usePanFileStore from '../panfilestore'
 import { useDowningStore, useSettingStore } from '../../store'
 import { Sleep } from '../../utils/format'
 import TreeStore from '../../store/treestore'
-import { copyToClipboard } from '../../utils/electronhelper'
+import { copyToClipboard, showOpenDialog } from '../../tauri/app'
 import DownDAL from '../../down/DownDAL'
 import { isEmpty } from 'lodash'
 import { GetDriveID } from '../../aliapi/utils'
@@ -52,27 +52,23 @@ export function handleUpload(uploadType: string, encType: string = '') {
     }
   }
   if (uploadType == 'file') {
-    window.WebShowOpenDialogSync({
+    showOpenDialog({
       title: '选择多个文件上传到网盘',
       buttonLabel: `${encType == 'xbyEncrypt1' ? '加密' : encType == 'xbyEncrypt2' ? '私密' : ''}上传选中的文件`,
       properties: ['openFile', 'multiSelections', 'showHiddenFiles', 'noResolveAliases', 'treatPackageAsDirectory', 'dontAddToRecent']
-    }, (files: string[] | undefined) => {
-      if (files && files.length > 0) {
-        modalUpload(currentDirId, files, false, encType)
-      }
+    }).then((files) => {
+      if (files.length > 0) modalUpload(currentDirId, files, false, encType)
     })
   } else if (uploadType == 'folder') {
-    window.WebShowOpenDialogSync({
+    showOpenDialog({
       title: '选择多个文件夹上传到网盘',
       buttonLabel: `${encType == 'xbyEncrypt1' ? '加密' : encType == 'xbyEncrypt2' ? '私密' : ''}上传文件夹`,
       properties: ['openDirectory', 'multiSelections', 'showHiddenFiles', 'noResolveAliases', 'treatPackageAsDirectory', 'dontAddToRecent']
-    }, (files: string[] | undefined) => {
-      if (files && files.length > 0) {
-        modalUpload(currentDirId, files, false, encType)
-      }
+    }).then((files) => {
+      if (files.length > 0) modalUpload(currentDirId, files, false, encType)
     })
   } else if (uploadType == 'pic_file') {
-    window.WebShowOpenDialogSync({
+    showOpenDialog({
       title: '选择多个照片/视频上传到网盘',
       buttonLabel: '上传选中的照片/视频',
       filters: [
@@ -80,10 +76,8 @@ export function handleUpload(uploadType: string, encType: string = '') {
         { name: 'Video', extensions: ['mp4', 'mkv', 'avi', 'mov', 'mpg', 'mpeg', 'm4v', 'webm', 'wmv'] }
       ],
       properties: ['openFile', 'multiSelections', 'showHiddenFiles', 'noResolveAliases', 'treatPackageAsDirectory', 'dontAddToRecent']
-    }, (files: string[] | undefined) => {
-      if (files && files.length > 0) {
-        modalUpload('pic_root', files, true, encType)
-      }
+    }).then((files) => {
+      if (files.length > 0) modalUpload('pic_root', files, true, encType)
     })
   }
 }

@@ -2,7 +2,7 @@
 import { IAliFileItem, IAliGetForderSizeModel } from '../../aliapi/alimodels'
 import AliFile from '../../aliapi/file'
 import { usePanFileStore, usePanTreeStore } from '../../store'
-import { copyToClipboard } from '../../utils/electronhelper'
+import { copyToClipboard } from '../../tauri/app'
 import message from '../../utils/message'
 import { modalCloseAll } from '../../utils/modal'
 import { humanDateTimeDateStr, humanSize, humanTime } from '../../utils/format'

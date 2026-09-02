@@ -6,7 +6,6 @@ import jschardet from 'jschardet'
 import AliUser from './user'
 import message from '../utils/message'
 import DebugLog from '../utils/debuglog'
-import { v4 } from 'uuid'
 import { Sleep } from '../utils/format'
 
 export interface IUrlRespData {
@@ -190,7 +189,7 @@ export default class AliHttp {
         } else {
           headers['x-device-id'] = token.device_id
           headers['x-signature'] = token.signature
-          headers['x-request-id'] = v4().toString()
+          headers['x-request-id'] = crypto.randomUUID()
         }
         headers['Authorization'] = token_type + ' ' + access_token
       }
@@ -246,7 +245,7 @@ export default class AliHttp {
         } else {
           headers['x-device-id'] = token.device_id
           headers['x-signature'] = token.signature
-          headers['x-request-id'] = v4().toString()
+          headers['x-request-id'] = crypto.randomUUID()
         }
         headers['Authorization'] = token_type + ' ' + access_token
       }
@@ -363,7 +362,7 @@ export default class AliHttp {
         } else {
           headers['x-device-id'] = token.device_id
           headers['x-signature'] = token.signature
-          headers['x-request-id'] = v4().toString()
+          headers['x-request-id'] = crypto.randomUUID()
         }
         headers['Authorization'] = 'Bearer' + ' ' + access_token
       }

@@ -1,10 +1,11 @@
 /**
  * Synchronous, dependency-free subset of Node's `path` module for the renderer.
- * Separator handling follows the platform reported by the Tauri backend (`window.platform`).
+ * Separator handling follows the platform reported by the Tauri backend.
  */
+import { getPlatform } from '../tauri/state'
 
 function isWindows(): boolean {
-  return typeof window !== 'undefined' && (window as any).platform === 'win32'
+  return getPlatform() === 'win32'
 }
 
 function splitSegments(p: string): string[] {

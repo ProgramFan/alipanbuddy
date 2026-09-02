@@ -4,6 +4,7 @@ import type { UnlistenFn } from '@tauri-apps/api/event'
 import { ITokenInfo, useSettingStore, useUserStore } from '../store'
 import { invoke } from '../tauri/invoke'
 import { listen } from '../tauri/bridge'
+import { clearCookies } from '../tauri/app'
 import UserDAL from '../user/userdal'
 import Config from '../config'
 import message from '../utils/message'
@@ -457,24 +458,14 @@ const handleRefreshQrCodeUrl = () => {
 const loginSuccess = (token: ITokenInfo) => {
   UserDAL.UserLogin(token, true)
     .then(() => {
-      if (window.WebClearCookies) {
-        window.WebClearCookies({
-          origin: 'https://auth.aliyundrive.com',
-          storages: ['cookies', 'localstorage']
-        })
-      }
+      clearCookies('https://auth.aliyundrive.com')
       refreshStepTips('process', 3)
       refreshQrCodeStatus()
       useUserStore().userShowLogin = false
     })
     .catch(() => {
       useUserStore().userShowLogin = false
-      if (window.WebClearCookies) {
-        window.WebClearCookies({
-          origin: 'https://auth.aliyundrive.com',
-          storages: ['cookies', 'localstorage']
-        })
-      }
+      clearCookies('https://auth.aliyundrive.com')
       refreshQrCodeStatus()
     })
 }

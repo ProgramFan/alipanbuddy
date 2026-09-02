@@ -10,6 +10,7 @@ import DebugLog from './debuglog'
 import message from './message'
 import { modalArchive, modalArchivePassword } from './modal'
 import { resolveDriveFileToken } from '../drive/account'
+import { openPageWindow } from '../tauri/app'
 
 async function resolveTokenForFile(file: IAliGetFileModel): Promise<ITokenInfo | undefined> {
   return resolveDriveFileToken(file as IAliGetFileModel & { user_id?: string }, useUserStore().user_id)
@@ -108,5 +109,5 @@ async function Image(file: IAliGetFileModel, password: string = ''): Promise<voi
     password: password,
     imageList: imageList
   }
-  window.WebOpenWindow({ page: 'PageImage', data: pageImage, theme: 'dark' })
+  openPageWindow('PageImage', pageImage, 'dark')
 }

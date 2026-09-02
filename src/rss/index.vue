@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import { useAppStore } from '../store'
-import RssScanClean from './rssscanclean/RssScanClean.vue'
-import AppSame from './appsame/AppSame.vue'
 import RssXiMa from './rssxima/RssXiMa.vue'
-import RssScanSame from './rssscansame/RssScanSame.vue'
-import RssScanPunish from './rssscanpunish/RssScanPunish.vue'
-import RssScanEnmpty from './rssscanenmpty/RssScanEnmpty.vue'
 import RssJiaMi from './rssjiami/RssJiaMi.vue'
-import RssDriveCopy from './rssdrivecopy/RssDriveCopy.vue'
 import RssEmptyDirs from './drivetools/RssEmptyDirs.vue'
+import RssScanSame from './drivetools/RssScanSame.vue'
+import RssScanClean from './drivetools/RssScanClean.vue'
+import RssScanPunish from './rssscanpunish/RssScanPunish.vue'
+import RssDriveCopy from './rssdrivecopy/RssDriveCopy.vue'
 import { t } from '../i18n'
 
 const appStore = useAppStore()
@@ -34,25 +32,17 @@ withDefaults(defineProps<{ sidebarVisible?: boolean }>(), { sidebarVisible: true
           <template #icon><IconFont name="iconempty" /></template>
           {{ t('plugins.emptyDirs') }}
         </a-menu-item>
-        <a-menu-item key="AppSame">
+        <a-menu-item key="RssScanSame">
           <template #icon><IconFont name="iconcopy" /></template>
-          {{ t('plugins.duplicates') }}
+          {{ t('plugins.scanDuplicates') }}
         </a-menu-item>
         <a-menu-item key="RssScanClean">
           <template #icon><IconFont name="iconclear" /></template>
           {{ t('plugins.largeFiles') }}
         </a-menu-item>
-        <a-menu-item key="RssScanSame">
-          <template #icon><IconFont name="iconcopy" /></template>
-          {{ t('plugins.scanDuplicates') }}
-        </a-menu-item>
         <a-menu-item key="RssScanPunish">
           <template #icon><IconFont name="iconweixiang" /></template>
           {{ t('plugins.violations') }}
-        </a-menu-item>
-        <a-menu-item key="RssScanEnmpty">
-          <template #icon><IconFont name="iconempty" /></template>
-          {{ t('plugins.emptyFiles') }}
         </a-menu-item>
         <a-menu-item key="RssDriveCopy">
           <template #icon><IconFont name="iconchuanshu2" /></template>
@@ -63,14 +53,12 @@ withDefaults(defineProps<{ sidebarVisible?: boolean }>(), { sidebarVisible: true
     <a-layout-content class="rss-content-panel">
       <a-tabs type="text" :direction="'horizontal'" class="hidetabs" :justify="true" :active-key="appStore.GetAppTabMenu">
         <a-tab-pane key="RssXiMa" title="1"><RssXiMa /></a-tab-pane>
-        <a-tab-pane key="RssJiaMi" title="3"><RssJiaMi /></a-tab-pane>
-        <a-tab-pane key="RssEmptyDirs" title="7"><RssEmptyDirs /></a-tab-pane>
-        <a-tab-pane key="AppSame" title="4"><AppSame /></a-tab-pane>
-        <a-tab-pane key="RssScanClean" title="6"><RssScanClean /></a-tab-pane>
-        <a-tab-pane key="RssScanSame" title="7"><RssScanSame /></a-tab-pane>
-        <a-tab-pane key="RssScanPunish" title="8"><RssScanPunish /></a-tab-pane>
-        <a-tab-pane key="RssScanEnmpty" title="9"><RssScanEnmpty /></a-tab-pane>
-        <a-tab-pane key="RssDriveCopy" title="10"><RssDriveCopy /></a-tab-pane>
+        <a-tab-pane key="RssJiaMi" title="2"><RssJiaMi /></a-tab-pane>
+        <a-tab-pane key="RssEmptyDirs" title="3"><RssEmptyDirs /></a-tab-pane>
+        <a-tab-pane key="RssScanSame" title="4"><RssScanSame /></a-tab-pane>
+        <a-tab-pane key="RssScanClean" title="5"><RssScanClean /></a-tab-pane>
+        <a-tab-pane key="RssScanPunish" title="6"><RssScanPunish /></a-tab-pane>
+        <a-tab-pane key="RssDriveCopy" title="7"><RssDriveCopy /></a-tab-pane>
       </a-tabs>
     </a-layout-content>
   </a-layout>

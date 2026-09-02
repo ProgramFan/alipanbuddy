@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import message from '../utils/message'
 import DebugLog from '../utils/debuglog'
 import { useLogStore, useWinStore } from '../store'
-import { copyToClipboard } from '../utils/electronhelper'
+import { copyToClipboard } from '../tauri/app'
 import { t } from '../i18n'
 
 const logStore = useLogStore()

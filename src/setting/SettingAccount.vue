@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import message from '../utils/message'
 import UserDAL, { UserTokenMap } from '../user/userdal'
 import { ITokenInfo, useSettingStore } from '../store'
-import { copyToClipboard, openExternal } from '../utils/electronhelper'
+import { copyToClipboard, getCookies, openExternal, showOpenDialog } from '../tauri/app'
 import Db from '../utils/db'
 import fs from '../tauri/fs'
 import path from '../utils/path'
@@ -38,12 +38,12 @@ const openWebUrl = (type: string) => {
 }
 
 const copyCookies = async () => {
-  let cookies = await window.WebGetCookies({ url: 'https://www.aliyundrive.com' }) as []
-  if (cookies.length == 0) cookies = await window.WebGetCookies({ url: 'https://www.aliyundrive.com' }) as []
+  let cookies = await getCookies('https://www.aliyundrive.com')
+  if (cookies.length == 0) cookies = await getCookies('https://www.aliyundrive.com')
   if (cookies.length > 0) {
     let cookiesText = ''
     cookies.forEach(cookie => {
-      cookiesText += cookie['name'] + '=' + cookie['value'] + ';'
+      cookiesText += cookie.name + '=' + cookie.value + ';'
     })
     copyToClipboard(cookiesText)
     message.success(t('settings.account.cookiesCopied'))
@@ -52,77 +52,68 @@ const copyCookies = async () => {
   }
 }
 
-const handlerAccountImport = () => {
-  window.WebShowOpenDialogSync({
+const handlerAccountImport = async () => {
+  const files = await showOpenDialog({
     title: t('settings.account.selectImportFile'),
     buttonLabel: t('settings.account.importSelectedFile'),
     filters: [{ name: 'user.db', extensions: ['db'] }],
     properties: ['openFile', 'multiSelections', 'showHiddenFiles', 'noResolveAliases', 'treatPackageAsDirectory', 'dontAddToRecent']
-  }, async (files: string[] | undefined) => {
-    if (files && files.length > 0) {
-      try {
-        // 获取内容
-        let userList: ITokenInfo[] = []
-        let uniqueUserIds = new Set()
-        for (let filePath of files) {
-          let readData = await fs.readTextFile(filePath)
-          let parsedData: any = JSON.parse(<string>decodeName(localPwd, 'aesctr', readData))
-          if (Array.isArray(parsedData) && parsedData.every(item => item.hasOwnProperty('access_token'))) {
-            let filteredData: ITokenInfo[] = parsedData.filter((item: ITokenInfo) => {
-              if (!uniqueUserIds.has(item.user_id)) {
-                uniqueUserIds.add(item.user_id)
-                return true
-              }
-              return false
-            })
-            userList.push(...filteredData)
+  })
+  if (files.length == 0) return
+  try {
+    // 获取内容
+    let userList: ITokenInfo[] = []
+    let uniqueUserIds = new Set()
+    for (let filePath of files) {
+      let readData = await fs.readTextFile(filePath)
+      let parsedData: any = JSON.parse(<string>decodeName(localPwd, 'aesctr', readData))
+      if (Array.isArray(parsedData) && parsedData.every(item => item.hasOwnProperty('access_token'))) {
+        let filteredData: ITokenInfo[] = parsedData.filter((item: ITokenInfo) => {
+          if (!uniqueUserIds.has(item.user_id)) {
+            uniqueUserIds.add(item.user_id)
+            return true
           }
-        }
-        if (userList.length > 0) {
-          // 设置UserTokenMap
-          for (let token of userList) {
-            if (token.user_id) {
-              UserTokenMap.set(token.user_id, token)
-            }
-          }
-          // 导入到数据库
-          Db.saveUserBatch(userList).then(() => {
-            window.WinMsgToUpload({ cmd: 'ClearUserToken' })
-          }).catch()
-          await UserDAL.UserLogin(userList[0])
-          message.success(t('settings.account.importSuccess'))
-        } else {
-          message.error(t('settings.account.importFailed'))
-        }
-      } catch (err) {
-        message.error(t('settings.account.importFailed'))
+          return false
+        })
+        userList.push(...filteredData)
       }
     }
-  })
-}
-
-const handlerAccountExport = () => {
-  if (window.WebShowOpenDialogSync) {
-    window.WebShowOpenDialogSync(
-      {
-        title: t('settings.account.selectExportFolder'),
-        buttonLabel: t('media.selectFolder'),
-        properties: ['openDirectory', 'createDirectory']
-      },
-      async (result: string[] | undefined) => {
-        if (result && result[0]) {
-          try {
-            let exportFile = path.join(result[0], 'user.db')
-            let userList = JSON.stringify(UserDAL.GetUserList())
-            let data = encodeName(localPwd, 'aesctr', userList)
-            await fs.writeTextFile(exportFile, data)
-            message.success(t('settings.account.exportSuccess'))
-          } catch (err: any) {
-            message.error(t('settings.account.exportFailed') + (err?.message ? ' ' + err.message : ''))
-          }
+    if (userList.length > 0) {
+      // 设置UserTokenMap
+      for (let token of userList) {
+        if (token.user_id) {
+          UserTokenMap.set(token.user_id, token)
         }
       }
-    )
+      // 导入到数据库
+      Db.saveUserBatch(userList).then(() => {
+        window.WinMsgToUpload({ cmd: 'ClearUserToken' })
+      }).catch()
+      await UserDAL.UserLogin(userList[0])
+      message.success(t('settings.account.importSuccess'))
+    } else {
+      message.error(t('settings.account.importFailed'))
+    }
+  } catch (err) {
+    message.error(t('settings.account.importFailed'))
+  }
+}
+
+const handlerAccountExport = async () => {
+  const result = await showOpenDialog({
+    title: t('settings.account.selectExportFolder'),
+    buttonLabel: t('media.selectFolder'),
+    properties: ['openDirectory', 'createDirectory']
+  })
+  if (!result[0]) return
+  try {
+    let exportFile = path.join(result[0], 'user.db')
+    let userList = JSON.stringify(UserDAL.GetUserList())
+    let data = encodeName(localPwd, 'aesctr', userList)
+    await fs.writeTextFile(exportFile, data)
+    message.success(t('settings.account.exportSuccess'))
+  } catch (err: any) {
+    message.error(t('settings.account.exportFailed') + (err?.message ? ' ' + err.message : ''))
   }
 }
 

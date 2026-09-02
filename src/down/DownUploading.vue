@@ -24,6 +24,7 @@ import UploadingDAL from '../transfer/uploadingdal'
 import { TestButton } from '../utils/mosehelper'
 import { xorWith } from 'lodash'
 import { t } from '../i18n'
+import { preventSleep } from '../tauri/app'
 
 const viewlist = ref()
 const appStore = useAppStore()
@@ -32,11 +33,11 @@ const uploadingStore = useUploadingStore()
 
 const isUpload = computed(() => uploadingStore.ListDataUploadingCount > 0)
 watch(isUpload, (value, oldValue) => {
-  if (value !== oldValue && window.WebToElectron) {
+  if (value !== oldValue) {
     if (value) {
-      window.WebToElectron({ cmd: 'preventSleep', flag: 1 })
+      preventSleep(true)
     } else if (useDowningStore().ListDataDowningCount == 0) {
-      window.WebToElectron({ cmd: 'preventSleep', flag: 0 })
+      preventSleep(false)
     }
   }
 })

@@ -6,16 +6,10 @@ import DBCache from '../utils/dbcache'
 import UserDAL from '../user/userdal'
 import AliUploadHashPool from './uploadhashpool'
 import path from '../utils/path'
-import { Howl } from 'howler'
 import { useSettingStore } from '../store'
 import { getEncPassword } from '../utils/proxyhelper'
+import { playUploadFinished } from '../utils/finishsound'
 import { uploadCancel, uploadPart, type UploadEncryption, type UploadProgress } from '../tauri/upload'
-
-const sound = new Howl({
-  src: ['./audio/upload_finished.mp3'], // 音频文件路径
-  autoplay: false, // 是否自动播放
-  volume: 1.0 // 音量，范围 0.0 ~ 1.0
-})
 
 const filePosMap = new Map<number, number>()
 let UploadSpeedTotal = 0
@@ -60,8 +54,8 @@ export default class AliUploadDisk {
         fileui.Info.up_file_id = ''
         fileui.Info.up_upload_id = ''
         if (isSuccess) {
-          if (useSettingStore().downFinishAudio && !sound.playing()) {
-            sound.play()
+          if (useSettingStore().downFinishAudio) {
+            playUploadFinished()
           }
           return 'success'
         } else return '合并文件时出错，请重试'
@@ -133,8 +127,8 @@ export default class AliUploadDisk {
     return AliUpload.UploadFileComplete(fileui.user_id, fileui.drive_id, fileui.Info.up_file_id, fileui.Info.up_upload_id, fileui.File.size, uploadInfo.sha1)
       .then(async (isSuccess) => {
         if (isSuccess) {
-          if (useSettingStore().downFinishAudio && !sound.playing()) {
-            sound.play()
+          if (useSettingStore().downFinishAudio) {
+            playUploadFinished()
           }
           return 'success'
         } else return '合并文件时出错，请重试'

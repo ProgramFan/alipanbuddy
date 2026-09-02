@@ -2,10 +2,11 @@
 import useSettingStore from './settingstore'
 import AppCache from '../utils/appcache'
 import MySwitch from '../layout/MySwitch.vue'
-import { getUserData, openExternal } from '../utils/electronhelper'
+import { getUserData, openExternal } from '../tauri/app'
 import message from '../utils/message'
 import { getLocalIp } from '../utils/proxyhelper'
 import { invoke } from '../tauri/invoke'
+import { getProxyServerPort, setProxyServerPort } from '../tauri/state'
 import { Sleep } from '../utils/format'
 import { t } from '../i18n'
 
@@ -38,14 +39,14 @@ const handleResetHost = async () => {
 
 const handleResetPort = async () => {
   // 重启软件服务
-  if (!window.MainProxyServer) return
+  if (!getProxyServerPort()) return
   const debugProxyPort = getSafeProxyPort()
   const loadingKey = 'proxyServer' + Date.now().toString()
   message.loading(t('settings.debug.restartLoading'), 60, loadingKey)
   try {
     await invoke('proxy_stop').catch(() => {})
     const port = await invoke<number>('proxy_start', { port: debugProxyPort })
-    window.MainProxyServer = { port }
+    setProxyServerPort(port)
     cb({ debugProxyPort: String(port) })
     await Sleep(2000)
     message.success(t('settings.debug.restartDone'), 3, loadingKey)

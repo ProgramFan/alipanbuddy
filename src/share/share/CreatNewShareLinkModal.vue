@@ -9,7 +9,7 @@ import message from '../../utils/message'
 import AliShare from '../../aliapi/share'
 import ShareDAL from './ShareDAL'
 import { ArrayKeyList } from '../../utils/utils'
-import { copyToClipboard } from '../../utils/electronhelper'
+import { copyToClipboard } from '../../tauri/app'
 import { GetShareUrlFormate } from '../../utils/shareurl'
 import AliTransferShare from '../../aliapi/transfershare'
 

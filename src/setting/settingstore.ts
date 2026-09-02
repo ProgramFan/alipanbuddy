@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import DebugLog from '../utils/debuglog'
-import { getUserDataPath } from '../utils/electronhelper'
+import { getUserDataPath, saveTheme, setLaunchAtLogin, setProxy } from '../tauri/app'
 import { useAppStore } from '../store'
 import PanDAL from '../pan/pandal'
 import fs from '../tauri/fs'
@@ -465,7 +465,7 @@ const useSettingStore = defineStore('setting', {
       }
       this.$patch(partial)
       if (Object.hasOwn(partial, 'uiLaunchStart')) {
-        window.WebToElectron({ cmd: { launchStart: this.uiLaunchStart, launchStartShow: this.uiLaunchStartShow } })
+        setLaunchAtLogin(this.uiLaunchStart, this.uiLaunchStartShow)
       }
       if (Object.hasOwn(partial, 'uiShowPanMedia')
         || Object.hasOwn(partial, 'uiFolderSize')
@@ -477,7 +477,7 @@ const useSettingStore = defineStore('setting', {
       }
       SaveSetting()
       useAppStore().toggleTheme(setting.uiTheme)
-      if (Object.hasOwn(partial, 'uiTheme')) window.WebSaveTheme({ theme: setting.uiTheme })
+      if (Object.hasOwn(partial, 'uiTheme')) saveTheme(setting.uiTheme)
       window.WinMsgToUpload({ cmd: 'SettingRefresh', setting: settingstr })
     },
     updateFileColor(key: string, title: string) {
@@ -513,7 +513,7 @@ const useSettingStore = defineStore('setting', {
           proxy = this.proxyType + '://' + (auth ? auth + '@' : '') + this.proxyHost + ':' + this.proxyPort
         }
       }
-      window.WebSetProxy({ proxyUrl: proxy })
+      setProxy(proxy)
     }
   }
 })

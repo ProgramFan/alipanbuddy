@@ -1,6 +1,6 @@
 <script setup lang='ts'>
 import AliShare from '../../aliapi/share'
-import { getFromClipboardAsync } from '../../utils/electronhelper'
+import { readClipboardText } from '../../tauri/app'
 import message from '../../utils/message'
 import { modalCloseAll, modalShowShareLink } from '../../utils/modal'
 import { reactive, ref } from 'vue'
@@ -51,7 +51,7 @@ const FixFormate = (text: string, enmpty: boolean) => {
 const onPaste = async (e: any) => {
   e.stopPropagation()
   e.preventDefault()
-  const text = await getFromClipboardAsync()
+  const text = await readClipboardText()
   const link = FixFormate(text, true)
   form.sharelink = link.linkTxt
   form.password = link.linkPwd
@@ -61,7 +61,7 @@ const handleOpen = async () => {
     document.getElementById('DaoRuShareInput')?.focus()
   }, 200)
   if (!props.shareUrl.length) {
-    const link = FixFormate(await getFromClipboardAsync(), true)
+    const link = FixFormate(await readClipboardText(), true)
     form.sharelink = link.linkTxt
     form.password = link.linkPwd
   } else {

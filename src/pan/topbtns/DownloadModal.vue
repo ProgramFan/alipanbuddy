@@ -5,6 +5,7 @@ import useSettingStore from "../../setting/settingstore";
 import { menuDownload } from './topbtn'
 import { isEmpty } from 'lodash'
 import message from '../../utils/message'
+import { showOpenDialog } from '../../tauri/app'
 
 
 export default defineComponent({
@@ -42,22 +43,14 @@ export default defineComponent({
       modalCloseAll()
     }
 
-    const handleSelectDownSavePath = () => {
-      if (window.WebShowOpenDialogSync) {
-        window.WebShowOpenDialogSync(
-            {
-              title: '选择一个文件夹，把所有文件下载到此文件夹内',
-              buttonLabel: '选择',
-              properties: ['openDirectory', 'createDirectory'],
-              defaultPath: settingStore.downSavePath
-            },
-            (result: string[] | undefined) => {
-              if (result && result[0]) {
-                settingStore.updateStore({ downSavePath: result[0] })
-              }
-            }
-        )
-      }
+    const handleSelectDownSavePath = async () => {
+      const result = await showOpenDialog({
+        title: '选择一个文件夹，把所有文件下载到此文件夹内',
+        buttonLabel: '选择',
+        properties: ['openDirectory', 'createDirectory'],
+        defaultPath: settingStore.downSavePath
+      })
+      if (result[0]) settingStore.updateStore({ downSavePath: result[0] })
     }
     return { okLoading, settingStore, handleOpen, handleClose, handleOK, handleHide, handleSelectDownSavePath }
   }

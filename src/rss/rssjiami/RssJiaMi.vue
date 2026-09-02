@@ -6,6 +6,7 @@ import MySwitch from '../../layout/MySwitch.vue'
 import message from '../../utils/message'
 import { DoJiaMi } from './jiami'
 import { decodeName } from '../../module/flow-enc/utils'
+import { showOpenDialog } from '../../tauri/app'
 
 const Loading = ref(false)
 const encPath = ref('')
@@ -34,26 +35,16 @@ const handleAddExtList = (addList: string[]) => {
   matchExtList.value = list
 }
 
-const handleSelectDir = (inout: boolean) => {
-  if (window.WebShowOpenDialogSync) {
-    window.WebShowOpenDialogSync(
-      {
-        title: '选择一个文件夹',
-        buttonLabel: '选择',
-        properties: ['openDirectory', 'createDirectory'],
-        defaultPath: useSettingStore().downSavePath
-      },
-      (result: string[] | undefined) => {
-        if (result && result[0]) {
-          if (inout) {
-            encPath.value = result[0]
-          } else {
-            outPath.value = result[0]
-          }
-        }
-      }
-    )
-  }
+const handleSelectDir = async (inout: boolean) => {
+  const result = await showOpenDialog({
+    title: '选择一个文件夹',
+    buttonLabel: '选择',
+    properties: ['openDirectory', 'createDirectory'],
+    defaultPath: useSettingStore().downSavePath
+  })
+  if (!result[0]) return
+  if (inout) encPath.value = result[0]
+  else outPath.value = result[0]
 }
 
 const handleDecType = () => {

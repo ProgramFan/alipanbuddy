@@ -6,6 +6,7 @@ import MyTags from '../../layout/MyTags.vue'
 import MySwitch from '../../layout/MySwitch.vue'
 import message from '../../utils/message'
 import { DoXiMa } from './xima'
+import { showOpenDialog } from '../../tauri/app'
 
 const ximaLoading = ref(false)
 const dirPath = ref('')
@@ -26,22 +27,14 @@ const handleAddExtList = (addList: string[]) => {
   matchExtList.value = list
 }
 
-const handleSelectDir = () => {
-  if (window.WebShowOpenDialogSync) {
-    window.WebShowOpenDialogSync(
-      {
-        title: '选择一个文件夹，对文件夹内全部文件执行洗码',
-        buttonLabel: '选择',
-        properties: ['openDirectory', 'createDirectory'],
-        defaultPath: useSettingStore().downSavePath
-      },
-      (result: string[] | undefined) => {
-        if (result && result[0]) {
-          dirPath.value = result[0]
-        }
-      }
-    )
-  }
+const handleSelectDir = async () => {
+  const result = await showOpenDialog({
+    title: '选择一个文件夹，对文件夹内全部文件执行洗码',
+    buttonLabel: '选择',
+    properties: ['openDirectory', 'createDirectory'],
+    defaultPath: useSettingStore().downSavePath
+  })
+  if (result[0]) dirPath.value = result[0]
 }
 
 const handleClickXiMa = async () => {

@@ -30,7 +30,7 @@ import PanDAL from '../pan/pandal'
 import { humanSize } from '../utils/format'
 import { TestButton } from '../utils/mosehelper'
 import fs from '../tauri/fs'
-import { openPath, showItemInFolder } from '../utils/electronhelper'
+import { openPath, showItemInFolder } from '../tauri/app'
 import { xorWith } from 'lodash'
 import { t } from '../i18n'
 

@@ -11,49 +11,19 @@ export interface TreeNodeData {
   key: string
   title: string
   selectable?: boolean
-  disabled?: boolean
-  disableCheckbox?: boolean
   checkable?: boolean
   children: TreeNodeData[]
   icon: any
   size: number
-  sizeStr?: string
-}
-
-export interface FileData {
-  file_id: string
-  name: string
-  parent_file_id: string
-  size: number
-  sizeStr: string
-  time: number
-  timeStr: string
-  icon: string
-  parent_file_path: string
-}
-
-export interface FileNodeData {
-  hash: string
-  files: FileData[]
-}
-
-export interface ScanTreeDataModel {
-  expandedKeys: string[]
-  checkedKeys: string[]
-  treeData: TreeNodeData[]
-  treeDataMap: Map<string, TreeNodeData>
 }
 
 export interface IScanDriverModel {
   drive_id: string
   DirMap: Map<string, IAliGetDirModel>
   DirChildrenMap: Map<string, IAliGetDirModel[]>
-  EnmptyDirMap: Map<string, string>
   WeiGuiDirMap: Map<string, string>
   PartWeiGuiDirMap: Map<string, string>
   NoShareDirMap: Map<string, string>
-  SameDirMap: Map<string, FileData[]>
-  CleanDirMap: Map<string, string>
 }
 
 export function NewScanDriver(drive_id: string): IScanDriverModel {
@@ -61,12 +31,9 @@ export function NewScanDriver(drive_id: string): IScanDriverModel {
     drive_id,
     DirMap: new Map<string, IAliGetDirModel>(),
     DirChildrenMap: new Map<string, IAliGetDirModel[]>(),
-    EnmptyDirMap: new Map<string, string>(),
     WeiGuiDirMap: new Map<string, string>(),
     PartWeiGuiDirMap: new Map<string, string>(),
-    NoShareDirMap: new Map<string, string>(),
-    SameDirMap: new Map<string, FileData[]>(),
-    CleanDirMap: new Map<string, string>()
+    NoShareDirMap: new Map<string, string>()
   }
 }
 
@@ -74,11 +41,9 @@ export function ResetScanDriver(data: IScanDriverModel) {
   data.drive_id = ''
   data.DirMap = new Map<string, IAliGetDirModel>()
   data.DirChildrenMap = new Map<string, IAliGetDirModel[]>()
-  data.EnmptyDirMap = new Map<string, string>()
   data.WeiGuiDirMap = new Map<string, string>()
   data.PartWeiGuiDirMap = new Map<string, string>()
   data.NoShareDirMap = new Map<string, string>()
-  data.SameDirMap = new Map<string, FileData[]>()
 }
 
 function GetScanDriver(user_id: string, drive_id: string, children: IAliGetDirModel[]): IScanDriverModel {

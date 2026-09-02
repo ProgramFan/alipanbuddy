@@ -1,6 +1,7 @@
 <script lang="ts">
 import { defineComponent, ref } from 'vue'
 import { useAppStore } from '../store'
+import { shutDownComputer } from '../tauri/app'
 
 let IsOnShutDowning = false
 export default defineComponent({
@@ -30,7 +31,7 @@ export default defineComponent({
 
       if (time.value == 1) {
         percent.value = 1
-        window.WebShutDown({ quitApp: true })
+        shutDownComputer({ quitApp: true })
       } else if (time.value > 1) timeid = window.setTimeout(subtime, 1000)
     }
 

@@ -10,6 +10,7 @@ import { getEncType, getProxyUrl } from '../utils/proxyhelper'
 import { getImageProxyBase } from '../utils/imageproxy'
 import { TestAlt, TestKey } from '../utils/keyboardhelper'
 import { t } from '../i18n'
+import { windowCmd } from '../tauri/app'
 
 const appStore = useAppStore()
 const pageImage = appStore.pageImage!
@@ -35,13 +36,13 @@ keyboardStore.$subscribe((_m: any, state: KeyboardState) => {
   if (TestKey('f11', state.KeyDownEvent, handleMaxClick)) return
 })
 const handleHideClick = (_e: any) => {
-  if (window.WebToWindow) window.WebToWindow({ cmd: 'close' })
+  windowCmd('close')
 }
 const handleMinClick = (_e: any) => {
-  if (window.WebToWindow) window.WebToWindow({ cmd: 'minsize' })
+  windowCmd('minsize')
 }
 const handleMaxClick = (_e: any) => {
-  if (window.WebToWindow) window.WebToWindow({ cmd: 'maxsize' })
+  windowCmd('maxsize')
 }
 let viewver: Viewer | undefined
 

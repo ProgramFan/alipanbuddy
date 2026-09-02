@@ -9,7 +9,7 @@ import {
   useWinStore
 } from '../../store'
 import FollowingDAL from './FollowingDAL'
-import { copyToClipboard, getFromClipboard, openExternal } from '../../utils/electronhelper'
+import { copyToClipboard, openExternal, readClipboardText } from '../../tauri/app'
 import {
   onHideRightMenuScroll,
   TestCtrl,
@@ -109,9 +109,9 @@ const handleDeleteSelectedLink = () => {
     }
   })
 }
-const handleDaoRuLink = () => {
+const handleDaoRuLink = async () => {
   daoruModel.value = true
-  const txt = getFromClipboard()
+  const txt = await readClipboardText()
   if (txt.indexOf('.aliyundrive.com/u/') > 0 || txt.indexOf('.alipan.com/u/') > 0) {
     daoruModelText.value = txt
     setTimeout(() => {

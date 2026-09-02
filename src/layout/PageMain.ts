@@ -11,6 +11,7 @@ import PanDAL from '../pan/pandal'
 import UploadingDAL from '../transfer/uploadingdal'
 import { Sleep } from '../utils/format'
 import { invoke } from '../tauri/invoke'
+import { getProxyServerPort, setProxyServerPort } from '../tauri/state'
 import cache from '../utils/cache'
 import { startBackgroundStartupTasks } from '../utils/startupTask'
 
@@ -34,12 +35,12 @@ export function PageMain() {
         {
           label: 'CreateProxyServer',
           run: async () => {
-            if (window.MainProxyServer) return
+            if (getProxyServerPort()) return
             const settingStore = useSettingStore()
             const wantPort = Number(settingStore.debugProxyPort)
             // The Rust proxy picks another port when the configured one is busy
             const port = await invoke<number>('proxy_start', { port: wantPort })
-            window.MainProxyServer = { port }
+            setProxyServerPort(port)
             if (port !== wantPort) settingStore.updateStore({ debugProxyPort: String(port) })
           }
         },

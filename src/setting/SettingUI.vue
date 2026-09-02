@@ -2,12 +2,12 @@
 import { computed, onMounted, ref } from 'vue'
 import useSettingStore from './settingstore'
 import MySwitch from '../layout/MySwitch.vue'
-import { openExternal } from '../utils/electronhelper'
+import { getAppVersion as getInstalledAppVersion, getPlatform, openExternal } from '../tauri/app'
 import { Code2 } from 'lucide-vue-next'
 import { getPkgVersion } from '../utils/utils'
 import { t } from '../i18n'
 
-const platform = window.platform
+const platform = getPlatform()
 const settingStore = useSettingStore()
 const topTabOptions = [
   { key: 'pan', labelKey: 'nav.pan' }, { key: 'share', labelKey: 'nav.share' }, { key: 'rss', labelKey: 'nav.plugins' }
@@ -27,9 +27,8 @@ const cb = (val: any) => {
 const installedAppVersion = ref(getPkgVersion())
 
 onMounted(() => {
-  window.WebPlatformSync?.((data: { appVersion?: string }) => {
-    if (typeof data?.appVersion === 'string' && data.appVersion) installedAppVersion.value = data.appVersion
-  })
+  const version = getInstalledAppVersion()
+  if (version) installedAppVersion.value = version
 })
 const getAppVersion = computed(() => installedAppVersion.value)
 

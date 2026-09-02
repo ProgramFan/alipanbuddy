@@ -4,9 +4,6 @@ import { computed, reactive, ref, watch } from 'vue'
 import { UserTokenMap } from '../../user/userdal'
 import { useSettingStore, useUserStore, useWinStore } from '../../store'
 import { ICopyTreeNode, LoadDir, NewCopyTreeInfo } from './drivecopy'
-
-import { Checkbox as AntdCheckbox, Tree as AntdTree } from 'ant-design-vue'
-
 import AliFileCmd from '../../aliapi/filecmd'
 import { GetDriveID } from '../../aliapi/utils'
 
@@ -182,37 +179,32 @@ const handleRightUser = (driveType: any) => {
                       @click="handleLeftTreeSelect(['root'])"><IconFont name="iconhome" /></a-button>
             <a-button type='text' size='small' tabindex='-1' title='返回上级' @click="handleLeftTreeSelect(['back'])"><IconFont name="iconarrow-top-2-icon-copy" /></a-button>
             <a-button type='text' size='small' tabindex='-1' title='刷新' @click="handleLeftTreeSelect(['refresh'])"><IconFont name="iconreload-1-icon" /></a-button>
-            <AntdCheckbox tabindex='-1' :disabled='TreeState.LeftInfo.loading'
-                          :checked='TreeState.LeftCheckedKeys.length > 0 && TreeState.LeftTreeData.length == TreeState.LeftCheckedKeys.length'
-                          style='margin-left: 7px' @click.stop.prevent='handleSelectAll'>全选
-            </AntdCheckbox>
+            <a-checkbox tabindex='-1' :disabled='TreeState.LeftInfo.loading'
+                        :model-value='TreeState.LeftCheckedKeys.length > 0 && TreeState.LeftTreeData.length == TreeState.LeftCheckedKeys.length'
+                        style='margin-left: 7px' @change='handleSelectAll'>全选
+            </a-checkbox>
 
             <span class='checkedInfo' style='margin-left: 8px'>已选中 {{ TreeState.LeftCheckedKeys.length }}</span>
           </div>
           <a-spin :loading='TreeState.LeftInfo.loading'
                   :style="{ width: 'calc(100% + 10px)', height: treeHeight + 'px', overflow: 'hidden', marginLeft: '-13px' }">
             <a-empty v-if='TreeState.LeftTreeData.length == 0' description='空文件夹' style='margin-top: 25vh' />
-            <AntdTree
+            <a-tree
               v-else
-              v-model:checkedKeys='TreeState.LeftCheckedKeys'
-              :tree-data='TreeState.LeftTreeData'
-              :tabindex='-1'
-              :focusable='false'
+              v-model:checked-keys='TreeState.LeftCheckedKeys'
+              :data='TreeState.LeftTreeData'
               class='dirtree'
               block-node
               selectable
               :auto-expand-parent='false'
-              show-icon
-              :height='treeHeight'
+              :virtual-list-props="{ height: treeHeight }"
               :style="{ height: treeHeight + 'px' }"
-              :item-height='30'
               checkable
-              :open-animation='{}'
               @select='handleLeftTreeSelect'>
-              <template #title='{ dataRef }'>
-                <span class='dirtitle'>{{ dataRef.title }}</span>
+              <template #title='node'>
+                <span class='dirtitle'>{{ node.title }}</span>
               </template>
-            </AntdTree>
+            </a-tree>
           </a-spin>
         </template>
         <template #second>
@@ -228,25 +220,20 @@ const handleRightUser = (driveType: any) => {
           <a-spin :loading='TreeState.RightInfo.loading'
                   :style="{ width: 'calc(100% + 10px)', height: treeHeight + 'px', overflow: 'hidden', marginLeft: '-18px' }">
             <a-empty v-if='TreeState.RightTreeData.length == 0' description='空文件夹' style='margin-top: 25vh' />
-            <AntdTree
+            <a-tree
               v-else
-              :tabindex='-1'
-              :focusable='false'
               class='dirtree'
               block-node
               selectable
-              :auto-expandparent='false'
-              show-icon
-              :height='treeHeight'
+              :auto-expand-parent='false'
+              :virtual-list-props="{ height: treeHeight }"
               :style="{ height: treeHeight + 'px' }"
-              :item-height='30'
-              :open-animation='{}'
-              :tree-data='TreeState.RightTreeData'
+              :data='TreeState.RightTreeData'
               @select='handleRightTreeSelect'>
-              <template #title='{ dataRef }'>
-                <span class='dirtitle'>{{ dataRef.title }}</span>
+              <template #title='node'>
+                <span class='dirtitle'>{{ node.title }}</span>
               </template>
-            </AntdTree>
+            </a-tree>
           </a-spin>
         </template>
       </a-split>

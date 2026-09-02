@@ -6,7 +6,7 @@ import DBUpload, { IStateUploadInfo, IStateUploadTask, IStateUploadTaskFile, IUp
 import { humanSize, humanSizeSpeed, humanTime, humanTimeFM } from '../utils/format'
 import { MapValueToArray } from '../utils/utils'
 import { throttle } from '../utils/debounce'
-import { SetProgressBar } from '../utils/electronhelper'
+import { setTransferProgressBar } from '../tauri/app'
 import AliAlbum from '../aliapi/album'
 import path from '../utils/path'
 
@@ -370,7 +370,7 @@ export default class UploadingData {
     if (isRunning) {
       progress = Math.floor((finishSize / (totalSize + 1)) * 100) / 100
     }
-    SetProgressBar(progress, 'upload')
+    setTransferProgressBar(progress, 'upload')
   }
 
   static async UploadingAddTask(taskList: IStateUploadTask[]): Promise<void> {

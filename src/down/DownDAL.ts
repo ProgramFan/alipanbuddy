@@ -15,7 +15,6 @@ import {
   IsAria2cRemote
 } from '../utils/aria2c'
 import { humanSize, humanSizeSpeed } from '../utils/format'
-import { Howl } from 'howler'
 import DBDown from '../utils/dbdown'
 import fs from '../tauri/fs'
 import { DecodeEncName } from '../aliapi/utils'
@@ -24,6 +23,8 @@ import { SHA256 } from 'crypto-js'
 import { shouldRemoveAriaStoppedResult } from '../utils/aria2Rpc'
 import { resolveAriaProgressErrorState } from './integration/downloadProgressState'
 import { resolveDriveFileToken } from '../drive/account'
+import { notifyDownloadCompleted, setProgressBar } from '../tauri/app'
+import { playDownloadFinished } from '../utils/finishsound'
 
 export interface IStateDownFile {
   DownID: string
@@ -92,11 +93,6 @@ export interface IAriaDownProgress {
 let SaveTimeWait = 0
 /** 正在移动/校验的已完成任务，避免异步重命名期间被下一次速度事件重复处理 */
 const hashingDownIDs = new Set<string>()
-const sound = new Howl({
-  src: ['./audio/download_finished.mp3'], // 音频文件路径
-  autoplay: false, // 是否自动播放
-  volume: 1.0 // 音量，范围 0.0 ~ 1.0
-})
 
 const buildAriaTaskGid = (file: IAliGetFileModel) => {
   const source = `${file.drive_id || ''}|${file.file_id || ''}|${file.size || 0}`
@@ -360,11 +356,11 @@ export default class DownDAL {
           downingStore.mUpdateDownState(downingItem, 'valid')
           const check = await AriaHashFile(downingItem).finally(() => hashingDownIDs.delete(DownID))
           if (check.Check) {
-            if (useSettingStore().downFinishAudio && !sound.playing()) {
-              sound.play()
+            if (useSettingStore().downFinishAudio) {
+              playDownloadFinished()
             }
             downingStore.mUpdateDownState(downingItem, 'downed')
-            window.WebToElectron?.({ cmd: 'downloadCompleted', fileName: Info.name, showNotification: useSettingStore().ariaTaskNotification })
+            if (useSettingStore().ariaTaskNotification) notifyDownloadCompleted(Info.name)
           } else {
             downingStore.mUpdateDownState(downingItem, 'error', '移动文件失败，请重新下载')
           }
@@ -402,12 +398,10 @@ export default class DownDAL {
     }
     useFootStore().mSaveDownTotalSpeedInfo(hasSpeed && humanSizeSpeed(hasSpeed) || '')
 
-    const totalCount = DowningList.filter((d) => !d.Down.IsCompleted).length
-    const activeCount = DowningList.filter((d) => d.Down.IsDowning && !d.Down.IsCompleted).length
     const totalBytes = DowningList.reduce((s, d) => s + (parseInt(String(d.Info.size)) || 0), 0)
     const doneBytes = DowningList.reduce((s, d) => s + (d.Down.DownSize || 0), 0)
     const overallProgress = totalBytes > 0 ? doneBytes / totalBytes : -1
-    window.WebToElectron?.({ cmd: 'downloadProgress', progress: overallProgress, activeCount, totalCount })
+    setProgressBar(overallProgress, 'normal')
   }
 
   static async deleteDowning(isAll: boolean, deleteList: IStateDownFile[], gidList: string[]) {

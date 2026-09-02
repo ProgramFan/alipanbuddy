@@ -1,13 +1,14 @@
 /**
  * Tauri replacement for the former Electron preload script.
- * Installs the `window.WebXxx` API the renderer has always used, wires window↔window messaging
- * (main ↔ upload worker) over Tauri events and exposes platform information.
+ * Wires window↔window messaging (main ↔ upload worker) over Tauri events, installs the DOM level
+ * integrations (context menu, devtools, drag region) and exposes platform information.
+ * The typed command wrappers live in `./app`.
  */
 import { emitTo, listen } from '@tauri-apps/api/event'
 import { decodeWinMsg, encodeWinMsg } from './winmsg'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { invoke, isTauri } from './invoke'
-import { rememberUserToken, setHttpProxyUrl } from './state'
+import { setPlatform } from './state'
 
 export interface PlatformInfo {
   platform: 'win32' | 'linux' | string
@@ -79,95 +80,17 @@ export async function markWorkerReady(kind: WorkerKind) {
   await invoke('worker_ready', { kind }).catch(() => {})
 }
 
-// ---------- window API ----------
-function installWindowApi() {
-  window.platform = platformInfo.platform
+/**
+ * Worker window messaging. Still installed on `window` because the worker page and the DALs talk to
+ * each other by convention; every other legacy global is now a typed function in `./app`.
+ */
+function installWindowMessaging() {
   window.WinMsgToMain = (event: any) => {
     emitTo('main', 'WinMsg', encodeWinMsg(event)).catch(() => {})
   }
   window.WinMsgToUpload = (event: any) => sendToWorker('upload', event)
-
-  window.WebToElectron = (data: any) => {
-    try {
-      const cmd = data?.cmd
-      if (!cmd) return
-      if (typeof cmd === 'string') {
-        if (['close', 'exit', 'minsize', 'maxsize'].includes(cmd)) {
-          invoke('main_window_cmd', { cmd }).catch(() => {})
-        } else if (cmd === 'preventSleep') {
-          invoke('prevent_sleep', { flag: !!data.flag }).catch(() => {})
-        } else if (cmd === 'downloadProgress') {
-          const progress = typeof data.progress === 'number' ? data.progress : -1
-          invoke('set_progress_bar', { progress, mode: 'normal' }).catch(() => {})
-        } else if (cmd === 'downloadCompleted') {
-          if (data.showNotification !== false) invoke('notify_download_completed', { fileName: data.fileName || '' }).catch(() => {})
-        }
-      } else if (typeof cmd === 'object' && (Object.hasOwn(cmd, 'launchStart') || Object.hasOwn(cmd, 'launchStartShow'))) {
-        invoke('set_launch_at_login', { enable: !!cmd.launchStart, show: !!cmd.launchStartShow }).catch(() => {})
-      }
-    } catch {}
-  }
-
-  window.WebToWindow = (data: any, callback?: (result: string) => void) => {
-    invoke<string>('window_cmd', { cmd: data?.cmd || '' })
-      .then((result) => callback && callback(result))
-      .catch(() => callback && callback('missing'))
-  }
-
-  window.WebShowOpenDialogSync = (config: any, callback: (files: string[] | undefined) => void) => {
-    invoke<string[] | null>('open_dialog', { options: config || {} })
-      .then((files) => callback(files || []))
-      .catch(() => callback([]))
-  }
-
-  window.WebPlatformSync = (callback: (data: any) => void) => {
-    try {
-      callback({ ...platformInfo })
-    } catch {}
-  }
-
-  window.WebClearCookies = (data: any) => invoke('clear_cookies', { origin: data?.origin || '' }).catch(() => {})
-  window.WebClearCache = (data: any) => {
-    const storages: string[] = Array.isArray(data?.storages) ? data.storages : []
-    return invoke('clear_browsing_data', { all: storages.includes('indexdb') || storages.includes('localstorage') }).catch(() => {})
-  }
-  window.WebGetCookies = (data: any) => invoke<any[]>('get_cookies', { url: data?.url || '' }).catch(() => [])
-  window.WebUserToken = (data: any) => {
-    rememberUserToken(data)
-    // the Rust image proxy (`/image`) authenticates thumbnail requests with this token
-    if (data?.user_id && data?.access_token) invoke('proxy_set_token', { userId: data.user_id, accessToken: data.access_token }).catch(() => {})
-  }
-  window.WebSaveTheme = (data: any) => invoke('save_theme', { theme: data?.theme || '' }).catch(() => {})
-  window.WebRelaunch = () => invoke('relaunch_app').catch(() => {})
-  window.WebRelaunchAria = () => invoke<number>('aria_rpc_port').catch(() => 16800)
-  window.WebSetProgressBar = (data: any) => {
-    const progress = data && data.pro ? Number(data.pro) : -1
-    invoke('set_progress_bar', { progress, mode: data?.mode || 'normal' }).catch(() => {})
-  }
-  window.WebOpenWindow = (data: any) => invoke('open_page_window', { page: data?.page || '', data: data?.data ?? null, theme: data?.theme || '' }).catch(() => {})
-  window.WebShutDown = (data: any) => invoke('shutdown_computer', { sudo: !!data?.sudo, quitApp: !!data?.quitApp }).catch(() => {})
-  window.WebSetProxy = (data: { proxyUrl: string }) => {
-    setHttpProxyUrl(data?.proxyUrl || '')
-    invoke('set_proxy', { proxyUrl: data?.proxyUrl || '' }).catch(() => {})
-  }
 }
 
-// ---------- helpers used by src/utils/electronhelper.ts ----------
-export function openExternal(url: string) {
-  return invoke('open_external', { url })
-}
-export function openPath(path: string) {
-  return invoke('open_path', { path })
-}
-export function showItemInFolder(path: string) {
-  return invoke('show_item_in_folder', { path })
-}
-export function readClipboardText(): Promise<string> {
-  return invoke<string>('clipboard_read_text')
-}
-export function writeClipboardText(text: string): Promise<void> {
-  return invoke('clipboard_write_text', { text })
-}
 export function getPageContext(): Promise<PageContext> {
   return invoke<PageContext>('get_page_context')
 }
@@ -273,7 +196,8 @@ export async function initBridge(): Promise<PlatformInfo> {
       console.error('platform_info failed', err)
     }
   }
-  installWindowApi()
+  setPlatform(platformInfo.platform)
+  installWindowMessaging()
   if (isTauri()) {
     installDomIntegrations()
     await installListeners()

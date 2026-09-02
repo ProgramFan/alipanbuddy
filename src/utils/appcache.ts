@@ -1,6 +1,6 @@
 import { useSettingStore } from '../store'
 import DebugLog from './debuglog'
-import { getUserData } from './electronhelper'
+import { clearBrowsingData, getUserData, relaunchApp } from '../tauri/app'
 import { FileSystemErrorMessage } from './filehelper'
 import { humanSize, Sleep } from './format'
 import message from './message'
@@ -126,21 +126,8 @@ export default class AppCache {
 
   static async aClearDir(delby: string): Promise<void> {
     const dir = getUserData()
-    if (delby == 'all') {
-      // window.WebClearCache({ cache: true })
-      if (window.WebClearCache)
-        window.WebClearCache({
-          storages: ['appcache', 'cookies', 'filesystem', 'shadercache', 'serviceworkers', 'cachestorage', 'indexdb', 'localstorage', 'websql'],
-          quotas: ['temporary', 'persistent', 'syncable']
-        })
-    } else {
-      // window.WebClearCache({ cache: true })
-      if (window.WebClearCache)
-        window.WebClearCache({
-          storages: ['appcache', 'cookies', 'filesystem', 'shadercache', 'serviceworkers', 'cachestorage'],
-          quotas: ['temporary', 'persistent', 'syncable']
-        })
-    }
+    // `all` also drops IndexedDB/localStorage of the main window, otherwise only the login webview is reset
+    clearBrowsingData(delby == 'all')
     // Chromium data folders: they exist only for the old Electron builds, deleting a missing dir is a no-op
     if (delby == 'all') {
       await AppCache.DeleteDir(path.join(dir, 'databases')).catch(() => {})
@@ -159,17 +146,17 @@ export default class AppCache {
     if (delby == 'all') {
       message.success('删除全部数据成功，自动重启神行云盘助手')
       Sleep(3000).then(() => {
-        window.WebRelaunch()
+        relaunchApp()
       })
     } else if (delby == 'db') {
       message.success('删除数据库成功，自动重启神行云盘助手')
       Sleep(3000).then(() => {
-        window.WebRelaunch()
+        relaunchApp()
       })
     } else {
       message.success('清理缓存成功，自动重启神行云盘助手')
       Sleep(3000).then(() => {
-        window.WebRelaunch()
+        relaunchApp()
       })
     }
   }
@@ -179,7 +166,7 @@ export default class AppCache {
     await AppCache.DeleteDir(path.join(dir, 'Cache')).catch(() => {})
     message.success('删除全部缓存数据成功，自动重启神行云盘助手')
     Sleep(1500).then(() => {
-      window.WebRelaunch()
+      relaunchApp()
     })
   }
 }

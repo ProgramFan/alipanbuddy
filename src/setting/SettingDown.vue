@@ -3,6 +3,7 @@ import useSettingStore from './settingstore'
 import MySwitch from '../layout/MySwitch.vue'
 import { AriaGlobalSpeed } from '../utils/aria2c'
 import { t } from '../i18n'
+import { showOpenDialog } from '../tauri/app'
 
 const settingStore = useSettingStore()
 
@@ -14,22 +15,14 @@ const cb = async (val: any) => {
   }
 }
 
-const handleSelectDownSavePath = () => {
-  if (window.WebShowOpenDialogSync) {
-    window.WebShowOpenDialogSync(
-      {
-        title: t('settings.download.selectSaveFolder'),
-        buttonLabel: t('media.selectFolder'),
-        properties: ['openDirectory', 'createDirectory'],
-        defaultPath: settingStore.downSavePath
-      },
-      (result: string[] | undefined) => {
-        if (result && result[0]) {
-          settingStore.updateStore({ downSavePath: result[0] })
-        }
-      }
-    )
-  }
+const handleSelectDownSavePath = async () => {
+  const result = await showOpenDialog({
+    title: t('settings.download.selectSaveFolder'),
+    buttonLabel: t('media.selectFolder'),
+    properties: ['openDirectory', 'createDirectory'],
+    defaultPath: settingStore.downSavePath
+  })
+  if (result[0]) settingStore.updateStore({ downSavePath: result[0] })
 }
 </script>
 

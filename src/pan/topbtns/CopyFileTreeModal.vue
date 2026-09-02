@@ -5,7 +5,7 @@ import { defineComponent, PropType, reactive, ref } from 'vue'
 import dayjs from 'dayjs'
 import { usePanTreeStore } from '../../store'
 import message from '../../utils/message'
-import { copyToClipboard } from '../../utils/electronhelper'
+import { copyToClipboard } from '../../tauri/app'
 
 import AliFileWalk from '../../aliapi/filewalk'
 

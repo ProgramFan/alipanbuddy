@@ -10,7 +10,7 @@ import {
   useUserStore
 } from '../../store'
 import FollowingDAL from './FollowingDAL'
-import { copyToClipboard, openExternal } from '../../utils/electronhelper'
+import { copyToClipboard, openExternal } from '../../tauri/app'
 import message from '../../utils/message'
 import { TestKey } from '../../utils/keyboardhelper'
 import { IAliOtherFollowingModel } from '../../aliapi/alimodels'

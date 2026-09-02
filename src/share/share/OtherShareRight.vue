@@ -19,7 +19,7 @@ import {
   TestKeyboardScroll,
   TestKeyboardSelect
 } from '../../utils/keyboardhelper'
-import { copyToClipboard, getFromClipboard, openExternal } from '../../utils/electronhelper'
+import { copyToClipboard, openExternal, readClipboardText } from '../../tauri/app'
 import message from '../../utils/message'
 
 import { Tooltip as AntdTooltip } from 'ant-design-vue'
@@ -269,9 +269,9 @@ const handleDeleteSelectedLink = (delby: any) => {
     })
   }
 }
-const handleDaoRuLink = () => {
+const handleDaoRuLink = async () => {
   daoruModel.value = true
-  const txt = getFromClipboard()
+  const txt = await readClipboardText()
   if (txt.indexOf('.aliyundrive.com/s/') > 0 || txt.indexOf('.alipan.com/s/') > 0) {
     daoruModelText.value = txt
     setTimeout(() => {

@@ -10,6 +10,7 @@ import { isAliyunUser } from '../aliapi/utils'
 import { Modal } from '@arco-design/web-vue'
 import { getDriveProviderIcon, getDriveProviderLabel, getDriveProviderMeta } from '../utils/driveProvider'
 import { t } from '../i18n'
+import { clearCookies } from '../tauri/app'
 
 const userStore = useUserStore()
 const isAliyunAccount = computed(() => isAliyunUser(userStore.user_id || userStore.GetUserToken))
@@ -65,9 +66,7 @@ const handleDeleteLocalAccount = (token: ITokenInfo) => {
 }
 
 const handleLogin = () => {
-  if (window.WebClearCookies) {
-    window.WebClearCookies({ origin: 'https://auth.aliyundrive.com', storages: ['cookies', 'localstorage'] })
-  }
+  clearCookies('https://auth.aliyundrive.com')
   localStorage.setItem('login_provider', 'aliyun')
   useUserStore().userShowLogin = true
 }

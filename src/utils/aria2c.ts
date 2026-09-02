@@ -17,6 +17,7 @@ import { Sleep } from './format'
 import { getImageProxyBase } from './imageproxy'
 import { callAriaClient, getAriaAddUriGid, isAriaDuplicateGidError } from './aria2Rpc'
 import { buildAriaAddOptions } from '../down/integration/aria2AddOptions'
+import { restartAria } from '../tauri/app'
 
 export const localPwd = 'S4znWTaZYQi3cpRNb'
 
@@ -183,7 +184,7 @@ export async function AriaChangeToLocal() {
     try {
       let port = 16800
       if (Aria2EngineLocal == undefined) {
-        port = window.WebRelaunchAria ? await window.WebRelaunchAria() : 16800
+        port = await restartAria()
         const options = { host: '127.0.0.1', port, secure: false, secret: localPwd, path: '/jsonrpc' }
         Aria2EngineLocal = new Aria2Client(options)
         bindAriaErrorListener(Aria2EngineLocal, 'local')

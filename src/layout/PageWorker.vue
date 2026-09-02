@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { windowCmd } from '../tauri/app'
+
 const handleHideClick = (_e: any) => {
-  window.WebToWindow({ cmd: 'close' })
+  windowCmd('close')
 }
 </script>
 <template>

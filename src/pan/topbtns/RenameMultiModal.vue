@@ -16,7 +16,7 @@ import PanDAL from '../pandal'
 import { throttle } from '../../utils/debounce'
 import { IAliGetFileModel } from '../../aliapi/alimodels'
 import { treeSelectToExpand } from '../../utils/antdtree'
-import { copyToClipboard } from '../../utils/electronhelper'
+import { copyToClipboard } from '../../tauri/app'
 import path from '../../utils/path'
 
 const iconfolder = h(IconFont, { name: 'iconfile-folder' })

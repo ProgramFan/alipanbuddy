@@ -2,7 +2,7 @@
 import message from '../../utils/message'
 import { humanSize } from '../../utils/format'
 import { computed, ref, watch } from 'vue'
-import { ChevronRight } from 'lucide-vue-next'
+import { ChevronDown } from 'lucide-vue-next'
 import MyLoading from '../../layout/MyLoading.vue'
 import { useSettingStore, useUserStore, useWinStore } from '../../store'
 import UserDAL from '../../user/userdal'
@@ -19,8 +19,6 @@ import {
 } from '../ScanDAL'
 import { DeleteFromScanDataPunish, GetTreeCheckedSize, GetTreeNodes, GetWeiGuiFile } from './scanpunish'
 
-import { Checkbox as AntdCheckbox, Tree as AntdTree } from 'ant-design-vue'
-import { EventDataNode } from 'ant-design-vue/es/tree'
 import { modalSelectPanDir } from '../../utils/modal'
 import { GetDriveID } from '../../aliapi/utils'
 
@@ -50,11 +48,12 @@ const handleSelectAll = () => {
   TreeSelectAll(checkedKeys, checkedKeysBak)
   checkedSize.value = GetTreeCheckedSize(ScanPanData, panType.value, checkedKeys.value, ShowWeiGui.value, ShowPartWeiGui.value, ShowNoShare.value)
 }
-const handleTreeSelect = (keys: any, info: {
-  node: EventDataNode
-}) => TreeSelectOne([info.node.key as string], checkedKeys)
-const handleTreeCheck = (keys: any, e: any) => {
-  TreeCheckFileChild(e.node, checkedKeys)
+const handleTreeSelect = (_keys: any, info: { node?: TreeNodeData }) => {
+  if (info.node) TreeSelectOne([info.node.key], checkedKeys)
+}
+const handleTreeCheck = (_keys: any, info: { node?: TreeNodeData }) => {
+  if (!info.node) return
+  TreeCheckFileChild(info.node, checkedKeys)
   checkedSize.value = GetTreeCheckedSize(ScanPanData, panType.value, checkedKeys.value, ShowWeiGui.value, ShowPartWeiGui.value, ShowNoShare.value)
 }
 
@@ -198,19 +197,6 @@ const ShowPartWeiGui = ref(true)
 const ShowNoShare = ref(true)
 const scanType = ref('video')
 const panType = ref('backup')
-
-const handleShowWeiGui = () => {
-  ShowWeiGui.value = !ShowWeiGui.value
-  RefreshTree(true)
-}
-const handleShowPartWeiGui = () => {
-  ShowPartWeiGui.value = !ShowPartWeiGui.value
-  RefreshTree(true)
-}
-const handleShowNoShare = () => {
-  ShowNoShare.value = !ShowNoShare.value
-  RefreshTree(true)
-}
 </script>
 
 <template>
@@ -243,12 +229,12 @@ const handleShowNoShare = () => {
     <div class='settingcard scanauto' style='padding: 4px; margin-top: 4px'>
       <a-row justify='space-between' align='center'
              style='margin: 12px; height: 28px; flex-grow: 0; flex-shrink: 0; flex-wrap: nowrap; overflow: hidden'>
-        <AntdCheckbox :disabled='scanLoaded == false'
-                      :checked='scanCount > 0 && checkedKeys.length == scanCount'
-                      style='margin-left: 12px; margin-right: 12px'
-                      @click.stop.prevent='handleSelectAll'>
+        <a-checkbox :disabled='scanLoaded == false'
+                    :model-value='scanCount > 0 && checkedKeys.length == scanCount'
+                    style='margin-left: 12px; margin-right: 12px'
+                    @change='handleSelectAll'>
           全选
-        </AntdCheckbox>
+        </a-checkbox>
         <span v-if='scanLoaded' class='checkedInfo'>
           已选中 {{ checkedKeys.length }} 个文件{{ humanSize(checkedSize) }}
         </span>
@@ -259,21 +245,21 @@ const handleShowNoShare = () => {
         <span v-else class='checkedInfo'>网盘中文件很多时，需要扫描很长时间</span>
         <div style='flex: auto'></div>
 
-        <AntdCheckbox v-if='scanLoaded' v-model:checked='ShowWeiGui' style='margin-right: 12px'
-                      title='是否显示完全违规的文件' @click.stop.prevent='handleShowWeiGui'>
+        <a-checkbox v-if='scanLoaded' v-model='ShowWeiGui' style='margin-right: 12px'
+                    title='是否显示完全违规的文件' @change='RefreshTree(true)'>
           完全违规
-        </AntdCheckbox>
+        </a-checkbox>
 
-        <AntdCheckbox v-if="scanLoaded && panType == 'resource'"
-                      v-model:checked='ShowPartWeiGui' style='margin-right: 12px'
-                      title='是否显示部分违规的文件' @click.stop.prevent='handleShowPartWeiGui'>
+        <a-checkbox v-if="scanLoaded && panType == 'resource'"
+                    v-model='ShowPartWeiGui' style='margin-right: 12px'
+                    title='是否显示部分违规的文件' @change='RefreshTree(true)'>
           部分违规
-        </AntdCheckbox>
+        </a-checkbox>
 
-        <AntdCheckbox v-if='scanLoaded' v-model:checked='ShowNoShare' style='margin-right: 12px'
-                      title='是否显示禁止分享的文件' @click.stop.prevent='handleShowNoShare'>
+        <a-checkbox v-if='scanLoaded' v-model='ShowNoShare' style='margin-right: 12px'
+                    title='是否显示禁止分享的文件' @change='RefreshTree(true)'>
           禁止分享
-        </AntdCheckbox>
+        </a-checkbox>
 
         <a-button v-if='scanLoaded' size='small' tabindex='-1' style='margin-right: 12px' @click='handleReset'>取消
         </a-button>
@@ -308,28 +294,24 @@ const handleShowNoShare = () => {
       </a-row>
       <a-spin v-if='scanLoading || scanLoaded' :loading='scanLoading' tip='耐心等待，很慢的...'
               :style="{ width: '100%', height: treeHeight + 'px', overflow: 'hidden' }">
-        <AntdTree
+        <a-tree
           ref='treeref'
-          :expanded-keys='expandedKeys'
+          v-model:expanded-keys='expandedKeys'
           :checked-keys='checkedKeys'
-          :tree-data='treeData'
-          :tabindex='-1'
-          :focusable='false'
+          :data='treeData'
           checkable
           block-node
           :selectable='false'
           check-strictly
           auto-expand-parent
-          show-icon
-          :height='treeHeight'
+          :virtual-list-props="{ height: treeHeight }"
           :style="{ height: treeHeight + 'px' }"
-          :show-line='{ showLeafIcon: false }'
           @select='handleTreeSelect'
           @check='handleTreeCheck'>
-          <template #switcherIcon>
-            <ChevronRight :size='14' :stroke-width='1.8' class='ant-tree-switcher-lucide' />
+          <template #switcher-icon>
+            <ChevronDown :size='14' :stroke-width='1.8' />
           </template>
-        </AntdTree>
+        </a-tree>
       </a-spin>
       <a-empty v-else class='beginscan'>
         <template #image>

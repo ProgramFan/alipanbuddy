@@ -7,26 +7,10 @@ declare global {
 
   // eslint-disable-next-line no-unused-vars
   interface Window {
-    WebRelaunchAria: () => Promise<number>
-    platform: string
+    /** main ↔ upload worker messaging, installed by src/tauri/bridge.ts */
     WinMsg: any
-    postdataFunc: any
-    WebUserToken: any
-    WebToElectron: any
-    WebToWindow: any
-    WebClearCache: any
-    WebRelaunch: any
-    WebGetCookies: any
-    WebClearCookies: any
-    WebSaveTheme: any
-    WebShutDown: any
-    WebOpenWindow: any
-    WebShowOpenDialogSync: any
-    WebPlatformSync: any
-    MainProxyServer: any
     WinMsgToUpload: any
     WinMsgToMain: any
-    WebSetProxy: any
-    WebSetProgressBar: any
+    postdataFunc: any
   }
 }

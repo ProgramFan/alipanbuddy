@@ -13,7 +13,7 @@ import {
 } from '../store'
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-vue-next'
 import { onHideRightMenu, TestAlt, TestCtrl, TestKey, TestShift } from '../utils/keyboardhelper'
-import { getFromClipboard, openExternal } from '../utils/electronhelper'
+import { mainWindowCmd, openExternal, readClipboardText } from '../tauri/app'
 import { Modal } from '@arco-design/web-vue'
 import DebugLog from '../utils/debuglog'
 import message from '../utils/message'
@@ -52,14 +52,15 @@ let shareClipboardTimer: number | undefined
 let lastShareClipboardSignature = ''
 let shareClipboardPromptOpen = false
 
-function checkClipboardShareLink() {
+async function checkClipboardShareLink() {
   if (document.visibilityState !== 'visible' || shareClipboardPromptOpen) return
   let clipboardText = ''
   try {
-    clipboardText = getFromClipboard()
+    clipboardText = await readClipboardText()
   } catch {
     return
   }
+  if (shareClipboardPromptOpen) return
   const share = detectShareLink(clipboardText)
   if (!share) return
   const signature = `${share.provider}:${share.url}:${share.password}`
@@ -157,13 +158,13 @@ const topNavTabs = computed(() => {
 })
 
 const handleHideClick = (_e: any) => {
-  if (window.WebToElectron) window.WebToElectron({ cmd: useSettingStore().uiExitOnClose ? 'exit' : 'close' })
+  mainWindowCmd(useSettingStore().uiExitOnClose ? 'exit' : 'close')
 }
 const handleMinClick = (_e: any) => {
-  if (window.WebToElectron) window.WebToElectron({ cmd: 'minsize' })
+  mainWindowCmd('minsize')
 }
 const handleMaxClick = (_e: any) => {
-  if (window.WebToElectron) window.WebToElectron({ cmd: 'maxsize' })
+  mainWindowCmd('maxsize')
 }
 
 
@@ -180,7 +181,7 @@ keyboardStore.$subscribe((_m: any, state: KeyboardState) => {
   if (TestCtrl('tab', state.KeyDownEvent, () => appStore.toggleTabNextMenu())) return
   if (TestAlt('l', state.KeyDownEvent, () => (useUserStore().userShowLogin = true))) return
   const f11 = () => {
-    if (window.WebToElectron) window.WebToElectron({ cmd: 'maxsize' })
+    mainWindowCmd('maxsize')
   }
   if (TestKey('f11', state.KeyDownEvent, f11)) return
 })

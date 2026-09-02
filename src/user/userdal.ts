@@ -17,6 +17,7 @@ import DebugLog from '../utils/debuglog'
 import { supportsAliyunAutoSign } from './autoSignPolicy'
 import { getStoredTokenProvider } from '../utils/driveProvider'
 import { withStartupTimeout } from '../utils/startupTask'
+import { setActiveUserToken } from '../tauri/app'
 
 export const UserTokenMap = new Map<string, ITokenInfo>()
 
@@ -285,7 +286,7 @@ export default class UserDAL {
       useUserStore().userLogin(token.user_id)
     }
     UserDAL.SaveUserToken(token)
-    window.WebUserToken({
+    setActiveUserToken({
       user_id: token.user_id,
       name: token.user_name,
       access_token: token.access_token,

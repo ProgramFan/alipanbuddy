@@ -6,7 +6,7 @@ import { humanSize } from '../utils/format'
 import message from '../utils/message'
 import fs from '../tauri/fs'
 import path from '../utils/path'
-import { openPath, showItemInFolder } from '../utils/electronhelper'
+import { openPath, showItemInFolder } from '../tauri/app'
 import { t } from '../i18n'
 
 type Item = IStateDownFile

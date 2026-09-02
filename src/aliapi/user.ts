@@ -9,6 +9,7 @@ import { GetSignature } from './utils'
 import getUuid from 'uuid-by-string'
 import { useSettingStore } from '../store'
 import { ALIYUN_APP_ID, ALIYUN_APP_SECRET } from '../secrets.generated'
+import { setActiveUserToken } from '../tauri/app'
 
 export const TokenReTimeMap = new Map<string, number>()
 export const TokenLockMap = new Map<string, number>()
@@ -103,7 +104,7 @@ export default class AliUser {
       token.is_first_login = resp.body.is_first_login
       token.need_rp_verify = resp.body.need_rp_verify
       token.device_id = getUuid(resp.body.user_id.toString(), 5)
-      window.WebUserToken({
+      setActiveUserToken({
         user_id: token.user_id,
         name: token.user_name,
         access_token: token.access_token,
@@ -170,7 +171,7 @@ export default class AliUser {
       token.open_api_access_token = access_token
       token.open_api_refresh_token = refresh_token || token.open_api_refresh_token
       token.open_api_expires_in = Date.now() + expires_in * 1000
-      window.WebUserToken({
+      setActiveUserToken({
         user_id: token.user_id,
         name: token.user_name,
         access_token: token.access_token,
@@ -267,7 +268,7 @@ export default class AliUser {
       token.open_api_refresh_token = refresh_token
       token.open_api_expires_in = Date.now() + expires_in * 1000
       if (issave) {
-        window.WebUserToken({
+        setActiveUserToken({
           user_id: token.user_id,
           name: token.user_name,
           access_token: token.access_token,

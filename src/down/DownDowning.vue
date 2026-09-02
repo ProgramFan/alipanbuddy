@@ -25,6 +25,7 @@ import { TestButton } from '../utils/mosehelper'
 import { xorWith } from 'lodash'
 import TaskDetailDrawer from './TaskDetailDrawer.vue'
 import { t } from '../i18n'
+import { preventSleep } from '../tauri/app'
 
 const viewlist = ref()
 const inputsearch = ref()
@@ -36,11 +37,11 @@ const winStore = useWinStore()
 const downingStore = useDowningStore()
 const isDowning = computed(() => downingStore.ListDataDowningCount > 0)
 watch(isDowning, (value, oldValue) => {
-  if (value !== oldValue && window.WebToElectron) {
+  if (value !== oldValue) {
     if (value) {
-      window.WebToElectron({ cmd: 'preventSleep', flag: 1 })
+      preventSleep(true)
     } else if (useUploadingStore().ListDataUploadingCount == 0) {
-      window.WebToElectron({ cmd: 'preventSleep', flag: 0 })
+      preventSleep(false)
     }
   }
 })

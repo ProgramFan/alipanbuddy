@@ -10,7 +10,7 @@ import {
   TestKeyboardScroll,
   TestKeyboardSelect
 } from '../../utils/keyboardhelper'
-import { copyToClipboard, openExternal } from '../../utils/electronhelper'
+import { copyToClipboard, openExternal } from '../../tauri/app'
 import message from '../../utils/message'
 
 import { Tooltip as AntdTooltip } from 'ant-design-vue'
