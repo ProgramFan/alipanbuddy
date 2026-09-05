@@ -35,10 +35,6 @@ appStore.$subscribe(() => {
       <div class='headdesc'>{{ t('share.title') }}</div>
       <a-menu :selected-keys='[appStore.GetAppTabMenu]' :style="{ width: '100%' }" class='xbyleftmenu single-boundary-sidebar-menu'
               @update:selected-keys="appStore.toggleTabMenu('share', $event[0])">
-        <a-menu-item key='ShareSiteRight'>
-          <template #icon><IconFont name="iconrvip" /></template>
-          {{ t('share.resources') }}
-        </a-menu-item>
         <a-menu-item key='OtherShareRight'>
           <template #icon><IconFont name="iconfenxiang1" /></template>
           {{ t('share.imported') }}
@@ -63,14 +59,15 @@ appStore.$subscribe(() => {
           <template #icon><IconFont name="icondingyue" /></template>
           {{ t('share.following') }}
         </a-menu-item>
+        <a-menu-item key='ShareSiteRight'>
+          <template #icon><IconFont name="iconrvip" /></template>
+          {{ t('share.resources') }}
+        </a-menu-item>
       </a-menu>
     </a-layout-sider>
     <a-layout-content class='xbyright'>
       <a-tabs :type="'text'" :direction="'horizontal'" class='hidetabs' :justify='true'
               :active-key='appStore.GetAppTabMenu'>
-        <a-tab-pane key='ShareSiteRight' title='1'>
-          <ShareSiteRight />
-        </a-tab-pane>
         <a-tab-pane key='OtherShareRight' title='2'>
           <OtherShareRight />
         </a-tab-pane>
@@ -88,6 +85,9 @@ appStore.$subscribe(() => {
         </a-tab-pane>
         <a-tab-pane key='MyFollowingRight' title='5'>
           <MyFollowingRight />
+        </a-tab-pane>
+        <a-tab-pane key='ShareSiteRight' title='1'>
+          <ShareSiteRight />
         </a-tab-pane>
       </a-tabs>
     </a-layout-content>

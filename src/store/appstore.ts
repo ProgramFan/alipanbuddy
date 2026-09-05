@@ -46,7 +46,7 @@ const useAppStore = defineStore('app', {
     appTabMenuMap: new Map<string, string>([
       ['pan', 'wangpan'],
       ['down', 'DowningRight'],
-      ['share', 'ShareSiteRight'],
+      ['share', 'OtherShareRight'],
       ['rss', 'RssJiaMi'],
       ['setting', 'SettingUI']
     ]),
@@ -95,7 +95,7 @@ const useAppStore = defineStore('app', {
         appTabMenuMap: new Map<string, string>([
           ['pan', 'wangpan'],
           ['down', 'DowningRight'],
-          ['share', 'ShareSiteRight'],
+          ['share', 'OtherShareRight'],
           ['rss', 'RssJiaMi'],
           ['setting', 'SettingUI']
         ])
@@ -178,7 +178,7 @@ const useAppStore = defineStore('app', {
           break
         }
         case 'share': {
-          next(this.appTabMenuMap, this.appTab, ['ShareSiteRight', 'OtherShareRight', 'MyShareRight', 'ShareHistoryRight', 'MyTransferShareRight', 'ShareBottleFishRight', 'MyFollowingRight'])
+          next(this.appTabMenuMap, this.appTab, ['OtherShareRight', 'MyShareRight', 'ShareHistoryRight', 'MyTransferShareRight', 'ShareBottleFishRight', 'MyFollowingRight', 'ShareSiteRight'])
           break
         }
         case 'rss': {
