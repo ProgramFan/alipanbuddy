@@ -52,7 +52,7 @@ stage_tree() {
   install -m 755 "$RELEASE_DIR/aria2c" "$root/lib/alipanbuddy/aria2c"
   ln -s ../lib/alipanbuddy/alipanbuddy "$root/bin/alipanbuddy"
   local spec size file
-  for spec in "32x32:32x32.png" "128x128:128x128.png" "256x256:128x128@2x.png"; do
+  for spec in "32x32:32x32.png" "128x128:128x128.png" "256x256:128x128@2x.png" "512x512:512x512.png"; do
     size="${spec%%:*}"
     file="${spec#*:}"
     mkdir -p "$root/share/icons/hicolor/$size/apps"
