@@ -1,6 +1,5 @@
 <script setup lang="ts" generic="Row">
 import { computed } from 'vue'
-import { useWinStore } from '../../store'
 import { driveKey, type DriveScanTarget } from './useDriveScan'
 
 const props = defineProps<{
@@ -26,8 +25,6 @@ defineSlots<{
   row?(props: { row: Row; index: number }): any
 }>()
 
-const winStore = useWinStore()
-const listHeight = computed(() => winStore.height - 268)
 const scanDescription = computed(() => (props.loading ? props.scanningText : props.report || '选择网盘后开始扫描'))
 </script>
 
@@ -52,11 +49,11 @@ const scanDescription = computed(() => (props.loading ? props.scanningText : pro
       </div>
       <div class="scan-hint">{{ hint }}</div>
       <pre v-if="report" class="scan-report">{{ report }}</pre>
-      <a-spin :loading="loading" :style="{ width: '100%', minHeight: listHeight + 'px' }">
-        <a-list :bordered="false" :split="false" :max-height="listHeight" :data="rows">
-          <template #empty><a-empty :description="emptyText" /></template>
-          <template #item="{ item, index }"><slot name="row" :row="item" :index="index" /></template>
-        </a-list>
+      <a-spin class="scan-body" :loading="loading">
+        <div class="scan-list">
+          <div v-if="!rows.length" class="scan-empty"><a-empty :description="emptyText" /></div>
+          <div v-for="(row, index) in rows" :key="index" class="scan-list-item"><slot name="row" :row="row" :index="index" /></div>
+        </div>
       </a-spin>
     </div>
   </div>

@@ -92,4 +92,69 @@ withDefaults(defineProps<{ sidebarVisible?: boolean }>(), { sidebarVisible: true
   overflow-y: auto !important;
   overflow-x: hidden !important;
 }
+
+/* Scan-style plugin pages (empty dirs, duplicates, large files, violations, album copy): the steps card keeps
+   its own height, the tool card takes the rest of the pane and its list or tree scrolls inside it. */
+.rss-content-panel .scanfill {
+  display: flex;
+  flex-direction: column;
+}
+
+.rss-content-panel .scanfix {
+  flex: none;
+}
+
+.rss-content-panel .scanauto {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+}
+
+/* .scan-body wraps a plain scrolling list; .scan-tree-box is the box an Arco virtual tree is measured against (useElementHeight) */
+.rss-content-panel .scan-body,
+.rss-content-panel .scan-tree-box {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  width: 100%;
+  min-height: 160px;
+  overflow: hidden;
+}
+
+.rss-content-panel .scan-list {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.rss-content-panel .scan-list-item {
+  flex: none;
+}
+
+.rss-content-panel .scan-empty {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.rss-content-panel .scan-split {
+  flex: 1 1 0;
+  width: 100%;
+  min-height: 200px;
+}
+
+.rss-content-panel .scan-split > .arco-split-pane {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.rss-content-panel .scan-split .rsscopymenu {
+  flex: none;
+}
 </style>

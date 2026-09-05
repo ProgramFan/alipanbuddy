@@ -1,16 +1,17 @@
 <script setup lang='ts'>
 import { treeVirtualListProps } from '../../utils/arcotree'
 import message from '../../utils/message'
-import { computed, reactive, ref, watch } from 'vue'
+import { reactive, ref, watch } from 'vue'
 import { UserTokenMap } from '../../user/userdal'
-import { useSettingStore, useUserStore, useWinStore } from '../../store'
+import { useSettingStore, useUserStore } from '../../store'
+import { useElementHeight } from '../../utils/elementsize'
 import { ICopyTreeNode, LoadDir, NewCopyTreeInfo } from './drivecopy'
 import AliFileCmd from '../../aliapi/filecmd'
 import { GetDriveID } from '../../aliapi/utils'
 
-const winStore = useWinStore()
 const userStore = useUserStore()
-const treeHeight = computed(() => winStore.height - 268 - 34)
+const treeBox = ref<HTMLElement>()
+const treeHeight = useElementHeight(treeBox)
 
 const copyLoading = ref(false)
 
@@ -173,7 +174,7 @@ const handleRightUser = (driveType: any) => {
         </a-button>
       </a-row>
 
-      <a-split :style="{ height: treeHeight + 36 + 'px', width: '100%' }" min='300px' max='0.8'>
+      <a-split class='scan-split' min='300px' max='0.8'>
         <template #first>
           <div class='rsscopymenu'>
             <a-button type='text' size='small' tabindex='-1' title='根目录'
@@ -187,26 +188,28 @@ const handleRightUser = (driveType: any) => {
 
             <span class='checkedInfo' style='margin-left: 8px'>已选中 {{ TreeState.LeftCheckedKeys.length }}</span>
           </div>
-          <a-spin :loading='TreeState.LeftInfo.loading'
-                  :style="{ width: 'calc(100% + 10px)', height: treeHeight + 'px', overflow: 'hidden', marginLeft: '-13px' }">
-            <a-empty v-if='TreeState.LeftTreeData.length == 0' description='空文件夹' style='margin-top: 25vh' />
-            <a-tree
-              v-else
-              v-model:checked-keys='TreeState.LeftCheckedKeys'
-              :data='TreeState.LeftTreeData'
-              class='dirtree'
-              block-node
-              selectable
-              :auto-expand-parent='false'
-              :virtual-list-props="treeVirtualListProps(treeHeight)"
-              :style="{ height: treeHeight + 'px' }"
-              checkable
-              @select='handleLeftTreeSelect'>
-              <template #title='node'>
-                <span class='dirtitle'>{{ node.title }}</span>
-              </template>
-            </a-tree>
-          </a-spin>
+          <div ref='treeBox' class='scan-tree-box'>
+            <a-spin :loading='TreeState.LeftInfo.loading'
+                    :style="{ width: 'calc(100% + 10px)', height: treeHeight + 'px', overflow: 'hidden', marginLeft: '-13px' }">
+              <div v-if='TreeState.LeftTreeData.length == 0' class='scan-empty'><a-empty description='空文件夹' /></div>
+              <a-tree
+                v-else
+                v-model:checked-keys='TreeState.LeftCheckedKeys'
+                :data='TreeState.LeftTreeData'
+                class='dirtree'
+                block-node
+                selectable
+                :auto-expand-parent='false'
+                :virtual-list-props="treeVirtualListProps(treeHeight)"
+                :style="{ height: treeHeight + 'px' }"
+                checkable
+                @select='handleLeftTreeSelect'>
+                <template #title='node'>
+                  <span class='dirtitle'>{{ node.title }}</span>
+                </template>
+              </a-tree>
+            </a-spin>
+          </div>
         </template>
         <template #second>
           <div class='rsscopymenu'>
@@ -218,24 +221,26 @@ const handleRightUser = (driveType: any) => {
             <span class='checkedInfo'
                   style='margin-left: 8px; color: rgb(var(--success-6))'>复制到 {{ TreeState.RightInfo.dirName }}</span>
           </div>
-          <a-spin :loading='TreeState.RightInfo.loading'
-                  :style="{ width: 'calc(100% + 10px)', height: treeHeight + 'px', overflow: 'hidden', marginLeft: '-18px' }">
-            <a-empty v-if='TreeState.RightTreeData.length == 0' description='空文件夹' style='margin-top: 25vh' />
-            <a-tree
-              v-else
-              class='dirtree'
-              block-node
-              selectable
-              :auto-expand-parent='false'
-              :virtual-list-props="treeVirtualListProps(treeHeight)"
-              :style="{ height: treeHeight + 'px' }"
-              :data='TreeState.RightTreeData'
-              @select='handleRightTreeSelect'>
-              <template #title='node'>
-                <span class='dirtitle'>{{ node.title }}</span>
-              </template>
-            </a-tree>
-          </a-spin>
+          <div class='scan-tree-box'>
+            <a-spin :loading='TreeState.RightInfo.loading'
+                    :style="{ width: 'calc(100% + 10px)', height: treeHeight + 'px', overflow: 'hidden', marginLeft: '-18px' }">
+              <div v-if='TreeState.RightTreeData.length == 0' class='scan-empty'><a-empty description='空文件夹' /></div>
+              <a-tree
+                v-else
+                class='dirtree'
+                block-node
+                selectable
+                :auto-expand-parent='false'
+                :virtual-list-props="treeVirtualListProps(treeHeight)"
+                :style="{ height: treeHeight + 'px' }"
+                :data='TreeState.RightTreeData'
+                @select='handleRightTreeSelect'>
+                <template #title='node'>
+                  <span class='dirtitle'>{{ node.title }}</span>
+                </template>
+              </a-tree>
+            </a-spin>
+          </div>
         </template>
       </a-split>
     </div>

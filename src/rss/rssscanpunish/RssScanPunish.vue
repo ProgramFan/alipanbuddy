@@ -2,10 +2,11 @@
 import { treeVirtualListProps } from '../../utils/arcotree'
 import message from '../../utils/message'
 import { humanSize } from '../../utils/format'
-import { computed, ref, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { ChevronDown } from 'lucide-vue-next'
 import MyLoading from '../../layout/MyLoading.vue'
-import { useSettingStore, useUserStore, useWinStore } from '../../store'
+import { useSettingStore, useUserStore } from '../../store'
+import { useElementHeight } from '../../utils/elementsize'
 import UserDAL from '../../user/userdal'
 import AliFileCmd from '../../aliapi/filecmd'
 import {
@@ -23,9 +24,9 @@ import { DeleteFromScanDataPunish, GetTreeCheckedSize, GetTreeNodes, GetWeiGuiFi
 import { modalSelectPanDir } from '../../utils/modal'
 import { GetDriveID } from '../../aliapi/utils'
 
-const winStore = useWinStore()
 const userStore = useUserStore()
-const treeHeight = computed(() => winStore.height - 268)
+const treeBox = ref<HTMLElement>()
+const treeHeight = useElementHeight(treeBox)
 
 const treeref = ref()
 
@@ -293,33 +294,37 @@ const panType = ref('backup')
           开始扫描
         </a-button>
       </a-row>
-      <a-spin v-if='scanLoading || scanLoaded' :loading='scanLoading' tip='耐心等待，很慢的...'
-              :style="{ width: '100%', height: treeHeight + 'px', overflow: 'hidden' }">
-        <a-tree
-          ref='treeref'
-          v-model:expanded-keys='expandedKeys'
-          :checked-keys='checkedKeys'
-          :data='treeData'
-          checkable
-          block-node
-          :selectable='false'
-          check-strictly
-          auto-expand-parent
-          :virtual-list-props="treeVirtualListProps(treeHeight)"
-          :style="{ height: treeHeight + 'px' }"
-          @select='handleTreeSelect'
-          @check='handleTreeCheck'>
-          <template #switcher-icon>
-            <ChevronDown :size='14' :stroke-width='1.8' />
-          </template>
-        </a-tree>
-      </a-spin>
-      <a-empty v-else class='beginscan'>
-        <template #image>
-          <IconFont name="iconrsearch" />
-        </template>
-        请点击上方 开始扫描 按钮
-      </a-empty>
+      <div ref='treeBox' class='scan-tree-box'>
+        <a-spin v-if='scanLoading || scanLoaded' :loading='scanLoading' tip='耐心等待，很慢的...'
+                :style="{ width: '100%', height: treeHeight + 'px', overflow: 'hidden' }">
+          <a-tree
+            ref='treeref'
+            v-model:expanded-keys='expandedKeys'
+            :checked-keys='checkedKeys'
+            :data='treeData'
+            checkable
+            block-node
+            :selectable='false'
+            check-strictly
+            auto-expand-parent
+            :virtual-list-props="treeVirtualListProps(treeHeight)"
+            :style="{ height: treeHeight + 'px' }"
+            @select='handleTreeSelect'
+            @check='handleTreeCheck'>
+            <template #switcher-icon>
+              <ChevronDown :size='14' :stroke-width='1.8' />
+            </template>
+          </a-tree>
+        </a-spin>
+        <div v-else class='scan-empty'>
+          <a-empty>
+            <template #image>
+              <IconFont name="iconrsearch" />
+            </template>
+            请点击上方 开始扫描 按钮
+          </a-empty>
+        </div>
+      </div>
     </div>
   </div>
 </template>
