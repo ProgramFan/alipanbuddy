@@ -1,51 +1,9 @@
 import AliFollowing from '../../aliapi/following'
-import { IAliOtherFollowingModel } from '../../aliapi/alimodels'
 import message from '../../utils/message'
-import useOtherFollowingStore from './OtherFollowingStore'
 import useMyFollowingStore from './MyFollowingStore'
 import { throttle } from '../../utils/debounce'
 
 export default class FollowingDAL {
-  
-  static async aReloadOtherFollowingList(user_id: string, force: boolean): Promise<void> {
-    if (!user_id) return
-    const otherfollowingStore = useOtherFollowingStore()
-    if (!force && otherfollowingStore.TuiJianLoaded) return 
-    if (otherfollowingStore.TuiJianLoading == true) return
-    otherfollowingStore.TuiJianLoading = true
-    const resp = await AliFollowing.ApiOtherFollowingListAll(user_id)
-    otherfollowingStore.aSaveOtherFollowingList('官方推荐', 'arcoblue', resp.items)
-
-    const classed = await AliFollowing.ApiOtherFollowingClassListAll()
-
-    const map = new Map<string, IAliOtherFollowingModel[]>()
-    for (let i = 0, maxi = classed.length; i < maxi; i++) {
-      const item = classed[i]
-      if (!item.class_name) continue
-      if (!map.has(item.class_name)) map.set(item.class_name, [])
-      const list = map.get(item.class_name)!
-      const add: IAliOtherFollowingModel = {
-        avatar: item.avatar || '',
-        phone: '',
-        is_following: false,
-        description: item.description,
-        user_id: item.user_id,
-        nick_name: item.nick_name,
-        follower_count: item.follower_count
-      }
-      list.push(add)
-    }
-
-    const entries = map.entries()
-    for (let i = 0, maxi = map.size; i < maxi; i++) {
-      const entry = entries.next().value
-      if (entry && entry[1] && entry[1].length > 0) otherfollowingStore.aSaveOtherFollowingList(entry[0] + ' (' + entry[1].length + ')', 'orangered', entry[1])
-    }
-
-    otherfollowingStore.TuiJianLoading = false
-    otherfollowingStore.TuiJianLoaded = true
-  }
-
   
   static async aReloadMyFollowing(user_id: string, force: boolean): Promise<void> {
     if (!user_id) return

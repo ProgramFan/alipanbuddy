@@ -2,16 +2,8 @@ import { humanTimeAgo } from '../utils/format'
 import message from '../utils/message'
 import DebugLog from '../utils/debuglog'
 import AliHttp, { IUrlRespData } from './alihttp'
-import { IAliMyFollowingModel, IAliOtherFollowingModel } from './alimodels'
+import { IAliMyFollowingModel } from './alimodels'
 
-export interface IAliOtherFollowingResp {
-  items: IAliOtherFollowingModel[]
-  itemsKey: Set<string>
-  next_marker: string
-
-  m_time: number 
-  m_user_id: string 
-}
 export interface IAliMyFollowingResp {
   items: IAliMyFollowingModel[]
   itemsKey: Set<string>
@@ -21,74 +13,6 @@ export interface IAliMyFollowingResp {
   m_user_id: string 
 }
 export default class AliFollowing {
-  
-  static async ApiOtherFollowingListAll(user_id: string): Promise<IAliOtherFollowingResp> {
-    const dir: IAliOtherFollowingResp = {
-      items: [],
-      itemsKey: new Set(),
-      next_marker: '',
-      m_time: 0,
-      m_user_id: user_id
-    }
-
-    do {
-      const isGet = await AliFollowing.ApiOtherFollowingListOnePage(dir)
-      if (isGet != true) {
-        break 
-      }
-    } while (dir.next_marker)
-    return dir
-  }
-
-  static async ApiOtherFollowingListOnePage(dir: IAliOtherFollowingResp): Promise<boolean> {
-    const url = 'adrive/v1/timeline/user/recommend'
-    let postData = {
-      user_id: dir.m_user_id,
-      limit: 100,
-      order_by: 'updated_at',
-      order_direction: 'DESC'
-    }
-    if (dir.next_marker) postData = Object.assign(postData, { marker: dir.next_marker })
-    const resp = await AliHttp.Post(url, postData, dir.m_user_id, '')
-    return AliFollowing._OtherFollowingListOnePage(dir, resp)
-  }
-
-  private static _OtherFollowingListOnePage(dir: IAliOtherFollowingResp, resp: IUrlRespData): boolean {
-    try {
-      if (AliHttp.IsSuccess(resp.code)) {
-        dir.next_marker = resp.body.next_marker || ''
-
-        for (let i = 0, maxi = resp.body.items.length; i < maxi; i++) {
-          const item = resp.body.items[i] as IAliOtherFollowingModel
-          if (dir.itemsKey.has(item.user_id)) continue
-          const add = Object.assign({}, item)
-          dir.items.push(add)
-          dir.itemsKey.add(add.user_id)
-        }
-
-        return true
-      } else if (resp.code == 404) {
-        
-        dir.items.length = 0
-        dir.next_marker = ''
-        return true
-      } else if (resp.body && resp.body.code) {
-        dir.items.length = 0
-        dir.next_marker = resp.body.code
-        message.warning('列出官方推荐列表出错' + resp.body.code, 2)
-        return false
-      } else if (!AliHttp.HttpCodeBreak(resp.code)) {
-        DebugLog.mSaveWarning('_OtherFollowingListOnePage err=' + (resp.code || ''), resp.body)
-      }
-    } catch (err: any) {
-      DebugLog.mSaveDanger('_OtherFollowingListOnePage', err)
-    }
-    dir.next_marker = 'error ' + resp.code
-    return false
-  }
-
-  
-
   
   static async ApiMyFollowingListAll(user_id: string): Promise<IAliMyFollowingResp> {
     const dir: IAliMyFollowingResp = {
@@ -202,13 +126,5 @@ export default class AliFollowing {
       DebugLog.mSaveWarning('ApiSetFollowingMarkRead err=' + followingid + ' ' + (resp.code || ''), resp.body)
     }
     return false
-  }
-  
-
-  
-  static async ApiOtherFollowingClassListAll() {
-    const url = 'https://gitee.com/liupanxiaobaiyang/aliyunpan/raw/master/follow.json'
-    const resp = await AliHttp.Get(url, '')
-    return resp.body?.FollowList || []
   }
 }

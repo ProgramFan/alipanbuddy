@@ -4,7 +4,6 @@ import MyShareRight from './share/MyShareRight.vue'
 import MyTransferShareRight from './share/MyTransferShareRight.vue'
 import OtherShareRight from './share/OtherShareRight.vue'
 import MyFollowingRight from './following/MyFollowingRight.vue'
-import OtherFollowingRight from './following/OtherFollowingRight.vue'
 
 import { useAppStore, useUserStore } from '../store'
 import ShareDAL from './share/ShareDAL'
@@ -29,7 +28,6 @@ appStore.$subscribe(() => {
   if (appPage == 'MyTransferShareRight') ShareDAL.aReloadMyTransferShare(uid, false)
   if (appPage == 'ShareBottleFishRight') ShareDAL.aReloadShareBottleFish(uid, false)
   if (appPage == 'MyFollowingRight') FollowingDAL.aReloadMyFollowing(uid, false)
-  if (appPage == 'OtherFollowingRight') FollowingDAL.aReloadOtherFollowingList(uid, false)
 })
 
 const handleHideLeft = (val: boolean) => {
@@ -71,10 +69,6 @@ const handleHideLeft = (val: boolean) => {
           <template #icon><IconFont name="icondingyue" /></template>
           {{ t('share.following') }}
         </a-menu-item>
-        <a-menu-item key='OtherFollowingRight'>
-          <template #icon><IconFont name="icontuijian" /></template>
-          {{ t('share.recommendations') }}
-        </a-menu-item>
       </a-menu>
     </a-layout-sider>
     <a-layout-content class='xbyright'>
@@ -100,9 +94,6 @@ const handleHideLeft = (val: boolean) => {
         </a-tab-pane>
         <a-tab-pane key='MyFollowingRight' title='5'>
           <MyFollowingRight />
-        </a-tab-pane>
-        <a-tab-pane key='OtherFollowingRight' title='6'>
-          <OtherFollowingRight />
         </a-tab-pane>
       </a-tabs>
     </a-layout-content>

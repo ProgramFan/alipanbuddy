@@ -102,7 +102,7 @@ export interface IAliFileItem {
 }
 
 
-export interface IAliOtherFollowingModel {
+interface IAliFollowingCreatorModel {
   avatar: string
   description: string
   is_following: boolean
@@ -120,7 +120,7 @@ interface IAliMyFollowingMessageModel {
   }
   created: number
   createdstr: string
-  creator: IAliOtherFollowingModel
+  creator: IAliFollowingCreatorModel
   creator_id: string
   display_action: string
   sequence_id: number

@@ -1188,3 +1188,9 @@ body[arco-theme='dark'] .arco-modal-close-btn .arco-icon-hover:hover .arco-icon 
     color: #fff !important;
 }
 
+/* Full-height scrolling page body (settings, the encryption tool). */
+.fullscroll {
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+}

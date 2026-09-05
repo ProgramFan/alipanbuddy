@@ -7,7 +7,6 @@ import {
   useFootStore,
   useMyFollowingStore,
   useMyShareStore,
-  useOtherFollowingStore,
   usePanFileStore,
   usePanTreeStore,
   useSettingStore
@@ -303,7 +302,6 @@ export default class UserDAL {
     useAppStore().resetTab(useSettingStore().uiDefaultTab || 'pan')
     useMyShareStore().$reset()
     useMyFollowingStore().$reset()
-    useOtherFollowingStore().$reset()
     useFootStore().mSaveUserInfo(token)
     message.success('加载用户成功!', 2, loadingKey)
   }

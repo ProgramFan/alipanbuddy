@@ -20,7 +20,6 @@ import type { IOtherShareLinkModel } from '../share/share/OtherShareStore'
 import useOtherShareStore from '../share/share/OtherShareStore'
 import useMyShareStore from '../share/share/MyShareStore'
 import useMyFollowingStore from '../share/following/MyFollowingStore'
-import useOtherFollowingStore from '../share/following/OtherFollowingStore'
 
 import useUploadingStore from '../upload/UploadingStore'
 import useDownedStore from '../download/DownedStore'
@@ -50,7 +49,6 @@ export {
   IShareSiteGroupModel,
   useMyShareStore,
   useOtherShareStore,
-  useOtherFollowingStore,
   useMyFollowingStore,
   useFootStore,
   useUploadingStore,
