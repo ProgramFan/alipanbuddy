@@ -75,7 +75,6 @@ pub fn run() {
             commands::fs::fs_read_text,
             commands::fs::fs_write_text,
             commands::fs::fs_write_bytes,
-            commands::fs::fs_append_bytes,
             commands::fs::fs_read_range,
             commands::transfer::file_prehash,
             commands::transfer::file_sha1,

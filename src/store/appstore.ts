@@ -47,7 +47,7 @@ const useAppStore = defineStore('app', {
       ['pan', 'wangpan'],
       ['down', 'DowningRight'],
       ['share', 'ShareSiteRight'],
-      ['rss', 'RssXiMa'],
+      ['rss', 'RssJiaMi'],
       ['setting', 'SettingUI']
     ]),
     appDark: false,
@@ -96,7 +96,7 @@ const useAppStore = defineStore('app', {
           ['pan', 'wangpan'],
           ['down', 'DowningRight'],
           ['share', 'ShareSiteRight'],
-          ['rss', 'RssXiMa'],
+          ['rss', 'RssJiaMi'],
           ['setting', 'SettingUI']
         ])
       })
@@ -182,7 +182,7 @@ const useAppStore = defineStore('app', {
           break
         }
         case 'rss': {
-          next(this.appTabMenuMap, this.appTab, ['RssXiMa', 'RssJiaMi', 'RssEmptyDirs', 'RssScanSame', 'RssScanClean', 'RssScanPunish', 'RssDriveCopy'])
+          next(this.appTabMenuMap, this.appTab, ['RssJiaMi', 'RssEmptyDirs', 'RssScanSame', 'RssScanClean', 'RssScanPunish', 'RssDriveCopy'])
           break
         }
         case 'setting': {

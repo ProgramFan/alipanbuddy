@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useAppStore } from '../store'
-import RssXiMa from './rssxima/RssXiMa.vue'
 import RssJiaMi from './rssjiami/RssJiaMi.vue'
 import RssEmptyDirs from './drivetools/RssEmptyDirs.vue'
 import RssScanSame from './drivetools/RssScanSame.vue'
@@ -20,10 +19,6 @@ withDefaults(defineProps<{ sidebarVisible?: boolean }>(), { sidebarVisible: true
       <a-menu :style="{ width: '100%' }" class="xbyleftmenu rss-leftmenu single-boundary-sidebar-menu"
               :selected-keys="[appStore.GetAppTabMenu]"
               @update:selected-keys="appStore.toggleTabMenu('rss', $event[0])">
-        <a-menu-item key="RssXiMa">
-          <template #icon><IconFont name="iconcameraadd" /></template>
-          {{ t('plugins.washCode') }}
-        </a-menu-item>
         <a-menu-item key="RssJiaMi">
           <template #icon><IconFont name="iconsafebox" /></template>
           {{ t('plugins.encrypt') }}
@@ -52,7 +47,6 @@ withDefaults(defineProps<{ sidebarVisible?: boolean }>(), { sidebarVisible: true
     </a-layout-sider>
     <a-layout-content class="rss-content-panel">
       <a-tabs type="text" :direction="'horizontal'" class="hidetabs" :justify="true" :active-key="appStore.GetAppTabMenu">
-        <a-tab-pane key="RssXiMa" title="1"><RssXiMa /></a-tab-pane>
         <a-tab-pane key="RssJiaMi" title="2"><RssJiaMi /></a-tab-pane>
         <a-tab-pane key="RssEmptyDirs" title="3"><RssEmptyDirs /></a-tab-pane>
         <a-tab-pane key="RssScanSame" title="4"><RssScanSame /></a-tab-pane>

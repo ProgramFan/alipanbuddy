@@ -70,9 +70,6 @@ const fs = {
   writeFile(path: string, data: Uint8Array | ArrayBuffer | string): Promise<void> {
     return invoke('fs_write_bytes', { path, base64: toBase64(data) })
   },
-  appendFile(path: string, data: Uint8Array | ArrayBuffer | string): Promise<void> {
-    return invoke('fs_append_bytes', { path, base64: toBase64(data) })
-  },
   async readRange(path: string, start: number, length: number): Promise<Uint8Array> {
     return fromBase64(await invoke<string>('fs_read_range', { path, start, length }))
   }

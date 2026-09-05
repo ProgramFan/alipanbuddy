@@ -2,7 +2,7 @@
 //! `FileSystemErrorMessage(code, message)` mapping.
 
 use std::fs;
-use std::io::{self, Read, Seek, SeekFrom, Write};
+use std::io::{self, Read, Seek, SeekFrom};
 use std::path::Path;
 use std::time::UNIX_EPOCH;
 
@@ -169,12 +169,6 @@ pub fn write_bytes(path: &Path, data: &[u8]) -> Result<(), FsError> {
     Ok(())
 }
 
-pub fn append_bytes(path: &Path, data: &[u8]) -> Result<(), FsError> {
-    let mut f = fs::OpenOptions::new().append(true).create(true).open(path)?;
-    f.write_all(data)?;
-    Ok(())
-}
-
 pub fn read_range(path: &Path, start: u64, len: usize) -> Result<Vec<u8>, FsError> {
     let mut f = fs::File::open(path)?;
     f.seek(SeekFrom::Start(start))?;
@@ -201,8 +195,7 @@ mod tests {
         let root = dir.path();
         let sub = root.join("a/b");
         mkdir(&sub, true).unwrap();
-        write_text(&sub.join("x.txt"), "hello").unwrap();
-        append_bytes(&sub.join("x.txt"), b" world").unwrap();
+        write_text(&sub.join("x.txt"), "hello world").unwrap();
         assert_eq!(read_text(&sub.join("x.txt")).unwrap(), "hello world");
         assert_eq!(read_range(&sub.join("x.txt"), 6, 100).unwrap(), b"world");
         let st = stat(&sub.join("x.txt"), true).unwrap();

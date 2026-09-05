@@ -2,7 +2,7 @@
 import { computed, type Component } from 'vue'
 import {
   Plus, ChevronDown, ChevronLeft, ChevronRight, ChevronUp,
-  Lightbulb, Calendar, Camera, Eye, Check, CheckSquare,
+  Lightbulb, Calendar, Eye, Check, CheckSquare,
   Chrome, Send, X, Cloud, CloudCheck, CloudDownload, RefreshCcw, CloudUpload,
   Copy, Crown, FolderOpen, Sun, Bug, Trash2, Monitor, MoreHorizontal,
   Bell, BellOff, Download, SquarePen, Inbox, Square, Share2, GitBranch,
@@ -62,7 +62,6 @@ const ICON_MAP: Record<string, Component> = {
   iconshuxing: Info,
   iconchakan: Eye,
   iconrest: Trash,
-  iconcameraadd: Camera,
   icondakaiwenjianjia1: FolderOpen,
 
   // 箭头方向

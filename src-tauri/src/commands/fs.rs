@@ -58,12 +58,6 @@ pub async fn fs_write_bytes(path: String, base64: String) -> Result<(), FsError>
 }
 
 #[tauri::command]
-pub async fn fs_append_bytes(path: String, base64: String) -> Result<(), FsError> {
-    let data = decode(&base64)?;
-    blocking(move || fsx::append_bytes(&PathBuf::from(path), &data)).await
-}
-
-#[tauri::command]
 pub async fn fs_read_range(path: String, start: u64, length: usize) -> Result<String, FsError> {
     let bytes = blocking(move || fsx::read_range(&PathBuf::from(path), start, length.min(64 * 1024 * 1024))).await?;
     Ok(base64::engine::general_purpose::STANDARD.encode(bytes))
