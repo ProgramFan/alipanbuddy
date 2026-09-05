@@ -1,6 +1,6 @@
 [package]
 name = "alipancore"
-version = "1.4.1"
+version = "1.5.0"
 edition = "2021"
 license = "GPL-3.0"
 description = "Platform-independent core of AlipanBuddy (encryption, proxy, upload, hashing, aria2 launcher)"
