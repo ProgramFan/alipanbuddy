@@ -1,5 +1,4 @@
-//! Window factory: main window, preview (PageImage) windows and the login / share-site browser
-//! windows.
+//! Window factory: main window, preview (PageImage) windows and the login browser window.
 
 use std::path::PathBuf;
 
@@ -16,7 +15,6 @@ pub const BROWSER_UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWeb
 
 pub const MAIN: &str = "main";
 pub const LOGIN: &str = "login";
-pub const SITE: &str = "site";
 
 fn background(theme: &str) -> Color {
     if theme == "dark" {
@@ -209,28 +207,26 @@ fn is_login_callback(url: &url::Url) -> bool {
     url.path().contains("sign/callback") && url.query_pairs().any(|(k, _)| k == "code")
 }
 
-fn browser_window(app: &AppHandle, label: &'static str, url: &str, title: &str, size: (f64, f64), nav_event: &'static str, closed_event: &'static str, block_login_callback: bool) -> tauri::Result<WebviewWindow> {
+/// Isolated browser window for the Aliyun login page. Every navigation is reported to the main window
+/// as `login-navigation`; the OAuth callback itself is not loaded, the renderer completes it from the URL.
+fn login_window(app: &AppHandle, url: &str) -> tauri::Result<WebviewWindow> {
     let parsed = url::Url::parse(url).map_err(tauri::Error::InvalidUrl)?;
     let handle = app.clone();
-    let builder = WebviewWindowBuilder::new(app, label, WebviewUrl::External(parsed))
-        .title(title)
-        .inner_size(size.0, size.1)
+    let builder = WebviewWindowBuilder::new(app, LOGIN, WebviewUrl::External(parsed))
+        .title("阿里云盘登录")
+        .inner_size(560.0, 680.0)
         .center()
         .user_agent(BROWSER_UA)
-        .data_directory(browser_data_dir(app, label))
+        .data_directory(browser_data_dir(app, LOGIN))
         .on_navigation(move |u| {
-            let text = u.to_string();
-            let _ = handle.emit_to(MAIN, nav_event, json!({ "url": text }));
-            if block_login_callback && is_login_callback(u) {
-                return false;
-            }
-            true
+            let _ = handle.emit_to(MAIN, "login-navigation", json!({ "url": u.to_string() }));
+            !is_login_callback(u)
         });
     let win = builder.build()?;
     let handle = app.clone();
     win.on_window_event(move |event| {
         if let WindowEvent::Destroyed = event {
-            let _ = handle.emit_to(MAIN, closed_event, json!({}));
+            let _ = handle.emit_to(MAIN, "login-closed", json!({}));
         }
     });
     Ok(win)
@@ -251,7 +247,7 @@ pub fn open_login_window(app: &AppHandle, url: &str, clear_data: bool) -> tauri:
     if clear_data {
         let _ = std::fs::remove_dir_all(browser_data_dir(app, LOGIN));
     }
-    browser_window(app, LOGIN, url, "阿里云盘登录", (560.0, 680.0), "login-navigation", "login-closed", true)?;
+    login_window(app, url)?;
     Ok(())
 }
 
@@ -262,45 +258,16 @@ pub fn close_login_window(app: &AppHandle) {
     }
 }
 
-/// `session.clearStorageData({ origin })` equivalent for the isolated login / site browsing contexts.
-pub fn reset_browser_window(app: &AppHandle, label: &str) {
-    match app.get_webview_window(label) {
+/// `session.clearStorageData({ origin })` equivalent for the isolated login browsing context.
+pub fn reset_login_window(app: &AppHandle) {
+    match app.get_webview_window(LOGIN) {
         Some(win) => {
             let _ = win.clear_all_browsing_data();
-            if label == LOGIN {
-                let _ = win.hide();
-                let _ = win.eval("window.location.replace('about:blank')");
-            }
+            let _ = win.hide();
+            let _ = win.eval("window.location.replace('about:blank')");
         }
         None => {
-            let _ = std::fs::remove_dir_all(browser_data_dir(app, label));
+            let _ = std::fs::remove_dir_all(browser_data_dir(app, LOGIN));
         }
     }
-}
-
-pub fn open_site_window(app: &AppHandle, url: &str) -> tauri::Result<()> {
-    if let Some(win) = app.get_webview_window(SITE) {
-        let _ = win.show();
-        let _ = win.set_focus();
-        let _ = win.eval(&format!("window.location.href = {}", serde_json::to_string(url).unwrap_or_default()));
-        return Ok(());
-    }
-    let (w, h) = default_size(app);
-    browser_window(app, SITE, url, "分享网站", (w.max(1080.0), h), "site-navigation", "site-closed", false)?;
-    Ok(())
-}
-
-pub fn site_window_cmd(app: &AppHandle, cmd: &str) -> Result<(), String> {
-    let win = app.get_webview_window(SITE).ok_or_else(|| "missing".to_string())?;
-    let js = match cmd {
-        "back" => "history.back()",
-        "forward" => "history.forward()",
-        "reload" => "location.reload()",
-        "clear-cookies" => {
-            let _ = win.clear_all_browsing_data();
-            "location.reload()"
-        }
-        _ => return Err("unknown".into()),
-    };
-    win.eval(js).map_err(|e| e.to_string())
 }

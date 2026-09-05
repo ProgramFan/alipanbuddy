@@ -108,9 +108,9 @@ export function setProxy(proxyUrl: string): Promise<void> {
 
 // ---------- browser data ----------
 
-/** Resets the hidden login (or share-site) webview so the next login starts from a clean session. */
-export function clearCookies(origin: string): Promise<void> {
-  return invoke<void>('clear_cookies', { origin: origin || '' }).catch(() => {})
+/** Resets the hidden login webview so the next login starts from a clean session. */
+export function clearCookies(): Promise<void> {
+  return invoke<void>('clear_cookies').catch(() => {})
 }
 
 /** `all` also wipes IndexedDB/localStorage of the main window. */

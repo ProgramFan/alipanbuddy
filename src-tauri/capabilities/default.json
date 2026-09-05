@@ -5,8 +5,7 @@
   "windows": [
     "main",
     "preview-*",
-    "login",
-    "site"
+    "login"
   ],
   "permissions": [
     "core:default",

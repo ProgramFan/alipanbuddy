@@ -94,23 +94,6 @@ pub fn close_login_window(app: AppHandle) {
 }
 
 #[tauri::command]
-pub async fn open_site_window(app: AppHandle, url: String) -> Result<(), String> {
-    windows::open_site_window(&app, &url).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-pub fn site_window_cmd(app: AppHandle, cmd: String) -> Result<(), String> {
-    windows::site_window_cmd(&app, &cmd)
-}
-
-#[tauri::command]
-pub fn close_site_window(app: AppHandle) {
-    if let Some(win) = app.get_webview_window(windows::SITE) {
-        let _ = win.close();
-    }
-}
-
-#[tauri::command]
 pub fn toggle_devtools(window: tauri::WebviewWindow) {
     if window.is_devtools_open() {
         window.close_devtools();

@@ -259,14 +259,10 @@ pub fn get_cookies(app: AppHandle, url: String) -> Vec<CookieInfo> {
     out
 }
 
-/// `session.clearStorageData({ origin })` - the login / site windows have isolated cookie stores.
+/// `session.clearStorageData({ origin })` - the login window has its own isolated cookie store.
 #[tauri::command]
-pub fn clear_cookies(app: AppHandle, origin: String) {
-    if origin.contains("aliyundrive") || origin.contains("alipan") || origin.is_empty() {
-        windows::reset_browser_window(&app, windows::LOGIN);
-    } else {
-        windows::reset_browser_window(&app, windows::SITE);
-    }
+pub fn clear_cookies(app: AppHandle) {
+    windows::reset_login_window(&app);
 }
 
 /// `session.clearCache()/clearStorageData()` for the main webview. `all` also wipes IndexedDB / localStorage.
@@ -277,8 +273,7 @@ pub fn clear_browsing_data(app: AppHandle, all: Option<bool>) {
             let _ = win.clear_all_browsing_data();
         }
     }
-    windows::reset_browser_window(&app, windows::LOGIN);
-    windows::reset_browser_window(&app, windows::SITE);
+    windows::reset_login_window(&app);
 }
 
 fn proxy_cmd_client(url: &str, follow: bool) -> reqwest::Client {

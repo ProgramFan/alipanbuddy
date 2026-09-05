@@ -66,7 +66,7 @@ const handleDeleteLocalAccount = (token: ITokenInfo) => {
 }
 
 const handleLogin = () => {
-  clearCookies('https://auth.aliyundrive.com')
+  clearCookies()
   localStorage.setItem('login_provider', 'aliyun')
   useUserStore().userShowLogin = true
 }

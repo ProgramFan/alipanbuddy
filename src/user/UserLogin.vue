@@ -458,14 +458,14 @@ const handleRefreshQrCodeUrl = () => {
 const loginSuccess = (token: ITokenInfo) => {
   UserDAL.UserLogin(token, true)
     .then(() => {
-      clearCookies('https://auth.aliyundrive.com')
+      clearCookies()
       refreshStepTips('process', 3)
       refreshQrCodeStatus()
       useUserStore().userShowLogin = false
     })
     .catch(() => {
       useUserStore().userShowLogin = false
-      clearCookies('https://auth.aliyundrive.com')
+      clearCookies()
       refreshQrCodeStatus()
     })
 }

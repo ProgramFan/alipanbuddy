@@ -7,7 +7,6 @@ export interface IShareSiteModel {
   tip: string
   group: string
   color: string
-  external: string
 }
 
 export interface IShareSiteGroupModel {

@@ -14,7 +14,7 @@ pub fn run() {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
     // webkit2gtk's DMA-BUF renderer is known to hang the GTK main loop when a second
-    // webview window (login / share-site browser) is created on some Linux drivers.
+    // webview window (the login browser) is created on some Linux drivers.
     // Users can opt back in by exporting WEBKIT_DISABLE_DMABUF_RENDERER=0 themselves.
     #[cfg(target_os = "linux")]
     if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
@@ -62,9 +62,6 @@ pub fn run() {
             commands::window::get_page_context,
             commands::window::open_login_window,
             commands::window::close_login_window,
-            commands::window::open_site_window,
-            commands::window::site_window_cmd,
-            commands::window::close_site_window,
             commands::window::toggle_devtools,
             commands::fs::fs_exists,
             commands::fs::fs_stat,

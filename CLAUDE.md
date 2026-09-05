@@ -40,7 +40,7 @@ genuinely differs — and then a comment says which one).
 ```
 src-tauri/                Rust application (Tauri 2)
   src/lib.rs              builder: plugins, command registry, setup (window, tray, aria2c), exit hooks
-  src/windows.rs          main / preview windows, login + share-site browser windows
+  src/windows.rs          main / preview windows, login browser window
   src/commands/           #[tauri::command]s: fs_*, file_sha1/upload_part/flowenc_*, http_request, proxy_*, window/system
   src/aria.rs             bundled aria2c sidecar lifecycle (RPC port 16800+, secret S4znWTaZYQi3cpRNb); resources/aria2.conf is embedded
   src/paths.rs            user-data dir (`userdir.config` override)
@@ -56,7 +56,7 @@ src/                      Vue 3 renderer (entry: src/main.ts → App.vue → lay
                           header rules), fs.ts, hash.ts, upload.ts, flowenc.ts, proxyResolver.ts, dragDrop.ts, invoke.ts, state.ts
   aliapi/                 Aliyun Drive API (files, dirs, share, upload, album, trash, user) — API wrappers only
   pan/                    File manager UI (tree, list, menus, modals, topbtns)
-  share/                  Share links, imports, history, following (share sites open in the Tauri `site` window)
+  share/                  Share links, imports, history, following (resource sites open in the system browser)
   upload/                 Upload queue, executor (hashing/parts in Rust), persistence and UI
   download/               aria2 client + manager, download queue, persistence and UI
   transfer/               The transfer page shell hosting the upload/download panes
@@ -82,8 +82,8 @@ docs/releases/            release notes, picked up by the release workflow
   `invoke()` and the other bridge modules; all HTTP goes through `src/axios.ts` (Rust reqwest, so CORS/forbidden
   headers are not an issue). Add new native capabilities as `#[tauri::command]`s in `src-tauri/src/commands/`.
 - **Renderer ↔ Rust contract**: command names/args in `src-tauri/src/lib.rs` `generate_handler!`; events
-  (`setTheme`, `sha1-progress`, `upload-progress`, `proxy-need-url`, `login-navigation`, `site-navigation`, ...)
-- **Windows**: `main`, `preview-*` (PageImage, PageOffice), `login`, `site`; routed by `index.html#page=...` (see `parsePageRoute`
+  (`setTheme`, `sha1-progress`, `upload-progress`, `proxy-need-url`, `login-navigation`, ...)
+- **Windows**: `main`, `preview-*` (PageImage, PageOffice), `login`; routed by `index.html#page=...` (see `parsePageRoute`
   in `src/tauri/bridge.ts`). Uploads and downloads run in the main window; there are no hidden worker windows.
 - **Formatting**: single quotes, no semicolons, 260 printWidth, no trailing commas, LF, `sortAttributes: true` in Vue
 - **TypeScript**: strict mode, `noUnusedLocals`/`noUnusedParameters`, ESNext target, node moduleResolution
@@ -113,7 +113,7 @@ its removal.
 | Renderer ↔ Rust | typed functions in `src/tauri/*.ts` calling `invoke()` | the old `window.Web*` globals were `any`-typed and hid which commands were dead |
 | aria2 | `src/download/aria2c.ts` (one transport, typed wrappers) | four layers with raw RPC strings made dead wrappers invisible |
 | List selection state | `src/store/selectableList.ts` | ten stores had the same 20 methods copy-pasted |
-| Windows | `main`, `preview-*`, `login`, `site` | hidden worker windows were an Electron workaround; hashing and upload run in Rust now |
+| Windows | `main`, `preview-*`, `login` | hidden worker windows were an Electron workaround; hashing and upload run in Rust now |
 | Platform checks | feature detection; no `platform ===` gates unless the native capability differs (comment which) | macOS is dropped for now but must be able to return |
 | Strings | `t('key')` with keys present in both locales; a test fails on unreferenced keys | 73% of keys were for deleted features |
 | Dependencies | one call site is not enough to justify a package | uuid, howler, lodash and semver each served one line |
